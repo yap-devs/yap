@@ -7,9 +7,13 @@
     "require": {
         "php": "^8.2",
         "laravel/framework": "^11.9",
-        "laravel/tinker": "^2.9"
+        "laravel/socialite": "^5.15",
+        "laravel/tinker": "^2.9",
+        "sentry/sentry-laravel": "^4.6",
+        "spatie/ssh": "^1.10"
     },
     "require-dev": {
+        "barryvdh/laravel-ide-helper": "^3.0",
         "fakerphp/faker": "^1.23",
         "laravel/pint": "^1.13",
         "laravel/sail": "^1.26",
