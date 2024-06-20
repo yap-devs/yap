@@ -17,8 +17,16 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
+            $table->unsignedBigInteger('balance')->default(0);
+            $table->unsignedBigInteger('plan_id')->default(0);
+            $table->string('sub_pass')->default('');
+            $table->unsignedBigInteger('traffic_used')->default(0)->comment('in megabytes');
+            $table->string('github_login_id')->default('');
+            $table->string('github_token')->default('');
+            $table->timestamp('github_created_at')->nullable();
             $table->rememberToken();
             $table->timestamps();
+            $table->softDeletes();
         });
 
         Schema::create('password_reset_tokens', function (Blueprint $table) {
