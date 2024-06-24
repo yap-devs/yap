@@ -28,6 +28,11 @@ Yet Another Panel for network services.
     git submodule update --init
     protoc --proto_path=v2ray-core --proto_path=protobuf/src --php_out=pb $(find v2ray-core -iname "*.proto")
     ```
+5. Permission
+    ```bash
+    chown -R www-data:www-data storage
+    chown -R www-data:www-data bootstrap/cache
+    ```
 
 ## Community
 
