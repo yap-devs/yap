@@ -17,5 +17,5 @@ indent_size = 2
 [docker-compose.yml]
 indent_size = 4
 
-[*.{js,jsx,json}]
+[resources/js/**.{js,jsx,json}]
 indent_size = 2

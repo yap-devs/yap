@@ -13,6 +13,10 @@ return new class extends Migration
     {
         Schema::create('servers', function (Blueprint $table) {
             $table->id();
+            $table->string('name');
+            $table->string('host');
+            $table->unsignedSmallInteger('port');
+            $table->unsignedTinyInteger('rate')->default(1);
             $table->timestamps();
             $table->softDeletes();
         });

@@ -20,7 +20,7 @@ return new class extends Migration
             $table->unsignedBigInteger('balance')->default(0);
             $table->unsignedBigInteger('plan_id')->default(0);
             $table->string('sub_pass')->default('');
-            $table->unsignedBigInteger('traffic_used')->default(0)->comment('in megabytes');
+            $table->unsignedBigInteger('traffic_used')->default(0)->comment('in bytes');
             $table->string('github_login_id')->default('');
             $table->string('github_token')->default('');
             $table->timestamp('github_created_at')->nullable();
