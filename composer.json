@@ -9,6 +9,10 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "ext-grpc": "*",
+        "ext-protobuf": "*",
+        "ext-yaml": "*",
+        "grpc/grpc": "^1.57",
         "inertiajs/inertia-laravel": "^1.0",
         "laravel/framework": "^11.9",
         "laravel/sanctum": "^4.0",
@@ -16,8 +20,7 @@
         "laravel/tinker": "^2.9",
         "sentry/sentry-laravel": "^4.6",
         "spatie/ssh": "^1.10",
-        "tightenco/ziggy": "^2.0",
-        "ext-yaml": "*"
+        "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.0",
