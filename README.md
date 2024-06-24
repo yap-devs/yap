@@ -18,6 +18,16 @@ Yet Another Panel for network services.
 composer install
 php artisan key:generate
 ```
+3. Frontend
+```bash
+npm install
+npm run build
+```
+4. ProtoBuf(If you want to re-complie the proto file)
+```bash
+git submodule update --init
+protoc --proto_path=v2ray-core --proto_path=protobuf/src --php_out=pb $(find v2ray-core -iname "*.proto")
+```
 
 ## Community
 

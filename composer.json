@@ -12,6 +12,7 @@
         "ext-grpc": "*",
         "ext-protobuf": "*",
         "ext-yaml": "*",
+        "google/protobuf": "^4.27",
         "grpc/grpc": "^1.57",
         "inertiajs/inertia-laravel": "^1.0",
         "laravel/framework": "^11.9",
