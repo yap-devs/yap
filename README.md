@@ -17,18 +17,15 @@ Yet Another Panel for network services.
     ```bash
     composer install
     php artisan key:generate
+    php artisan migrate
+    cd v2bridge && go build  # Remember to sync the submodule first
     ```
 3. Frontend
     ```bash
     npm install
     npm run build
     ```
-4. ProtoBuf(If you want to re-compile the proto file)
-    ```bash
-    git submodule update --init
-    protoc --proto_path=v2ray-core --proto_path=protobuf/src --php_out=pb $(find v2ray-core -iname "*.proto")
-    ```
-5. Permission
+4. Permission
     ```bash
     chown -R www-data:www-data storage
     chown -R www-data:www-data bootstrap/cache
