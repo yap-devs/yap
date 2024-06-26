@@ -17,9 +17,9 @@ return new class extends Migration
             $table->string('email')->unique();
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
-            $table->unsignedBigInteger('balance')->default(0);
+            $table->decimal('balance')->default(0);
             $table->unsignedBigInteger('plan_id')->default(0);
-            $table->string('sub_pass')->default('');
+            $table->string('uuid')->default('');
             $table->unsignedBigInteger('traffic_used')->default(0)->comment('in bytes');
             $table->string('github_login_id')->default('');
             $table->string('github_token')->default('');
