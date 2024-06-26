@@ -9,18 +9,13 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
-        "ext-grpc": "*",
-        "ext-protobuf": "*",
         "ext-yaml": "*",
-        "google/protobuf": "^4.27",
-        "grpc/grpc": "^1.57",
         "inertiajs/inertia-laravel": "^1.0",
         "laravel/framework": "^11.9",
         "laravel/sanctum": "^4.0",
         "laravel/socialite": "^5.15",
         "laravel/tinker": "^2.9",
         "sentry/sentry-laravel": "^4.6",
-        "spatie/ssh": "^1.10",
         "tightenco/ziggy": "^2.0"
     },
     "require-dev": {
@@ -38,9 +33,7 @@
         "psr-4": {
             "App\\": "app/",
             "Database\\Factories\\": "database/factories/",
-            "Database\\Seeders\\": "database/seeders/",
-            "V2ray\\": "pb/V2ray",
-            "GPBMetadata\\": "pb/GPBMetadata"
+            "Database\\Seeders\\": "database/seeders/"
         }
     },
     "autoload-dev": {
