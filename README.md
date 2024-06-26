@@ -15,10 +15,14 @@ Yet Another Panel for network services.
 1. Clone the repository
 2. Install dependencies
     ```bash
+    # Backend
     composer install
     php artisan key:generate
     php artisan migrate
-    cd v2bridge && go build  # Remember to sync the submodule first
+
+    # V2Bridge
+    git submodule update --init
+    cd v2bridge && go build
     ```
 3. Frontend
     ```bash

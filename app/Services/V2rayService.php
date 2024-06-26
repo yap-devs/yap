@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Process;
 
 class V2rayService
 {
-    private string $prefix = '';
+    private string $prefix;
 
     public function __construct(
         private readonly string $server
