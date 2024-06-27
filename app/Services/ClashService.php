@@ -32,6 +32,8 @@ readonly class ClashService
                 'server' => $vmess_server->server,
                 'port' => $vmess_server->port,
                 'uuid' => $this->user->uuid,
+                'alterId' => 0,
+                'cipher' => 'auto',
             ];
 
             $proxy_groups['proxies'][] = $vmess_server->name;
