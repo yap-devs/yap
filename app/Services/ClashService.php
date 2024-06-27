@@ -13,18 +13,8 @@ readonly class ClashService
     {
     }
 
-    public static function buildUrl($uuid)
-    {
-        return route('clash', ['uuid' => $uuid]);
-    }
-
     public function genConf()
     {
-        if (!$this->user->uuid) {
-            $this->user->uuid = fake()->uuid();
-            $this->user->save();
-        }
-
         $template = yaml_parse_file(resource_path('clash-conf-template.yaml'));
         $vmess_servers = VmessServer::all();
 
