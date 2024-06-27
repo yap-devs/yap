@@ -16,6 +16,30 @@ export default function Dashboard({auth, clashUrl}) {
     }
   }
 
+  const renderPayReminder = () => {
+    if (auth.user.is_valid) {
+      return (
+        <div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4" role="alert">
+          <p className="mt-4">Your Clash URL is:</p>
+          <p className="mt-2 text-blue-500">{clashUrl}</p>
+          <button
+            onClick={() => copyToClipboard(clashUrl)}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
+          >
+            {copyButton}
+          </button>
+        </div>
+      )
+    }
+
+    return (
+      <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+        <p className="font-bold">Your account is not paid.</p>
+        <p>Please pay your subscription to continue using the service.</p>
+      </div>
+    );
+  }
+
   return (
     <AuthenticatedLayout
       user={auth.user}
@@ -29,14 +53,7 @@ export default function Dashboard({auth, clashUrl}) {
             <div className="p-6 text-gray-900">
               <p className="text-lg">Welcome back, {auth.user.name}!</p>
               <p className="mt-4">You're logged in with the email {auth.user.email}</p>
-              <p className="mt-4">Your Clash URL is:</p>
-              <p className="mt-2 text-blue-500">{clashUrl}</p>
-              <button
-                onClick={() => copyToClipboard(clashUrl)}
-                className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
-              >
-                {copyButton}
-              </button>
+              {renderPayReminder()}
             </div>
           </div>
         </div>
