@@ -9,4 +9,10 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class UserStat extends Model
 {
     use HasFactory, SoftDeletes;
+
+    protected $fillable = [
+        'user_id',
+        'traffic_downlink',
+        'traffic_uplink',
+    ];
 }

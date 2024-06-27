@@ -2,7 +2,13 @@
 
 namespace App\Console\Commands;
 
+use App\Models\User;
+use App\Models\UserStat;
+use App\Models\VmessServer;
+use App\Services\V2rayService;
 use Illuminate\Console\Command;
+use Illuminate\Support\Arr;
+use Throwable;
 
 class UpdateStatCommand extends Command
 {
@@ -22,9 +28,44 @@ class UpdateStatCommand extends Command
 
     /**
      * Execute the console command.
+     * @throws Throwable
      */
     public function handle()
     {
-        //
+        $vmess_servers = VmessServer::all();
+
+        foreach ($vmess_servers as $vmess_server) {
+            $v2ray = new V2rayService($vmess_server->internal_server);
+            $stats = $v2ray->stats(reset: true);
+
+            if (!$stats || !isset($stats['user'])) {
+                continue;
+            }
+
+            $user_stats = $stats['user'];
+            foreach ($user_stats as $email => $user_stat) {
+                $uplink = Arr::get($user_stat, 'uplink', 0);
+                $downlink = Arr::get($user_stat, 'downlink', 0);
+                if (!$uplink && !$downlink) {
+                    continue;
+                }
+
+                $user = User::where('email', $email)->first();
+                if (!$user) {
+                    continue;
+                }
+
+                $user->increment('traffic_uplink', $uplink);
+                $user->increment('traffic_downlink', $downlink);
+
+                UserStat::create([
+                    'user_id' => $user->id,
+                    'traffic_uplink' => $uplink,
+                    'traffic_downlink' => $downlink,
+                ]);
+
+                $this->info("[$vmess_server->name]Updated traffic stats for user $email, uplink: $uplink, downlink: $downlink");
+            }
+        }
     }
 }

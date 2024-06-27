@@ -92,6 +92,9 @@ class V2rayService
 
         $res = [];
         foreach ($stat as $item) {
+            if (!isset($item['value'])) {
+                continue;
+            }
             [$type, $name, , $direction] = explode('>>>', $item['name']);
             $res[$type][$name][$direction] = $item['value'];
         }

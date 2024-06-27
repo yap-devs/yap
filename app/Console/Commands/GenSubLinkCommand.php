@@ -3,8 +3,11 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Models\VmessServer;
 use App\Services\ClashService;
+use App\Services\V2rayService;
 use Illuminate\Console\Command;
+use Throwable;
 
 class GenSubLinkCommand extends Command
 {
@@ -24,13 +27,25 @@ class GenSubLinkCommand extends Command
 
     /**
      * Execute the console command.
+     * @throws Throwable
      */
     public function handle()
     {
         $users = User::all()->filter(fn(User $user) => $user->is_valid)->values();
+        $vmess_servers = VmessServer::all();
 
         foreach ($users as $user) {
-            (new ClashService($user))->genConf();
+            $this->info("Generating subscription link for user $user->email");
+            /** @var VmessServer $vmess_server */
+            foreach ($vmess_servers as $vmess_server) {
+                $v2ray = new V2rayService($vmess_server->internal_server);
+                $v2ray->addUser($user->email, $user->uuid);
+                $this->info("Added user $user->email to V2ray server $vmess_server->internal_server");
+            }
+
+            $clash = new ClashService($user);
+            $clash->genConf();
+            $this->info("Generated: " . storage_path("clash-config/$user->uuid.yaml"));
         }
     }
 }

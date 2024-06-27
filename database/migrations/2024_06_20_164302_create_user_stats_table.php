@@ -16,7 +16,6 @@ return new class extends Migration
             $table->unsignedBigInteger('user_id')->comment('The ID of the user');
             $table->unsignedBigInteger('traffic_downlink')->default(0)->comment('in bytes');
             $table->unsignedBigInteger('traffic_uplink')->default(0)->comment('in bytes');
-            $table->date('date')->comment('The date of the stats');
             $table->timestamps();
             $table->softDeletes();
         });
