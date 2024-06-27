@@ -18,10 +18,11 @@ return new class extends Migration
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->decimal('balance')->default(0);
-            $table->unsignedBigInteger('plan_id')->default(0);
             $table->string('uuid')->default('');
-            $table->unsignedBigInteger('traffic_used')->default(0)->comment('in bytes');
-            $table->string('github_login_id')->default('');
+            $table->unsignedBigInteger('traffic_downlink')->default(0)->comment('in bytes');
+            $table->unsignedBigInteger('traffic_uplink')->default(0)->comment('in bytes');
+            $table->unsignedBigInteger('github_id')->unique()->nullable();
+            $table->string('github_nickname')->default('');
             $table->string('github_token')->default('');
             $table->timestamp('github_created_at')->nullable();
             $table->rememberToken();
