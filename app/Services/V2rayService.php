@@ -25,14 +25,13 @@ class V2rayService
      * @param string $uuid The UUID of the user.
      * @return array The decoded JSON result of adding the user.
      *
-     * @throws Exception When adding the user fails.
      * @throws Throwable
      */
     public function addUser($email, $uuid)
     {
         $result = Process::run($this->prefix . ' addV2rayVmessUser -e ' . $email . ' -u ' . $uuid);
 
-        throw_if($result->failed(), new Exception('Failed to add user'));
+        throw_if($result->failed(), new Exception('Failed to add user: ' . $result->errorOutput()));
 
         return json_decode($result->output(), true);
     }
@@ -43,14 +42,13 @@ class V2rayService
      * @param string $email The email of the user to be removed.
      * @return array The decoded JSON response from the V2ray service.
      *
-     * @throws Exception if the removal of the user fails.
      * @throws Throwable
      */
     public function removeUser($email)
     {
         $result = Process::run($this->prefix . ' removeV2rayUser -e ' . $email);
 
-        throw_if($result->failed(), new Exception('Failed to remove user'));
+        throw_if($result->failed(), new Exception('Failed to remove user: ' . $result->errorOutput()));
 
         return json_decode($result->output(), true);
     }
@@ -62,15 +60,19 @@ class V2rayService
      * for the specified user. Otherwise, it retrieves the overall statistics for
      * the V2ray service.
      *
-     * @param string|null $email The email of the user for whom to retrieve traffic stats.
+     * @param null $email The email of the user for whom to retrieve traffic stats.
+     * @param bool $reset Whether to reset the statistics after retrieving them.
      * @return array The decoded JSON response containing the statistics.
      *
-     * @throws Exception if the retrieval of statistics fails.
      * @throws Throwable
      */
-    public function stats($email = null)
+    public function stats($email = null, $reset = false)
     {
         $command = config('v2ray.v2ray.path') . ' api stats -s ' . $this->server . ' -json';
+
+        if ($reset) {
+            $command .= ' -reset';
+        }
 
         if ($email) {
             $command .= " 'user>>>$email>>>traffic>>>uplink'";
@@ -79,9 +81,14 @@ class V2rayService
 
         $result = Process::run($command);
 
-        throw_if($result->failed(), new Exception('Failed to get stats'));
+        throw_if($result->failed(), new Exception('Failed to get stats: ' . $result->errorOutput()));
 
-        $stat = json_decode($result->output(), true)['stat'];
+        $stat = json_decode($result->output(), true);
+        if (!$stat) {
+            return [];
+        }
+
+        $stat = $stat['stat'];
 
         $res = [];
         foreach ($stat as $item) {
