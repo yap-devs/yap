@@ -13,7 +13,11 @@ return new class extends Migration
     {
         Schema::create('user_stats', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('user_id')->comment('The ID of the user');
+            $table->unsignedBigInteger('traffic_used')->default(0)->comment('in bytes');
+            $table->date('date')->comment('The date of the stats');
             $table->timestamps();
+            $table->softDeletes();
         });
     }
 

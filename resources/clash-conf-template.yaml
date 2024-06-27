@@ -1,0 +1,42 @@
+port: 7890
+socks-port: 7891
+redir-port: 7892
+allow-lan: false
+mode: rule
+log-level: info
+external-controller: 127.0.0.1:9090
+
+
+rules:
+  #EMAIL port
+  - DST-PORT,25,DIRECT
+  - DST-PORT,26,DIRECT
+  - DST-PORT,465,DIRECT
+  - DST-PORT,587,DIRECT
+  - DST-PORT,2525,DIRECT
+
+  # BT
+  - DST-PORT,6881,DIRECT
+  - DST-PORT,6882,DIRECT
+  - DST-PORT,6883,DIRECT
+  - DST-PORT,6884,DIRECT
+  - DST-PORT,6885,DIRECT
+  - DST-PORT,6886,DIRECT
+  - DST-PORT,6887,DIRECT
+  - DST-PORT,6888,DIRECT
+  - DST-PORT,6889,DIRECT
+
+  # CN
+  - DOMAIN-SUFFIX,cn,DIRECT
+  - GEOIP,CN,DIRECT
+
+  # LAN
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,17.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+
+  # final
+  - MATCH,Proxy
