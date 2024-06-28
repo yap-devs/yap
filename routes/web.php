@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ClashController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\GithubController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -28,4 +29,9 @@ Route::get('/clash/{uuid}/yap.yaml', [ClashController::class, 'index'])->name('c
 
 Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+});
+
+Route::group(['prefix' => 'auth/github', 'middleware' => ['auth']], function () {
+    Route::get('/', [GithubController::class, 'redirect'])->name('github.redirect');
+    Route::get('/callback', [GithubController::class, 'callback']);
 });
