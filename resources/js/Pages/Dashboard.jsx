@@ -31,8 +31,8 @@ export default function Dashboard({auth, clashUrl}) {
     }
 
     return (<div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
-      <p className="font-bold">Your account is not paid.</p>
-      <p>Please pay your subscription to continue using the service.</p>
+      <p className="font-bold">Your account is limited!</p>
+      <p className="mt-4">Please charge your account to continue using the service.</p>
     </div>);
   }
 
