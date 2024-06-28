@@ -10,11 +10,11 @@ readonly class ClashService
 {
     /**
      * @param User $user
-     * @param VmessServer[]|Collection $vmess_servers
+     * @param Collection|null $vmess_servers
      */
     public function __construct(
         private User  $user,
-        private array $vmess_servers = []
+        private ?Collection $vmess_servers = null
     )
     {
     }
