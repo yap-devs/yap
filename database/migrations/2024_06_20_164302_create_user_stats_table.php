@@ -14,6 +14,7 @@ return new class extends Migration
         Schema::create('user_stats', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id')->comment('The ID of the user');
+            $table->unsignedBigInteger('server_id')->default(0)->comment('The ID of the server');
             $table->unsignedBigInteger('traffic_downlink')->default(0)->comment('in bytes');
             $table->unsignedBigInteger('traffic_uplink')->default(0)->comment('in bytes');
             $table->timestamps();

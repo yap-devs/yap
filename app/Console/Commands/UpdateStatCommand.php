@@ -60,6 +60,7 @@ class UpdateStatCommand extends Command
 
                 UserStat::create([
                     'user_id' => $user->id,
+                    'server_id' => $vmess_server->id,
                     'traffic_uplink' => $uplink,
                     'traffic_downlink' => $downlink,
                 ]);
