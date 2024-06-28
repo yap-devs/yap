@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head} from '@inertiajs/react';
 import {useState} from "react";
+import {formatBytes} from "@/Utils/formatBytes";
 
 export default function Dashboard({auth, clashUrl}) {
   const [copyButton, setCopyButton] = useState('Copy');
@@ -34,18 +35,6 @@ export default function Dashboard({auth, clashUrl}) {
       <p className="font-bold">Your account is limited!</p>
       <p className="mt-4">Please charge your account to continue using the service.</p>
     </div>);
-  }
-
-  const formatBytes = (bytes, decimals = 2) => {
-    if (!+bytes) return '0 Bytes'
-
-    const k = 1024
-    const dm = decimals < 0 ? 0 : decimals
-    const sizes = ['Bytes', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB']
-
-    const i = Math.floor(Math.log(bytes) / Math.log(k))
-
-    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
   }
 
   const totalTraffic = formatBytes(auth.user.traffic_downlink + auth.user.traffic_uplink);
