@@ -19,8 +19,9 @@ return new class extends Migration
             $table->string('password');
             $table->decimal('balance')->default(0);
             $table->string('uuid')->default('');
-            $table->unsignedBigInteger('traffic_downlink')->default(0)->comment('in bytes');
-            $table->unsignedBigInteger('traffic_uplink')->default(0)->comment('in bytes');
+            $table->unsignedBigInteger('traffic_downlink')->default(0)->comment('in bytes (total)');
+            $table->unsignedBigInteger('traffic_uplink')->default(0)->comment('in bytes (total)');
+            $table->unsignedBigInteger('traffic_unpaid')->default(0)->comment('in bytes (unpaid)');
             $table->unsignedBigInteger('github_id')->unique()->nullable();
             $table->string('github_nickname')->default('');
             $table->string('github_token')->default('');

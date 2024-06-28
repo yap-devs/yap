@@ -24,7 +24,7 @@ class UpdateStatCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Command description';
+    protected $description = 'Update traffic stats for users';
 
     /**
      * Execute the console command.
@@ -57,6 +57,7 @@ class UpdateStatCommand extends Command
 
                 $user->increment('traffic_uplink', $uplink);
                 $user->increment('traffic_downlink', $downlink);
+                $user->increment('traffic_unpaid', $uplink + $downlink);
 
                 UserStat::create([
                     'user_id' => $user->id,
