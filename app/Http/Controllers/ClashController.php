@@ -17,7 +17,7 @@ class ClashController extends Controller
         // 64 TiB, 1989-06-04
         $userinfo = "upload=$user->traffic_uplink download=$user->traffic_downlink total=70368744177664 expire=612894867";
 
-        return response()->download($yaml_file, 'yap.yaml', [
+        return response()->download($yaml_file, 'yap|' . $user->email, [
             'Content-Type' => 'application/x-yaml',
             'Subscription-Userinfo' => $userinfo,
             'Profile-Update-Interval' => '12',  // 12 hours
