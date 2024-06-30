@@ -32,7 +32,7 @@ class UpdateBalanceCommand extends Command
         foreach ($users as $user) {
             $this->info("Updating balance for user $user->email");
             while ($user->traffic_unpaid / 1024 / 1024 / 1024 > config('yap.cutoff_point')) {
-                $user->balance -= config('yap.unit_price');
+                $user->balance -= config('yap.unit_price') * config('yap.cutoff_point');
                 $user->traffic_unpaid -= 1024 * 1024 * 1024 * config('yap.cutoff_point');
             }
 
