@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\User;
 use App\Models\VmessServer;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\File;
 
 readonly class ClashService
 {
@@ -13,7 +14,7 @@ readonly class ClashService
      * @param Collection|null $vmess_servers
      */
     public function __construct(
-        private User  $user,
+        private User        $user,
         private ?Collection $vmess_servers = null
     )
     {
@@ -53,6 +54,8 @@ readonly class ClashService
 
     public function delConf()
     {
-        unlink(storage_path("clash-config/{$this->user->uuid}.yaml"));
+        if (File::exists(storage_path("clash-config/{$this->user->uuid}.yaml"))) {
+            File::delete(storage_path("clash-config/{$this->user->uuid}.yaml"));
+        }
     }
 }
