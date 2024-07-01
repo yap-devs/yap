@@ -3,7 +3,7 @@ import {Head} from '@inertiajs/react';
 import {useState} from "react";
 import {formatBytes} from "@/Utils/formatBytes";
 
-export default function Dashboard({auth, clashUrl}) {
+export default function Dashboard({auth, clashUrl, unitPrice}) {
   const [copyButton, setCopyButton] = useState('Copy');
   const copyToClipboard = async text => {
     try {
@@ -44,6 +44,7 @@ export default function Dashboard({auth, clashUrl}) {
   }
 
   const totalTraffic = formatBytes(auth.user.traffic_downlink + auth.user.traffic_uplink);
+  const trafficUnpaid = formatBytes(auth.user.traffic_unpaid);
 
   return (<AuthenticatedLayout
     user={auth.user}
@@ -57,7 +58,9 @@ export default function Dashboard({auth, clashUrl}) {
           <div className="p-6 text-gray-900">
             <p className="text-lg">Welcome back, {auth.user.name}!</p>
             <p className="mt-4">You're logged in with the email {auth.user.email}</p>
-            <p className="mt-4">You have used {totalTraffic} of your &infin; data limit.</p>
+            <p className="mt-4">You have used {totalTraffic} in total.</p>
+            <p className="mt-4">You have {trafficUnpaid} unsettled traffic, it will be charged when reaches 1GB.</p>
+            <p className="my-4">Currently, the unit price is <span className="text-indigo-700">${unitPrice}</span> per GB.</p>
             {renderPayReminder()}
           </div>
         </div>
