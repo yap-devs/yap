@@ -16,4 +16,14 @@ class UserStat extends Model
         'traffic_downlink',
         'traffic_uplink',
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function server()
+    {
+        return $this->belongsTo(VmessServer::class);
+    }
 }

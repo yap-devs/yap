@@ -35,3 +35,5 @@ Route::group(['prefix' => 'auth/github', 'middleware' => ['auth']], function () 
     Route::get('/', [GithubController::class, 'redirect'])->name('github.redirect');
     Route::get('/callback', [GithubController::class, 'callback']);
 });
+
+Route::post('/github/sponsor/webhook', [GithubController::class, 'sponsorWebhook'])->name('github.sponsor_webhook');

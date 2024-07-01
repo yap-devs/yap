@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Laravel\Socialite\Facades\Socialite;
@@ -32,5 +33,28 @@ class GithubController extends Controller
         ]);
 
         return redirect()->route('profile.edit');
+    }
+
+    public function sponsorWebhook(Request $request)
+    {
+        logger('GitHub sponsor webhook', $request->all());
+
+        $user = User::where('github_id', $request->input('sponsorship.sponsor.id'))->first();
+
+        if (!$user) {
+            return response()->json(['message' => 'User not found']);
+        }
+
+        if ($request->input('action') !== 'created') {
+            return response()->json(['message' => 'Ignoring action']);
+        }
+
+        $user->payments()->create([
+            'status' => Payment::STATUS_PAID,
+            'amount' => $request->input('sponsorship.tier.monthly_price_in_dollars'),
+            'payload' => $request->all(),
+        ]);
+
+        return response()->json(['message' => 'ok']);
     }
 }

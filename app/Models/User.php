@@ -68,4 +68,14 @@ class User extends Authenticatable
             },
         );
     }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function stats()
+    {
+        return $this->hasMany(UserStat::class);
+    }
 }

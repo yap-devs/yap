@@ -16,4 +16,9 @@ class VmessServer extends Model
     protected $casts = [
         'enabled' => 'boolean',
     ];
+
+    public function stats()
+    {
+        return $this->hasMany(UserStat::class);
+    }
 }

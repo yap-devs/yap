@@ -12,6 +12,10 @@ return new class extends Migration {
     {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
+            $table->unsignedBigInteger('user_id');
+            $table->string('status')->comment('created, paid, cancelled, expired, refunded');
+            $table->decimal('amount');
+            $table->text('payload')->nullable();
             $table->timestamps();
             $table->softDeletes();
         });
