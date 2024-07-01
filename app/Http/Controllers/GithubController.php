@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Artisan;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\InvalidStateException;
 
@@ -49,11 +50,24 @@ class GithubController extends Controller
             return response()->json(['message' => 'Ignoring action']);
         }
 
+        $amount = $request->input('sponsorship.tier.monthly_price_in_dollars');
+        $remote_id = $request->input('sponsorship.node_id');
+
+        if (Payment::where('remote_id', $remote_id)->exists()) {
+            return response()->json(['message' => 'Payment already exists']);
+        }
+
         $user->payments()->create([
             'status' => Payment::STATUS_PAID,
-            'amount' => $request->input('sponsorship.tier.monthly_price_in_dollars'),
+            'amount' => $amount,
+            'remote_id' => $remote_id,
             'payload' => $request->all(),
         ]);
+
+        $user->balance += $amount;
+        $user->save();
+
+        Artisan::call('app:gen-sub-link-command');
 
         return response()->json(['message' => 'ok']);
     }

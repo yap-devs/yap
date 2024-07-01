@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->unsignedBigInteger('user_id');
             $table->string('status')->comment('created, paid, cancelled, expired, refunded');
             $table->decimal('amount');
+            $table->string('remote_id')->nullable();
             $table->text('payload')->nullable();
             $table->timestamps();
             $table->softDeletes();

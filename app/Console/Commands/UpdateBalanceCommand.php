@@ -31,9 +31,9 @@ class UpdateBalanceCommand extends Command
         /** @var User $user */
         foreach ($users as $user) {
             $this->info("Updating balance for user $user->email");
-            while ($user->traffic_unpaid / 1024 / 1024 / 1024 > config('yap.cutoff_point')) {
-                $user->balance -= config('yap.unit_price') * config('yap.cutoff_point');
-                $user->traffic_unpaid -= 1024 * 1024 * 1024 * config('yap.cutoff_point');
+            while ($user->traffic_unpaid > 1024 * 1024 * 1024) {
+                $user->balance -= config('yap.unit_price');
+                $user->traffic_unpaid -= 1024 * 1024 * 1024;
             }
 
             if ($user->isDirty(['balance', 'traffic_unpaid'])) {

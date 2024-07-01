@@ -20,7 +20,12 @@ class Payment extends Model
         'user_id',
         'status',
         'amount',
+        'remote_id',
         'payload',
+    ];
+
+    protected $casts = [
+        'payload' => 'array',
     ];
 
     public function user()
