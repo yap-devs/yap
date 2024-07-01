@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Artisan;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\InvalidStateException;
 
@@ -32,6 +32,8 @@ class GithubController extends Controller
             'github_token' => $user->token,
             'github_created_at' => $user->user['created_at'],
         ]);
+
+        GenerateClashProfileLink::dispatch();
 
         return redirect()->route('profile.edit');
     }
@@ -67,7 +69,7 @@ class GithubController extends Controller
         $user->balance += $amount;
         $user->save();
 
-        Artisan::call('app:gen-sub-link-command');
+        GenerateClashProfileLink::dispatch();
 
         return response()->json(['message' => 'ok']);
     }

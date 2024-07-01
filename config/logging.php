@@ -52,6 +52,13 @@ return [
 
     'channels' => [
 
+        'job' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/job.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'replace_placeholders' => true,  // https://github.com/laravel/laravel/pull/6139
+        ],
+
         'stack' => [
             'driver' => 'stack',
             'channels' => explode(',', env('LOG_STACK', 'single')),
