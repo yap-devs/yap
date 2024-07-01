@@ -34,6 +34,7 @@ class UpdateStatCommand extends Command
     {
         $vmess_servers = VmessServer::all();
 
+        /** @var VmessServer $vmess_server */
         foreach ($vmess_servers as $vmess_server) {
             $v2ray = new V2rayService($vmess_server->internal_server);
             $stats = $v2ray->stats(reset: true);
@@ -44,8 +45,8 @@ class UpdateStatCommand extends Command
 
             $user_stats = $stats['user'];
             foreach ($user_stats as $email => $user_stat) {
-                $uplink = Arr::get($user_stat, 'uplink', 0);
-                $downlink = Arr::get($user_stat, 'downlink', 0);
+                $uplink = Arr::get($user_stat, 'uplink', 0) * $vmess_server->rate;
+                $downlink = Arr::get($user_stat, 'downlink', 0) * $vmess_server->rate;
                 if (!$uplink && !$downlink) {
                     continue;
                 }
