@@ -1,5 +1,4 @@
 <?php
 
-
-\Illuminate\Support\Facades\Schedule::command('app:update-stat-command')->everyFourHours();
-\Illuminate\Support\Facades\Schedule::command('app:update-balance-command')->daily();
+\Illuminate\Support\Facades\Schedule::command('app:update-stat-command')->everyOddHour();
+\Illuminate\Support\Facades\Schedule::command('app:update-balance-command')->everySixHours();
