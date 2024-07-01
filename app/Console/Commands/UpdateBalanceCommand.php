@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\GenerateClashProfileLink;
 use App\Models\User;
 use Illuminate\Console\Command;
 
@@ -41,5 +42,7 @@ class UpdateBalanceCommand extends Command
                 $user->save();
             }
         }
+
+        GenerateClashProfileLink::dispatchSync();
     }
 }
