@@ -35,9 +35,8 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
       <p className="font-bold">Your account is limited!</p>
       <p className="mt-4">
         Please
-        <button onClick={
-          () => window.location.href = route('profile.edit')
-        } className="text-blue-500 hover:underline px-1" style={{cursor: 'pointer'}}>charge</button>
+        <button onClick={() => window.location.href = route('profile.edit')}
+                className="text-blue-500 hover:underline px-1" style={{cursor: 'pointer'}}>charge</button>
         your account to continue using the service.
       </p>
     </div>);
@@ -56,11 +55,15 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
           <div className="p-6 text-gray-900">
-            <p className="text-lg">Welcome back, {auth.user.name}!</p>
-            <p className="mt-4">You're logged in with the email {auth.user.email}</p>
-            <p className="mt-4">You have used {totalTraffic} in total.</p>
-            <p className="mt-4">You have {trafficUnpaid} unsettled traffic, it will be charged when reaches 1GB.</p>
-            <p className="my-4">Currently, the unit price is <span className="text-indigo-700">${unitPrice}</span> per GB.</p>
+            <div className="text-lg">Hello, {auth.user.name}! It's good to see you again.</div>
+            <div className="mt-4">You're currently logged in with the email: <strong>{auth.user.email}</strong></div>
+            <div className="mt-4">So far, you have used <strong>{totalTraffic}</strong> of your data.</div>
+            <div className="mt-4">You have <strong>{trafficUnpaid}</strong> of traffic that hasn't been settled yet.
+              Don't worry, it will only be charged when it reaches 1GB.
+            </div>
+            <div className="my-4">Just a heads up, the current rate is <span
+              className="text-indigo-700">${unitPrice}</span> per GB.
+            </div>
             {renderPayReminder()}
           </div>
         </div>
