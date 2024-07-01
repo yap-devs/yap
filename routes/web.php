@@ -4,6 +4,7 @@ use App\Http\Controllers\ClashController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GithubController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Middleware\ValidateGithubWebhook;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -36,4 +37,6 @@ Route::group(['prefix' => 'auth/github', 'middleware' => ['auth']], function () 
     Route::get('/callback', [GithubController::class, 'callback']);
 });
 
-Route::post('/github/sponsor/webhook', [GithubController::class, 'sponsorWebhook'])->name('github.sponsor_webhook');
+Route::post('/github/sponsor/webhook', [GithubController::class, 'sponsorWebhook'])
+    ->middleware(ValidateGithubWebhook::class)
+    ->name('github.sponsor_webhook');
