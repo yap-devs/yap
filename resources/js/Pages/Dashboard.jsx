@@ -59,7 +59,7 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
             <div className="mt-4">You're currently logged in with the email: <strong>{auth.user.email}</strong></div>
             <div className="mt-4">So far, you have used <strong>{totalTraffic}</strong> of your data.</div>
             <div className="mt-4">You have <strong>{trafficUnpaid}</strong> of traffic that hasn't been settled yet.
-              Don't worry, it will only be charged when it reaches 1GB.
+              Don't worry, it will be charged when it reaches 1GB at the next scheduled check.
             </div>
             <div className="my-4">Just a heads up, the current rate is <span
               className="text-indigo-700">${unitPrice}</span> per GB.
