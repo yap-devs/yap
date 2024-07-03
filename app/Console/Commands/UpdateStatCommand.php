@@ -79,7 +79,7 @@ class UpdateStatCommand extends Command
                 }
 
                 if ($user->isDirty(['balance', 'traffic_unpaid'])) {
-                    $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
+                    $this->log("[$vmess_server->name] User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
                     $user->save();
                 }
 
