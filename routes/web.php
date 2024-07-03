@@ -4,6 +4,7 @@ use App\Http\Controllers\ClashController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GithubController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\StatController;
 use App\Http\Middleware\ValidateGithubWebhook;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -40,3 +41,7 @@ Route::group(['prefix' => 'auth/github', 'middleware' => ['auth']], function () 
 Route::post('/github/sponsor/webhook', [GithubController::class, 'sponsorWebhook'])
     ->middleware(ValidateGithubWebhook::class)
     ->name('github.sponsor_webhook');
+
+Route::group(['prefix' => 'stat', 'middleware' => ['auth']], function () {
+    Route::get('/', [StatController::class, 'index'])->name('stat');
+});
