@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\GenerateClashProfileLink;
 use App\Models\User;
 use App\Models\UserStat;
 use App\Models\VmessServer;
@@ -25,6 +26,8 @@ class UpdateStatCommand extends Command
      * @var string
      */
     protected $description = 'Update traffic stats for users';
+
+    private $user_status_changed = false;
 
     /**
      * Execute the console command.
@@ -53,8 +56,11 @@ class UpdateStatCommand extends Command
 
                 $user = User::where('email', $email)->first();
                 if (!$user) {
+                    $this->log("User $email not found", 'warning');
                     continue;
                 }
+
+                $is_valid = $user->is_valid;
 
                 $user->increment('traffic_uplink', $uplink);
                 $user->increment('traffic_downlink', $downlink);
@@ -67,8 +73,54 @@ class UpdateStatCommand extends Command
                     'traffic_downlink' => $downlink,
                 ]);
 
-                $this->info("[$vmess_server->name]Updated traffic stats for user $email, uplink: $uplink, downlink: $downlink");
+                while ($user->traffic_unpaid > 1024 * 1024 * 1024) {
+                    $user->balance -= config('yap.unit_price');
+                    $user->traffic_unpaid -= 1024 * 1024 * 1024;
+                }
+
+                if ($user->isDirty(['balance', 'traffic_unpaid'])) {
+                    $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
+                    $user->save();
+                }
+
+                if ($user->is_valid != $is_valid) {
+                    $this->user_status_changed = true;
+                }
             }
         }
+
+        if (now()->hour == 0) {
+            $this->updateBalanceDaily();
+        }
+
+        if ($this->user_status_changed) {
+            GenerateClashProfileLink::dispatchSync();
+        }
+    }
+
+    private function updateBalanceDaily()
+    {
+        $users = User::all();
+
+        /** @var User $user */
+        foreach ($users as $user) {
+            $is_valid = $user->is_valid;
+            if ($user->traffic_unpaid > 0) {
+                $user->balance -= config('yap.unit_price');
+                $user->traffic_unpaid = 0;
+                $user->save();
+                $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
+
+                if ($user->is_valid != $is_valid) {
+                    $this->user_status_changed = true;
+                }
+            }
+        }
+    }
+
+    private function log($message, $level = 'info')
+    {
+        $message = '[UpdateStatCommand] ' . $message;
+        logger()->driver('job')->log($level, $message);
     }
 }
