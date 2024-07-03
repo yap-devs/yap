@@ -33,8 +33,10 @@ readonly class ClashService
         ];
         /** @var VmessServer $vmess_server */
         foreach ($vmess_servers as $vmess_server) {
+            $name = "[{$vmess_server->rate}x]$vmess_server->name";
+
             $proxies[] = [
-                'name' => $vmess_server->name,
+                'name' => $name,
                 'type' => 'vmess',
                 'server' => $vmess_server->server,
                 'port' => $vmess_server->port,
@@ -43,7 +45,7 @@ readonly class ClashService
                 'cipher' => 'auto',
             ];
 
-            $proxy_groups['proxies'][] = $vmess_server->name;
+            $proxy_groups['proxies'][] = $name;
         }
 
         $template['proxies'] = $proxies;
