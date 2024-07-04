@@ -18,7 +18,6 @@ return new class extends Migration
             $table->unsignedSmallInteger('port')->comment('The port of the server for clash config `port` field');
             $table->unsignedTinyInteger('rate')->default(1)->comment('The rate of the server');
             $table->string('internal_server')->default('')->comment('Internal server address for the v2bridge');
-            $table->unsignedBigInteger('uptime')->default(0)->comment('The uptime of the server in seconds');
             $table->unsignedTinyInteger('enabled')->default(1)->comment('Whether the server is enabled');
             $table->timestamps();
             $table->softDeletes();

@@ -105,15 +105,19 @@ class UpdateStatCommand extends Command
         /** @var User $user */
         foreach ($users as $user) {
             $is_valid = $user->is_valid;
-            if ($user->traffic_unpaid > 0) {
-                $user->balance -= config('yap.unit_price');
-                $user->traffic_unpaid = 0;
-                $user->save();
-                $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
 
-                if ($user->is_valid != $is_valid) {
-                    $this->user_status_changed = true;
-                }
+            // if today already paid, then skip
+            if ($user->last_settled_at && $user->last_settled_at->isToday()) {
+                continue;
+            }
+
+            $user->balance -= config('yap.unit_price');
+            $user->traffic_unpaid = 0;
+            $user->save();
+            $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
+
+            if ($user->is_valid != $is_valid) {
+                $this->user_status_changed = true;
             }
         }
     }

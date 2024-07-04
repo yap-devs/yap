@@ -21,7 +21,8 @@ return new class extends Migration
             $table->string('uuid')->default('');
             $table->unsignedBigInteger('traffic_downlink')->default(0)->comment('in bytes (total)');
             $table->unsignedBigInteger('traffic_uplink')->default(0)->comment('in bytes (total)');
-            $table->unsignedBigInteger('traffic_unpaid')->default(0)->comment('in bytes (unpaid)');
+            $table->unsignedBigInteger('traffic_unpaid')->default(0)->comment('in bytes (unsettled)');
+            $table->timestamp('last_settled_at')->nullable()->comment('last time the unpaid traffic was settled');
             $table->unsignedBigInteger('github_id')->unique()->nullable();
             $table->string('github_nickname')->default('');
             $table->string('github_token')->default('');
