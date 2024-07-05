@@ -19,6 +19,28 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
 
   const renderPayReminder = () => {
     if (auth.user.is_valid) {
+      if (auth.user.is_low_priority) {
+        return (
+          <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
+            <p className="font-bold">Your account is low priority!</p>
+            <p className="mt-4">
+              Please consider
+              <button onClick={() => window.location.href = route('profile.edit')}
+                      className="text-blue-500 hover:underline px-1" style={{cursor: 'pointer'}}>upgrading</button>
+              your account to high priority to get the best experience.
+            </p>
+            <p className="mt-4">Your Clash URL is:</p>
+            <p className="mt-2 text-blue-500">{clashUrl}</p>
+            <button
+              onClick={() => copyToClipboard(clashUrl)}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
+            >
+              {copyButton}
+            </button>
+          </div>
+        )
+      }
+
       return (<div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4" role="alert">
         <p className="mt-4">Your Clash URL is:</p>
         <p className="mt-2 text-blue-500">{clashUrl}</p>
@@ -54,17 +76,19 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
     <div className="py-12">
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-          <div className="p-6 text-gray-900">
-            <div className="text-lg">Hello, {auth.user.name}! It's good to see you again.</div>
-            <div className="mt-4">You're currently logged in with the email: <strong>{auth.user.email}</strong></div>
-            <div className="mt-4">So far, you have used <strong>{totalTraffic}</strong> of your data.</div>
-            <div className="mt-4">You have <strong>{trafficUnpaid}</strong> of traffic that hasn't been settled yet.
-              Don't worry, it will be charged at the next scheduled check.
+          <div className="p-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg shadow-md">
+            <h1 className="text-xl font-bold underline decoration-sky-500">Welcome Back, {auth.user.name}!</h1>
+            <p className="mt-4 bg-yellow-200 text-yellow-900 p-2 rounded">📧 You're logged in
+              as: <strong>{auth.user.email}</strong></p>
+            <p className="mt-4 bg-green-200 text-green-900 p-2 rounded">🌐 Data used: <strong>{totalTraffic}</strong></p>
+            <p className="mt-4 bg-red-200 text-red-900 p-2 rounded">⚠️ Pending traffic: <strong>{trafficUnpaid}</strong>.
+              It will be settled soon.</p>
+            <div className="mt-4 bg-blue-200 text-blue-900 p-2 rounded">
+              💡 Rate: <span className="font-bold">${unitPrice}</span> per GB.
             </div>
-            <div className="my-4">Just a heads up, the current rate is <span
-              className="text-indigo-700">${unitPrice}</span> per GB.
+            <div className="mt-4">
+              {renderPayReminder()}
             </div>
-            {renderPayReminder()}
           </div>
         </div>
       </div>
