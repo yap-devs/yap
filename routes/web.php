@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ClashController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\FutoonController;
 use App\Http\Controllers\GithubController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StatController;
@@ -45,3 +46,8 @@ Route::post('/github/sponsor/webhook', [GithubController::class, 'sponsorWebhook
 Route::group(['prefix' => 'stat', 'middleware' => ['auth']], function () {
     Route::get('/', [StatController::class, 'index'])->name('stat');
 });
+
+Route::get('/futoon/submit', [FutoonController::class, 'submit'])
+    ->middleware('auth')
+    ->name('futoon.submit');
+Route::get('/futoon/notify', [FutoonController::class, 'notify'])->name('futoon.notify');
