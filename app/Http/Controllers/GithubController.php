@@ -53,7 +53,7 @@ class GithubController extends Controller
         }
 
         $amount = $request->input('sponsorship.tier.monthly_price_in_dollars');
-        $remote_id = $request->input('sponsorship.node_id');
+        $remote_id = $request->input('sponsorship.tier.node_id') . '|' . $request->input('sponsorship.tier.created_at');
 
         if (Payment::where('remote_id', $remote_id)->exists()) {
             return response()->json(['message' => 'Payment already exists']);
