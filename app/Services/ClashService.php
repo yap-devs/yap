@@ -60,4 +60,9 @@ readonly class ClashService
             File::delete(storage_path("clash-config/{$this->user->uuid}.yaml"));
         }
     }
+
+    public function confExists()
+    {
+        return File::exists(storage_path("clash-config/{$this->user->uuid}.yaml"));
+    }
 }
