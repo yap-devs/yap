@@ -39,10 +39,11 @@ class GenerateClashProfileLink implements ShouldQueue
         foreach ($users as $user) {
             $clash = new ClashService($user, $this->vmess_servers);
 
-            if (
-                ($user->deleted_at || !$user->is_valid)
-                && $clash->confExists()
-            ) {
+            if ($user->deleted_at || !$user->is_valid) {
+                if (!$clash->confExists()) {
+                    continue;
+                }
+
                 $this->log("User $user->email is invalid, removing...", 'warning');
                 $this->removeUser($user);
                 $clash->delConf();
