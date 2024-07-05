@@ -54,8 +54,8 @@ class GenerateClashProfileLink implements ShouldQueue
             /** @var VmessServer $vmess_server */
             foreach ($this->vmess_servers as $vmess_server) {
                 $v2ray = new V2rayService($vmess_server->internal_server);
-                $v2ray->addUser($user->email, $user->uuid);
-                $this->log("Added user $user->email to V2ray server $vmess_server->internal_server");
+                $res = $v2ray->addUser($user->email, $user->uuid);
+                $this->log("Added user $user->email to V2ray server $vmess_server->internal_server: " . json_encode($res));
             }
 
             $clash->genConf();
@@ -75,8 +75,8 @@ class GenerateClashProfileLink implements ShouldQueue
         /** @var VmessServer $vmess_server */
         foreach ($this->vmess_servers as $vmess_server) {
             $v2ray = new V2rayService($vmess_server->internal_server);
-            $v2ray->removeUser($user->email);
-            $this->log("Removed user $user->email from V2ray server $vmess_server->internal_server");
+            $res = $v2ray->removeUser($user->email);
+            $this->log("Removed user $user->email from V2ray server $vmess_server->internal_server: " . json_encode($res));
         }
     }
 
