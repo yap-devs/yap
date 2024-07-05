@@ -43,7 +43,7 @@ class User extends Authenticatable
         'remember_token',
     ];
 
-    protected $appends = ['is_valid'];
+    protected $appends = ['is_valid', 'is_low_priority'];
 
     /**
      * Get the attributes that should be cast.
@@ -69,6 +69,15 @@ class User extends Authenticatable
                     // or you have a github account created N years ago, N - 3 > abs(balance)
                     // e.g. balance = -1, github_created_at = 2019-01-01, now = 2024-01-01, then 2024 - 2019 - 3 = 2 > 1, so it's also valid
                     || Carbon::parse($attributes['github_created_at'])->diffInYears(now()) - 3 > abs($attributes['balance']);
+            },
+        );
+    }
+
+    protected function isLowPriority(): Attribute
+    {
+        return Attribute::make(
+            get: function (mixed $value, array $attributes) {
+                return $attributes['balance'] < 0;
             },
         );
     }

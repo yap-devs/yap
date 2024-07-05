@@ -4,26 +4,23 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\VmessServer;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\File;
 
 readonly class ClashService
 {
     /**
      * @param User $user
-     * @param Collection|null $vmess_servers
      */
     public function __construct(
-        private User        $user,
-        private ?Collection $vmess_servers = null
+        private User $user,
     )
     {
     }
 
-    public function genConf()
+    public function genConf($vmess_servers = null)
     {
         $template = yaml_parse_file(resource_path('clash-conf-template.yaml'));
-        $vmess_servers = $this->vmess_servers ?: VmessServer::all();
+        $vmess_servers = $vmess_servers ?: VmessServer::all();
 
         $proxies = [];
         $proxy_groups = [
