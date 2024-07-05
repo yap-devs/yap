@@ -3,13 +3,30 @@ import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
 import {Head} from '@inertiajs/react';
+import {useState} from 'react';
 
 export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) {
   const redirectToGithub = () => {
     window.location.href = route('github.redirect');
   };
   const redirectToCharge = () => {
-    window.open(githubSponsorURL, '_blank');
+    // add amount to the query string
+    const url = new URL(githubSponsorURL);
+    url.searchParams.append('amount', sponsorAmount ? sponsorAmount : 5);
+
+    window.open(url.href, '_blank');
+  }
+
+  const [sponsorAmount, setSponsorAmount] = useState(5);
+  const sponsorAmountChange = (e) => {
+    const val = e.target.value;
+
+    // only positive integers allowed
+    if (val < 0) return;
+    if (val === '') return setSponsorAmount('');
+    if (!/^\d+$/.test(val)) return;
+
+    setSponsorAmount(val);
   }
 
   const renderGithubButton = () => {
@@ -29,10 +46,25 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
             `mt-4 ${auth.user.is_valid ? 'bg-green-100 border-l-4 border-green-500 text-green-700' : 'bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700'} p-4`
           }>
             <p className="font-bold">Your account is {auth.user.is_valid ? 'valid' : 'limited'}!</p>
-            <button className={`ml-auto bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded`}
-                    onClick={redirectToCharge}>
-              Sponsor on Github to {auth.user.is_valid ? 'support' : 'upgrade'}!
-            </button>
+          </div>
+          <div className="max-w-sm space-y-3 mt-4">
+            <div className="relative">
+              <input type="text" id="hs-inline-leading-pricing-select-label" name="inline-add-on"
+                     className="py-3 px-4 ps-9 pe-20 block w-full border-gray-200 shadow-sm rounded-lg text-sm focus:z-10 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
+                     placeholder="5" value={sponsorAmount} onChange={sponsorAmountChange}/>
+              <div className="absolute inset-y-0 start-0 flex items-center pointer-events-none z-20 ps-4">
+                <span className="text-gray-500">$</span>
+              </div>
+              <div className="absolute inset-y-0 end-0 flex items-center text-gray-500 pe-px">
+                <button
+                  className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                  type="button"
+                  onClick={redirectToCharge}
+                >
+                  Sponsor Now
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       );
