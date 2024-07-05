@@ -76,7 +76,7 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
     <div className="py-12">
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-          <div className="p-6 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg shadow-md">
+          <div className="p-6 bg-gradient-to-r text-white rounded-lg shadow-md from-zinc-600 to-zinc-400">
             <h1 className="text-xl font-bold underline decoration-sky-500">Welcome Back, {auth.user.name}!</h1>
             <p className="mt-4 bg-yellow-200 text-yellow-900 p-2 rounded">📧 You're logged in
               as: <strong>{auth.user.email}</strong></p>
