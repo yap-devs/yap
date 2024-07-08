@@ -113,8 +113,8 @@ class UpdateStatCommand extends Command
 
             $user->balance -= config('yap.unit_price');
             $user->traffic_unpaid = 0;
-            $user->save();
             $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
+            $user->save();
 
             if ($user->is_valid != $is_valid) {
                 $this->user_status_changed = true;
