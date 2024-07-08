@@ -55,7 +55,7 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
               <div className="absolute inset-y-0 start-0 flex items-center pointer-events-none z-20 ps-4">
                 <span className="text-gray-500">$</span>
               </div>
-              <div className="absolute inset-y-0 end-0 flex items-center text-gray-500 pe-px">
+              <div className="absolute inset-y-0 end-0 flex items-center text-gray-500 pe-px mr-1">
                 <button
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                   type="button"
