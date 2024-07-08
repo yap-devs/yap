@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AlipayController;
 use App\Http\Controllers\ClashController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FutoonController;
@@ -51,3 +52,9 @@ Route::get('/futoon/submit', [FutoonController::class, 'submit'])
     ->middleware('auth')
     ->name('futoon.submit');
 Route::get('/futoon/notify', [FutoonController::class, 'notify'])->name('futoon.notify');
+
+Route::group(['prefix' => 'alipay', 'middleware' => ['auth']], function () {
+    Route::get('/query', [AlipayController::class, 'query'])->name('alipay.query');
+    Route::get('/scan', [AlipayController::class, 'scan'])->name('alipay.scan');
+});
+Route::any('/alipay/notify', [AlipayController::class, 'notify']);

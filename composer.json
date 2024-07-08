@@ -17,7 +17,9 @@
         "laravel/telescope": "^5.1",
         "laravel/tinker": "^2.9",
         "sentry/sentry-laravel": "^4.6",
-        "tightenco/ziggy": "^2.0"
+        "tightenco/ziggy": "^2.0",
+        "yansongda/laravel-pay": "~3.7.0",
+        "ext-bcmath": "*"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.0",

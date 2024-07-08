@@ -2,34 +2,40 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
-import {Head} from '@inertiajs/react';
+import {Head, usePage} from '@inertiajs/react';
 import {useState} from 'react';
 
 export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) {
-  const redirectToGithub = () => {
+  const { errors } = usePage().props;
+
+  const redirectToGithubOauth = () => {
     window.location.href = route('github.redirect');
   };
-  const redirectToCharge = () => {
+  const redirectToGithubSponsor = () => {
     // add amount to the query string
     const url = new URL(githubSponsorURL);
-    url.searchParams.append('amount', sponsorAmount ? sponsorAmount : 5);
+    url.searchParams.append('amount', githubAmount || 5);
 
     window.open(url.href, '_blank');
   }
-
-  const [sponsorAmount, setSponsorAmount] = useState(5);
-  const sponsorAmountChange = (e) => {
-    const val = e.target.value;
-
-    // only positive integers allowed
-    if (val < 0) return;
-    if (val === '') return setSponsorAmount('');
-    if (!/^\d+$/.test(val)) return;
-
-    setSponsorAmount(val);
+  const redirectToAlipayScanPage = () => {
+    window.location.href = route('alipay.scan', {amount: alipayAmount || 5});
   }
 
-  const renderGithubButton = () => {
+  const [githubAmount, setGithubAmount] = useState(5);
+  const [alipayAmount, setAlipayAmount] = useState(5);
+
+  const sponsorAmountChange = (e, setFunc) => {
+    const val = e.target.value;
+
+    if (val === '') return setFunc(val);
+    if (val < 5) return;
+    if (!/^\d+$/.test(val)) return;
+
+    setFunc(val);
+  }
+
+  const renderGithubSponsorBlock = () => {
     if (auth.user.github_id) {
       return (
         <div>
@@ -51,7 +57,7 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
             <div className="relative">
               <input type="text" id="hs-inline-leading-pricing-select-label" name="inline-add-on"
                      className="py-3 px-4 ps-9 pe-20 block w-full border-gray-200 shadow-sm rounded-lg text-sm focus:z-10 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
-                     placeholder="5" value={sponsorAmount} onChange={sponsorAmountChange}/>
+                     placeholder="5" value={githubAmount} onChange={(e) => sponsorAmountChange(e, setGithubAmount)}/>
               <div className="absolute inset-y-0 start-0 flex items-center pointer-events-none z-20 ps-4">
                 <span className="text-gray-500">$</span>
               </div>
@@ -59,7 +65,7 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
                 <button
                   className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
                   type="button"
-                  onClick={redirectToCharge}
+                  onClick={redirectToGithubSponsor}
                 >
                   Sponsor Now
                 </button>
@@ -72,11 +78,37 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
 
     return (
       <button
-        onClick={redirectToGithub}
+        onClick={redirectToGithubOauth}
         className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
       >
         Bind Github Account
       </button>
+    );
+  }
+
+  const renderAlipayBlock = () => {
+    return (
+      <div>
+        <div className="max-w-sm space-y-3 mt-4">
+          <div className="relative">
+            <input type="text" id="hs-inline-leading-pricing-select-label" name="inline-add-on"
+                   className="py-3 px-4 ps-9 pe-20 block w-full border-gray-200 shadow-sm rounded-lg text-sm focus:z-10 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
+                   placeholder="5" value={alipayAmount} onChange={(e) => sponsorAmountChange(e, setAlipayAmount)}/>
+            <div className="absolute inset-y-0 start-0 flex items-center pointer-events-none z-20 ps-4">
+              <span className="text-gray-500">$</span>
+            </div>
+            <div className="absolute inset-y-0 end-0 flex items-center text-gray-500 pe-px mr-1">
+              <button
+                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
+                type="button"
+                onClick={redirectToAlipayScanPage}
+              >
+                Charge Now
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     );
   }
 
@@ -89,6 +121,20 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
 
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
+          {
+            errors.message &&
+            <div className="p-4 sm:p-8 bg-red-600 bg-opacity-10 text-red-600 rounded-lg">
+              <div className="flex items-center">
+                <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                     xmlns="http://www.w3.org/2000/svg">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                        d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+                <span className="ml-2">{errors.message}</span>
+              </div>
+            </div>
+          }
+
           <div className="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
             <header>
               <h2 className="text-lg font-medium text-gray-900">
@@ -100,7 +146,22 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
               </p>
             </header>
             <div className="pt-4">
-              {renderGithubButton()}
+              {renderGithubSponsorBlock()}
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+            <header>
+              <h2 className="text-lg font-medium text-gray-900">
+                Alipay
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-600">
+                Charge your account with Alipay.
+              </p>
+            </header>
+            <div className="pt-4">
+              {renderAlipayBlock()}
             </div>
           </div>
 

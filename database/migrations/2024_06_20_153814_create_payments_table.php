@@ -13,6 +13,7 @@ return new class extends Migration {
         Schema::create('payments', function (Blueprint $table) {
             $table->id();
             $table->unsignedBigInteger('user_id');
+            $table->string('gateway')->default('github')->comment('alipay, github');
             $table->string('status')->comment('created, paid, cancelled, expired, refunded');
             $table->decimal('amount');
             $table->string('remote_id')->nullable();
