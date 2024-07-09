@@ -54,7 +54,7 @@ Route::get('/futoon/submit', [FutoonController::class, 'submit'])
 Route::get('/futoon/notify', [FutoonController::class, 'notify'])->name('futoon.notify');
 
 Route::group(['prefix' => 'alipay', 'middleware' => ['auth']], function () {
-    Route::get('/query', [AlipayController::class, 'query'])->name('alipay.query');
-    Route::get('/scan', [AlipayController::class, 'scan'])->name('alipay.scan');
+    Route::get('/{paymentId}/query', [AlipayController::class, 'query'])->name('alipay.query');
+    Route::any('/scan', [AlipayController::class, 'scan'])->name('alipay.scan');
 });
 Route::any('/alipay/notify', [AlipayController::class, 'notify']);

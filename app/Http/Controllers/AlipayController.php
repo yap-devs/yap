@@ -34,17 +34,13 @@ class AlipayController extends Controller
      * @throws ContainerException
      * @throws InvalidParamsException
      */
-    public function query(Request $request)
+    public function query(Request $request, int $paymentId)
     {
-        $request->validate([
-            'payment_id' => 'required|integer',
-        ]);
-
         /** @var User $user */
         $user = $request->user();
 
         /** @var Payment $payment */
-        $payment = $user->payments()->findOrFail($request->input('payment_id'));
+        $payment = $user->payments()->findOrFail($paymentId);
 
         $result = Pay::alipay()->query([
             'out_trade_no' => $payment->remote_id,
@@ -58,6 +54,12 @@ class AlipayController extends Controller
      */
     public function scan(Request $request)
     {
+        if ($request->method() !== 'POST') {
+            return redirect()->route('profile.edit')->withErrors([
+                'message' => 'Invalid request, how dare you.'
+            ]);
+        }
+
         $request->validate([
             'amount' => 'required|integer|min:5|max:100',  // in USD
         ]);
@@ -81,7 +83,7 @@ class AlipayController extends Controller
             ]);
         }
 
-        $user->payments()->create([
+        $payment = $user->payments()->create([
             'gateway' => 'alipay',
             'status' => 'created',
             'amount' => $amount,
@@ -94,6 +96,7 @@ class AlipayController extends Controller
         return Inertia::render('Payment/Alipay/Scan', [
             'QRInfo' => $qr_info,
             'amount' => $amount,
+            'paymentId' => $payment->id,
         ]);
     }
 }

@@ -2,7 +2,7 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
-import {Head, usePage} from '@inertiajs/react';
+import {Head, router, usePage} from '@inertiajs/react';
 import {useState} from 'react';
 
 export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) {
@@ -19,7 +19,10 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
     window.open(url.href, '_blank');
   }
   const redirectToAlipayScanPage = () => {
-    window.location.href = route('alipay.scan', {amount: alipayAmount || 5});
+    router.visit(route('alipay.scan'), {
+      method: 'post',
+      data: {amount: alipayAmount || 5}
+    });
   }
 
   const [githubAmount, setGithubAmount] = useState(5);
