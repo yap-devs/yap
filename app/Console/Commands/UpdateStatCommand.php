@@ -35,36 +35,30 @@ class UpdateStatCommand extends Command
      */
     public function handle()
     {
+        $users = User::all();
         $vmess_servers = VmessServer::all();
 
-        /** @var VmessServer $vmess_server */
-        foreach ($vmess_servers as $vmess_server) {
-            $v2ray = new V2rayService($vmess_server->internal_server);
-            $stats = $v2ray->stats(reset: true);
+        /** @var User $user */
+        foreach ($users as $user) {
+            $total_uplink = 0;
+            $total_downlink = 0;
+            $is_valid_initial = $user->is_valid;
 
-            if (!$stats || !isset($stats['user'])) {
-                continue;
-            }
+            /** @var VmessServer $vmess_server */
+            foreach ($vmess_servers as $vmess_server) {
+                $v2ray = new V2rayService($vmess_server->internal_server);
+                $stats = $v2ray->stats(reset: true);
 
-            $user_stats = $stats['user'];
-            foreach ($user_stats as $email => $user_stat) {
+                if (!$stats || !isset($stats['user'][$user->email])) {
+                    continue;
+                }
+
+                $user_stat = $stats['user'][$user->email];
                 $uplink = Arr::get($user_stat, 'uplink', 0) * $vmess_server->rate;
                 $downlink = Arr::get($user_stat, 'downlink', 0) * $vmess_server->rate;
-                if (!$uplink && !$downlink) {
-                    continue;
-                }
 
-                $user = User::where('email', $email)->first();
-                if (!$user) {
-                    $this->log("User $email not found", 'warning');
-                    continue;
-                }
-
-                $is_valid = $user->is_valid;
-
-                $user->increment('traffic_uplink', $uplink);
-                $user->increment('traffic_downlink', $downlink);
-                $user->increment('traffic_unpaid', $uplink + $downlink);
+                $total_uplink += $uplink;
+                $total_downlink += $downlink;
 
                 UserStat::create([
                     'user_id' => $user->id,
@@ -72,20 +66,29 @@ class UpdateStatCommand extends Command
                     'traffic_uplink' => $uplink,
                     'traffic_downlink' => $downlink,
                 ]);
+            }
 
-                while ($user->traffic_unpaid > 1024 * 1024 * 1024) {
-                    $user->balance -= config('yap.unit_price');
-                    $user->traffic_unpaid -= 1024 * 1024 * 1024;
-                }
+            $user->increment('traffic_uplink', $total_uplink);
+            $user->increment('traffic_downlink', $total_downlink);
+            $user->increment('traffic_unpaid', $total_uplink + $total_downlink);
 
-                if ($user->isDirty(['balance', 'traffic_unpaid'])) {
-                    $this->log("[$vmess_server->name] User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
-                    $user->save();
-                }
+            while ($user->traffic_unpaid > 1024 * 1024 * 1024) {
+                $user->balance -= config('yap.unit_price');
+                $user->traffic_unpaid -= 1024 * 1024 * 1024;
+            }
 
-                if ($user->is_valid != $is_valid) {
-                    $this->user_status_changed = true;
-                }
+            if ($user->isDirty(['balance', 'traffic_unpaid'])) {
+                $user->balanceDetails()->create([
+                    'amount' => $user->balance - $user->getOriginal('balance'),
+                    'description' => 'Traffic deduction',
+                ]);
+
+                $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
+                $user->save();
+            }
+
+            if ($user->is_valid != $is_valid_initial) {
+                $this->user_status_changed = true;
             }
         }
 
@@ -104,15 +107,24 @@ class UpdateStatCommand extends Command
 
         /** @var User $user */
         foreach ($users as $user) {
-            $is_valid = $user->is_valid;
-
-            // if today already paid, then skip
-            if ($user->last_settled_at && $user->last_settled_at->isToday()) {
+            // if already paid in the last 24 hours, skip
+            if ($user->last_settled_at && $user->last_settled_at->diffInHours(now()) < 24) {
                 continue;
             }
 
+            // if never used, skip
+            if ($user->traffic_unpaid == 0) {
+                continue;
+            }
+
+            $is_valid = $user->is_valid;
+
             $user->balance -= config('yap.unit_price');
             $user->traffic_unpaid = 0;
+            $user->balanceDetails()->create([
+                'amount' => $user->balance - $user->getOriginal('balance'),
+                'description' => 'Daily deduction',
+            ]);
             $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
             $user->save();
 

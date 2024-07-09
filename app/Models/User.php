@@ -91,4 +91,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(UserStat::class);
     }
+
+    public function balanceDetails()
+    {
+        return $this->hasMany(BalanceDetail::class);
+    }
 }
