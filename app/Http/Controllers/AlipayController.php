@@ -55,13 +55,15 @@ class AlipayController extends Controller
      * @throws ContainerException
      * @throws InvalidParamsException
      */
-    public function query(Request $request, int $paymentId)
+    public function query(Request $request, Payment $payment)
     {
         /** @var User $user */
         $user = $request->user();
-
-        /** @var Payment $payment */
-        $payment = $user->payments()->findOrFail($paymentId);
+        if ($payment->user->isNot($user)) {
+            return redirect()->route('profile.edit')->withErrors([
+                'message' => 'Payment not found.'
+            ]);
+        }
 
         $result = Pay::alipay()->query([
             'out_trade_no' => $payment->remote_id,
@@ -73,20 +75,20 @@ class AlipayController extends Controller
     /**
      * @throws RandomException
      */
-    public function scan(Request $request)
+    public function newOrder(Request $request)
     {
-        if ($request->method() !== 'POST') {
-            return redirect()->route('profile.edit')->withErrors([
-                'message' => 'Invalid request, how dare you.'
-            ]);
-        }
-
         $request->validate([
             'amount' => 'required|integer|min:5|max:100',  // in USD
         ]);
 
         /** @var User $user */
         $user = $request->user();
+
+        if ($user->payments()->where('status', Payment::STATUS_CREATED)->exists()) {
+            return redirect()->route('profile.edit')->withErrors([
+                'message' => 'You have an unpaid payment.'
+            ]);
+        }
 
         $out_trade_no = time() . random_int(100000, 999999);
         $amount = $request->input('amount');
@@ -115,9 +117,31 @@ class AlipayController extends Controller
             ]
         ]);
 
+        return redirect()->route('alipay.scan', compact('payment'));
+    }
+
+    /**
+     * @throws RandomException
+     */
+    public function scan(Request $request, Payment $payment)
+    {
+        /** @var User $user */
+        $user = $request->user();
+        if ($payment->user->isNot($user)) {
+            return redirect()->route('profile.edit')->withErrors([
+                'message' => 'Payment not found.'
+            ]);
+        }
+
+        if ($payment->gateway !== Payment::GATEWAY_ALIPAY) {
+            return redirect()->route('profile.edit')->withErrors([
+                'message' => 'Invalid payment gateway.'
+            ]);
+        }
+
         return Inertia::render('Payment/Alipay/Scan', [
-            'QRInfo' => $qr_info,
-            'amount' => $amount,
+            'QRInfo' => $payment->payload[Payment::STATUS_CREATED],
+            'amount' => $payment->amount,
             'paymentId' => $payment->id,
         ]);
     }

@@ -19,7 +19,7 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
     window.open(url.href, '_blank');
   }
   const redirectToAlipayScanPage = () => {
-    router.visit(route('alipay.scan'), {
+    router.visit(route('alipay.newOrder'), {
       method: 'post',
       data: {amount: alipayAmount || 5}
     });

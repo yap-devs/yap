@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import {Head} from '@inertiajs/react';
+import {Head, Link} from '@inertiajs/react';
 
 export default function Index({auth, payments}) {
   return (<AuthenticatedLayout
@@ -39,32 +39,44 @@ export default function Index({auth, payments}) {
                       className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
                       Status
                     </th>
+                    <th
+                      className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
+                      Action
+                    </th>
                   </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                   {payments.map((payment) => (
                     <tr key={payment.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm leading-5 text-gray-900">{payment.remote_id}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm leading-5 text-gray-900">{payment.gateway}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm leading-5 text-gray-900">{payment.created_at}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm leading-5 text-gray-900">${payment.amount}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm leading-5 text-gray-900">{payment.remote_id}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm leading-5 text-gray-900">{payment.gateway}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm leading-5 text-gray-900">{payment.created_at}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm leading-5 text-gray-900">${payment.amount}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${payment.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
                           >
                             {payment.status}
                           </span>
-                        </td>
-                      </tr>
-                    ))}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {
+                          (payment.status === 'created') && (payment.gateway === 'alipay') && (
+                            <Link href={route('alipay.scan', payment)}
+                                  className="text-indigo-600 hover:text-indigo-900">Pay</Link>
+                          )
+                        }
+                      </td>
+                    </tr>
+                  ))}
                   </tbody>
                 </table>
               )

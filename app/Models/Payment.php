@@ -16,6 +16,9 @@ class Payment extends Model
     const STATUS_EXPIRED = 'expired';
     const STATUS_REFUNDED = 'refunded';
 
+    const GATEWAY_GITHUB = 'github';
+    const GATEWAY_ALIPAY = 'alipay';
+
     protected $fillable = [
         'user_id',
         'gateway',

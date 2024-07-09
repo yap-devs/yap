@@ -34,7 +34,7 @@ export default function Stat({auth, QRInfo, amount, paymentId}) {
 
   useEffect(() => {
     const query = () => {
-      axios.get(route('alipay.query', {paymentId}))
+      axios.get(route('alipay.query', {payment: paymentId}))
         .then(response => {
           if (!response.data.trade_status) return;
 
