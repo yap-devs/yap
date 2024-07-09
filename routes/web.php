@@ -5,6 +5,7 @@ use App\Http\Controllers\ClashController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FutoonController;
 use App\Http\Controllers\GithubController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StatController;
 use App\Http\Middleware\ValidateGithubWebhook;
@@ -58,3 +59,7 @@ Route::group(['prefix' => 'alipay', 'middleware' => ['auth']], function () {
     Route::any('/scan', [AlipayController::class, 'scan'])->name('alipay.scan');
 });
 Route::post('/alipay/notify', [AlipayController::class, 'notify']);
+
+Route::group(['prefix' => 'payment', 'middleware' => ['auth']], function () {
+    Route::get('/', [PaymentController::class, 'index'])->name('payment');
+});

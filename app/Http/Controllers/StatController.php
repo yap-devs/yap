@@ -39,6 +39,6 @@ class StatController extends Controller
             ];
         }
 
-        return Inertia::render('Stat', compact('chartData'));
+        return Inertia::render('Stat/Index', compact('chartData'));
     }
 }

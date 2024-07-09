@@ -4,7 +4,7 @@ import {formatBytes} from "@/Utils/formatBytes";
 import {CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Tooltip,} from 'chart.js';
 import {Line} from "react-chartjs-2";
 
-export default function Stat({auth, chartData}) {
+export default function Index({auth, chartData}) {
   const renderChart = () => {
     if (chartData.length === 0) {
       return (
