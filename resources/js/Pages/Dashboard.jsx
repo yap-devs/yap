@@ -65,7 +65,27 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
   }
 
   const totalTraffic = formatBytes(auth.user.traffic_downlink + auth.user.traffic_uplink);
-  const trafficUnpaid = formatBytes(auth.user.traffic_unpaid);
+  const renderTrafficUnpaid = () => {
+    const sharedElements = (
+      <>⚠️ Pending traffic: <strong>{formatBytes(auth.user.traffic_unpaid)}</strong>.</>
+    );
+
+    if (auth.user.traffic_unpaid === 0) {
+      return (
+        <>
+          {sharedElements} &nbsp;
+          No pending traffic, how dare you.
+        </>
+      );
+    }
+
+    return (
+      <>
+        {sharedElements} &nbsp;
+        It will be settled soon.
+      </>
+    );
+  };
 
   return (<AuthenticatedLayout
     user={auth.user}
@@ -81,8 +101,7 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
             <p className="mt-4 bg-yellow-200 text-yellow-900 p-2 rounded">📧 You're logged in
               as: <strong>{auth.user.email}</strong></p>
             <p className="mt-4 bg-green-200 text-green-900 p-2 rounded">🌐 Data used: <strong>{totalTraffic}</strong></p>
-            <p className="mt-4 bg-red-200 text-red-900 p-2 rounded">⚠️ Pending traffic: <strong>{trafficUnpaid}</strong>.
-              It will be settled soon.</p>
+            <p className="mt-4 bg-red-200 text-red-900 p-2 rounded">{renderTrafficUnpaid()}</p>
             <div className="mt-4 bg-blue-200 text-blue-900 p-2 rounded">
               💡 Rate: <span className="font-bold">${unitPrice}</span> per GB.
             </div>
