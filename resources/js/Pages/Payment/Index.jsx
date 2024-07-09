@@ -2,6 +2,14 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, Link} from '@inertiajs/react';
 
 export default function Index({auth, payments}) {
+  const statusCssMap = {
+    created: 'bg-yellow-100 text-yellow-800',
+    paid: 'bg-green-100 text-green-800',
+    cancelled: 'bg-red-100 text-red-800',
+    expired: 'bg-red-100 text-red-800',
+    refunded: 'bg-red-100 text-red-800',
+  }
+
   return (<AuthenticatedLayout
     user={auth.user}
     header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Payment</h2>}
@@ -62,8 +70,7 @@ export default function Index({auth, payments}) {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                           <span
-                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${payment.status === 'paid' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}
-                          >
+                            className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusCssMap[payment.status]}`}>
                             {payment.status}
                           </span>
                       </td>
