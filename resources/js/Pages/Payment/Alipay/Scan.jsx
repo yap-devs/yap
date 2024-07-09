@@ -66,7 +66,7 @@ export default function Stat({auth, QRInfo, amount, paymentId}) {
             <div className="p-6 text-gray-900">
               <div className="text-2xl font-semibold">Scan to Pay</div>
               <div className="mt-4">
-                <div className="text-lg">Amount: {amount}</div>
+                <div className="text-lg">Amount: ${amount}</div>
                 <div className="text-lg">Order ID: {QRInfo['out_trade_no']}</div>
                 <div className="mt-4">
                   <QRCodeCanvas value={QRInfo['qr_code']} size={256}/>

@@ -6,25 +6,46 @@ use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
-use Psr\Http\Message\ResponseInterface;
 use Random\RandomException;
 use Yansongda\Artful\Exception\ContainerException;
+use Yansongda\Artful\Exception\Exception as ArtfulException;
 use Yansongda\Artful\Exception\InvalidParamsException;
 use Yansongda\Artful\Exception\ServiceNotFoundException;
 use Yansongda\LaravelPay\Facades\Pay;
+use Yansongda\Pay\Exception\Exception as PayException;
 
 class AlipayController extends Controller
 {
-    /**
-     * @return ResponseInterface
-     * @throws ContainerException
-     * @throws InvalidParamsException
-     */
+    /** @noinspection PhpRedundantCatchClauseInspection */
     public function notify()
     {
-        $result = Pay::alipay()->callback();
+        try {
+            $result = Pay::alipay()->callback();
+        } catch (ArtfulException|PayException $e) {
+            logger()->error('Alipay notify failed: ' . $e->getMessage());
+            return Pay::alipay()->success();
+        }
 
-        logger()->info('Alipay notify: ' . $result->toJson());
+        if ($result->get('trade_status') !== 'TRADE_SUCCESS') {
+            logger()->warning('Alipay trade status is not TRADE_SUCCESS: ' . $result->toJson());
+            return Pay::alipay()->success();
+        }
+
+        $out_trade_no = $result->get('out_trade_no');
+        $payment = Payment::where('remote_id', $out_trade_no)->first();
+        if (!$payment) {
+            logger()->warning('Alipay payment not found: ' . $out_trade_no);
+            return Pay::alipay()->success();
+        }
+
+        $payment->status = 'paid';
+        $payload = $payment->payload;
+        $payload['paid'] = $result->toArray();
+        $payment->payload = $payload;
+        $payment->save();
+
+        $payment->user->increment('balance', $payment->amount);
+        $payment->user->save();
 
         return Pay::alipay()->success();
     }
@@ -83,6 +104,7 @@ class AlipayController extends Controller
             ]);
         }
 
+        /** @var Payment $payment */
         $payment = $user->payments()->create([
             'gateway' => 'alipay',
             'status' => 'created',

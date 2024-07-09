@@ -57,4 +57,4 @@ Route::group(['prefix' => 'alipay', 'middleware' => ['auth']], function () {
     Route::get('/{paymentId}/query', [AlipayController::class, 'query'])->name('alipay.query');
     Route::any('/scan', [AlipayController::class, 'scan'])->name('alipay.scan');
 });
-Route::any('/alipay/notify', [AlipayController::class, 'notify']);
+Route::post('/alipay/notify', [AlipayController::class, 'notify']);
