@@ -38,9 +38,9 @@ class AlipayController extends Controller
             return Pay::alipay()->success();
         }
 
-        $payment->status = 'paid';
+        $payment->status = Payment::STATUS_PAID;
         $payload = $payment->payload;
-        $payload['paid'] = $result->toArray();
+        $payload[Payment::STATUS_PAID] = $result->toArray();
         $payment->payload = $payload;
         $payment->save();
 
@@ -111,7 +111,7 @@ class AlipayController extends Controller
             'amount' => $amount,
             'remote_id' => $out_trade_no,
             'payload' => [
-                'created' => $qr_info
+                Payment::STATUS_CREATED => $qr_info
             ]
         ]);
 
