@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -46,6 +47,8 @@ class AlipayController extends Controller
 
         $payment->user->increment('balance', $payment->amount);
         $payment->user->save();
+
+        GenerateClashProfileLink::dispatch();
 
         return Pay::alipay()->success();
     }
