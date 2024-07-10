@@ -46,7 +46,6 @@ class AlipayController extends Controller
         $payment->save();
 
         $payment->user->increment('balance', $payment->amount);
-        $payment->user->save();
 
         GenerateClashProfileLink::dispatch();
 
