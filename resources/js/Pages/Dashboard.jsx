@@ -3,7 +3,7 @@ import {Head} from '@inertiajs/react';
 import {useState} from "react";
 import {formatBytes} from "@/Utils/formatBytes";
 
-export default function Dashboard({auth, clashUrl, unitPrice}) {
+export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
   const [copyButton, setCopyButton] = useState('Copy');
   const copyToClipboard = async text => {
     try {
@@ -87,6 +87,36 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
     );
   };
 
+  const renderServers = () => {
+    if (servers.length === 0) {
+      return (
+        <div className="bg-red-200 text-red-900 p-2 rounded">
+          🚫 No servers found.
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        {servers.map((server, index) => (
+          <div
+            key={server.id}
+            className={`bg-white overflow-hidden shadow-sm sm:rounded-lg
+                    ${((auth.user.is_low_priority && index !== 0) || !auth.user.is_valid)
+              ? "opacity-50 cursor-not-allowed"
+              : ""}`}
+          >
+            <div className="p-6 bg-gradient-to-r text-white rounded-lg shadow-md from-zinc-600 to-zinc-400">
+              <h2 className="text-xl font-bold underline decoration-sky-500">Server {index}</h2>
+              <p className="mt-4 bg-green-200 text-green-900 p-2 rounded">🌐 name: <strong>{server.name}</strong></p>
+              <p className="mt-4 bg-green-200 text-green-900 p-2 rounded">💲 Rate: <strong>{server.rate}x</strong></p>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
   return (<AuthenticatedLayout
     user={auth.user}
     header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Dashboard</h2>}
@@ -107,6 +137,9 @@ export default function Dashboard({auth, clashUrl, unitPrice}) {
             </div>
             <div className="mt-4">
               {renderPayReminder()}
+            </div>
+            <div className="mt-4">
+              {renderServers()}
             </div>
           </div>
         </div>
