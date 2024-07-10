@@ -37,7 +37,7 @@ class GenerateClashProfileLink implements ShouldQueue
         $this->vmess_servers = VmessServer::all();
 
         foreach ($users as $user) {
-            $clash = new ClashService($user, $this->vmess_servers);
+            $clash = new ClashService($user);
 
             if ($user->deleted_at || !$user->is_valid) {
                 if (!$clash->confExists()) {
