@@ -91,31 +91,32 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
 
   const renderAlipayBlock = () => {
     return (
-      <div>
+      <div className="rounded-lg shadow-lg overflow-hidden max-w-xs my-3">
         {
           errors.amount && (
-            <div className="bg-red-100 border-l-4 border-red-500 text-red-700 p-4">
-              <p className="font-bold">{errors.amount}</p>
+            <div className="bg-red-500 text-white py-2 px-4">
+              <p className="font-bold text-xl text-center">{errors.amount}</p>
             </div>
           )
         }
-        <div className="max-w-sm space-y-3 mt-4">
+        <div className="p-4 bg-gray-50">
           <div className="relative">
-            <input type="text"
-                   className="py-3 px-4 ps-9 pe-20 block w-full border-gray-200 shadow-sm rounded-lg text-sm focus:z-10 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
-                   placeholder="5" value={alipayAmount} onChange={(e) => sponsorAmountChange(e, setAlipayAmount)}/>
-            <div className="absolute inset-y-0 start-0 flex items-center pointer-events-none z-20 ps-4">
-              <span className="text-gray-500">$</span>
-            </div>
-            <div className="absolute inset-y-0 end-0 flex items-center text-gray-500 pe-px mr-1">
-              <button
-                className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-gray-600 hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500"
-                type="button"
-                onClick={redirectToAlipayScanPage}
-              >
-                Charge Now
-              </button>
-            </div>
+            <input
+              type="number"
+              className="w-full py-2 pl-6 pr-20 rounded-lg border-2 placeholder-gray-500 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600"
+              placeholder="Amount" value={alipayAmount} onChange={(e) => sponsorAmountChange(e, setAlipayAmount)}
+              min={5}
+            />
+            <span className="absolute inset-y-0 left-0 flex items-center pl-2">
+            <span className="text-gray-500">$</span>
+          </span>
+            <button
+              className="absolute inset-y-0 right-0 flex items-center px-4 font-bold text-white bg-purple-600 rounded-r-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              type="button"
+              onClick={redirectToAlipayScanPage}
+            >
+              Charge Now
+            </button>
           </div>
         </div>
       </div>
