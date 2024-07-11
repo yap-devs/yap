@@ -37,6 +37,7 @@ class UpdateStatCommand extends Command
     {
         $users = User::all();
         $vmess_servers = VmessServer::all();
+        $all_stats = $this->getAllStats();
 
         /** @var User $user */
         foreach ($users as $user) {
@@ -46,8 +47,7 @@ class UpdateStatCommand extends Command
 
             /** @var VmessServer $vmess_server */
             foreach ($vmess_servers as $vmess_server) {
-                $v2ray = new V2rayService($vmess_server->internal_server);
-                $stats = $v2ray->stats(reset: true);
+                $stats = Arr::get($all_stats, $vmess_server->id, []);
 
                 if (!$stats || !isset($stats['user'][$user->email])) {
                     continue;
@@ -99,6 +99,20 @@ class UpdateStatCommand extends Command
         if ($this->user_status_changed) {
             GenerateClashProfileLink::dispatchSync();
         }
+    }
+
+    private function getAllStats()
+    {
+        $vmess_servers = VmessServer::all();
+        $stats = [];
+
+        /** @var VmessServer $vmess_server */
+        foreach ($vmess_servers as $vmess_server) {
+            $v2ray = new V2rayService($vmess_server->internal_server);
+            $stats[$vmess_server->id] = $v2ray->stats(reset: true);
+        }
+
+        return $stats;
     }
 
     private function updateBalanceDaily()
