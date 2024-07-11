@@ -39,7 +39,7 @@ class GenerateClashProfileLink implements ShouldQueue
         foreach ($users as $user) {
             $clash = new ClashService($user);
 
-            if ($user->deleted_at || !$user->is_valid || !$user->is_low_priority) {
+            if ($user->deleted_at || !$user->is_valid || $user->is_low_priority) {
                 if (!$clash->confExists()) {
                     continue;
                 }
