@@ -96,13 +96,15 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
       );
     }
 
+    const isUnavailable = (user, index) => user.is_low_priority && index !== 0 || !user.is_valid;
+
     return (
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
         {servers.map((server, index) => (
           <div
             key={server.id}
             className={`bg-white overflow-hidden shadow-sm sm:rounded-lg
-                    ${((auth.user.is_low_priority && index !== 0) || !auth.user.is_valid)
+                    ${isUnavailable(auth.user, index)
               ? "opacity-50 cursor-not-allowed"
               : ""}`}
           >
@@ -126,19 +128,21 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
     <div className="py-12">
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-          <div className="p-6 bg-gradient-to-r text-white rounded-lg shadow-md from-zinc-600 to-zinc-400">
-            <h1 className="text-xl font-bold underline decoration-sky-500">Welcome Back, {auth.user.name}!</h1>
-            <p className="mt-4 bg-yellow-200 text-yellow-900 p-2 rounded">📧 You're logged in
-              as: <strong>{auth.user.email}</strong></p>
-            <p className="mt-4 bg-green-200 text-green-900 p-2 rounded">🌐 Data used: <strong>{totalTraffic}</strong></p>
-            <p className="mt-4 bg-red-200 text-red-900 p-2 rounded">{renderTrafficUnpaid()}</p>
-            <div className="mt-4 bg-blue-200 text-blue-900 p-2 rounded">
-              💡 Rate: <span className="font-bold">${unitPrice}</span> per GB.
+          <div className="p-6 bg-white text-black rounded-lg shadow-md">
+            <h1 className="text-2xl font-bold">Welcome Back, {auth.user.name}!</h1>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <h2 className="text-xl font-semibold">Your details</h2>
+                <p className="mt-2"><strong>Total Data used:</strong> {totalTraffic}</p>
+                <p className="mt-2">{renderTrafficUnpaid()}</p>
+                <p className="mt-2"><strong>Rate:</strong> ${unitPrice} per GB</p>
+              </div>
+              <div className="p-4 bg-yellow-50 rounded-lg">
+                {renderPayReminder()}
+              </div>
             </div>
             <div className="mt-4">
-              {renderPayReminder()}
-            </div>
-            <div className="mt-4">
+              <h2 className="text-xl font-semibold">Servers</h2>
               {renderServers()}
             </div>
           </div>
