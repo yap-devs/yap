@@ -44,6 +44,7 @@ class UpdateStatCommand extends Command
             $total_uplink = 0;
             $total_downlink = 0;
             $is_valid_initial = $user->is_valid;
+            $is_low_priority_initial = $user->is_low_priority;
 
             /** @var VmessServer $vmess_server */
             foreach ($vmess_servers as $vmess_server) {
@@ -87,7 +88,10 @@ class UpdateStatCommand extends Command
                 $user->save();
             }
 
-            if ($user->is_valid != $is_valid_initial) {
+            if (
+                $user->is_valid != $is_valid_initial
+                || $user->is_low_priority != $is_low_priority_initial
+            ) {
                 $this->user_status_changed = true;
             }
         }
