@@ -47,6 +47,11 @@ class AlipayController extends Controller
 
         $payment->user->increment('balance', $payment->amount);
 
+        $payment->user->balanceDetails()->create([
+            'amount' => $payment->amount,
+            'description' => 'Alipay payment',
+        ]);
+
         GenerateClashProfileLink::dispatch();
 
         return Pay::alipay()->success();

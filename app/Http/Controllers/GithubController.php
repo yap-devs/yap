@@ -69,6 +69,11 @@ class GithubController extends Controller
         $user->balance += $amount;
         $user->save();
 
+        $user->balanceDetails()->create([
+            'amount' => $amount,
+            'description' => 'GitHub sponsor',
+        ]);
+
         GenerateClashProfileLink::dispatch();
 
         return response()->json(['message' => 'ok']);

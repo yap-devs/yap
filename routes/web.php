@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AlipayController;
+use App\Http\Controllers\BalanceDetailController;
 use App\Http\Controllers\ClashController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FutoonController;
@@ -63,4 +64,8 @@ Route::post('/alipay/notify', [AlipayController::class, 'notify']);
 
 Route::group(['prefix' => 'payment', 'middleware' => ['auth']], function () {
     Route::get('/', [PaymentController::class, 'index'])->name('payment');
+});
+
+Route::group(['prefix' => 'balance/detail', 'middleware' => ['auth']], function () {
+    Route::get('/', [BalanceDetailController::class, 'index'])->name('balance.detail');
 });

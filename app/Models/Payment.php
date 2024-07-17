@@ -2,13 +2,14 @@
 
 namespace App\Models;
 
+use App\SerializeDate;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
 {
-    use HasFactory, SoftDeletes;
+    use HasFactory, SoftDeletes, SerializeDate;
 
     const STATUS_CREATED = 'created';
     const STATUS_PAID = 'paid';
