@@ -33,6 +33,9 @@ export default function Authenticated({user, header, children}) {
                 <NavLink href={route('balance.detail')} active={route().current('balance.detail')}>
                   Balance Detail
                 </NavLink>
+                <NavLink href={route('customer.service')} active={route().current('customer.service')}>
+                  Customer Service
+                </NavLink>
               </div>
             </div>
 
@@ -111,6 +114,9 @@ export default function Authenticated({user, header, children}) {
             </ResponsiveNavLink>
             <ResponsiveNavLink href={route('balance.detail')} active={route().current('balance.detail')}>
               Balance Detail
+            </ResponsiveNavLink>
+            <ResponsiveNavLink href={route('customer.service')} active={route().current('customer.service')}>
+              Customer Service
             </ResponsiveNavLink>
           </div>
 

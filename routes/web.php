@@ -3,6 +3,7 @@
 use App\Http\Controllers\AlipayController;
 use App\Http\Controllers\BalanceDetailController;
 use App\Http\Controllers\ClashController;
+use App\Http\Controllers\CustomerServiceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FutoonController;
 use App\Http\Controllers\GithubController;
@@ -68,4 +69,8 @@ Route::group(['prefix' => 'payment', 'middleware' => ['auth']], function () {
 
 Route::group(['prefix' => 'balance/detail', 'middleware' => ['auth']], function () {
     Route::get('/', [BalanceDetailController::class, 'index'])->name('balance.detail');
+});
+
+Route::group(['prefix' => 'customer/service', 'middleware' => ['auth']], function () {
+    Route::get('/', [CustomerServiceController::class, 'index'])->name('customer.service');
 });
