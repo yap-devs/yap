@@ -27,6 +27,12 @@ export default function Authenticated({user, header, children}) {
                 <NavLink href={route('stat')} active={route().current('stat')}>
                   Stat
                 </NavLink>
+                <NavLink href={route('payment')} active={route().current('payment')}>
+                  Payment
+                </NavLink>
+                <NavLink href={route('balance.detail')} active={route().current('balance.detail')}>
+                  Balance Detail
+                </NavLink>
               </div>
             </div>
 
@@ -58,8 +64,6 @@ export default function Authenticated({user, header, children}) {
 
                   <Dropdown.Content>
                     <Dropdown.Link href={route('profile.edit')}>Profile</Dropdown.Link>
-                    <Dropdown.Link href={route('payment')}>Payment</Dropdown.Link>
-                    <Dropdown.Link href={route('balance.detail')}>Balance Detail</Dropdown.Link>
                     <Dropdown.Link href={route('logout')} method="post" as="button">
                       Log Out
                     </Dropdown.Link>
@@ -102,6 +106,12 @@ export default function Authenticated({user, header, children}) {
             <ResponsiveNavLink href={route('stat')} active={route().current('stat')}>
               Stat
             </ResponsiveNavLink>
+            <ResponsiveNavLink href={route('payment')} active={route().current('payment')}>
+              Payment
+            </ResponsiveNavLink>
+            <ResponsiveNavLink href={route('balance.detail')} active={route().current('balance.detail')}>
+              Balance Detail
+            </ResponsiveNavLink>
           </div>
 
           <div className="pt-4 pb-1 border-t border-gray-200">
@@ -112,8 +122,6 @@ export default function Authenticated({user, header, children}) {
 
             <div className="mt-3 space-y-1">
               <ResponsiveNavLink href={route('profile.edit')}>Profile</ResponsiveNavLink>
-              <ResponsiveNavLink href={route('payment')}>Payment</ResponsiveNavLink>
-              <ResponsiveNavLink href={route('balance.detail')}>Balance Detail</ResponsiveNavLink>
               <ResponsiveNavLink method="post" href={route('logout')} as="button">
                 Log Out
               </ResponsiveNavLink>
