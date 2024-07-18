@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import {Head} from '@inertiajs/react';
+import {Head, router} from '@inertiajs/react';
 import {useState} from "react";
 import {formatBytes} from "@/Utils/formatBytes";
 
@@ -136,6 +136,12 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
                 <p className="mt-2"><strong>Total Data used:</strong> {totalTraffic}</p>
                 <p className="mt-2">{renderTrafficUnpaid()}</p>
                 <p className="mt-2"><strong>Rate:</strong> ${unitPrice} per GB</p>
+                <button
+                  onClick={() => router.get(route('profile.edit'))}
+                  className="mt-4 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-purple-600 hover:to-blue-500 text-white font-bold py-2 px-4 rounded cursor-pointer transition duration-300 ease-in-out transform hover:scale-105"
+                >
+                  Go to Charge
+                </button>
               </div>
               <div className="p-4 bg-yellow-50 rounded-lg">
                 {renderPayReminder()}
