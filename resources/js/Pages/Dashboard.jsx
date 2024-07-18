@@ -90,32 +90,32 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
   const renderServers = () => {
     if (servers.length === 0) {
       return (
-        <div className="bg-red-200 text-red-900 p-2 rounded">
-          🚫 No servers found.
+        <div className="p-4 bg-gray-100 text-red-600 rounded-lg">
+          No servers found.
         </div>
       );
     }
 
     const isUnavailable = (user, index) => user.is_low_priority && index !== 0 || !user.is_valid;
-
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+      <ul className="divide-y divide-gray-200">
         {servers.map((server, index) => (
-          <div
+          <li
             key={server.id}
-            className={`bg-white overflow-hidden shadow-sm sm:rounded-lg
-                    ${isUnavailable(auth.user, index)
-              ? "opacity-50 cursor-not-allowed"
-              : ""}`}
+            className={`pl-3 pr-4 py-3 flex items-center justify-between text-sm
+            ${isUnavailable(auth.user, index) ? "opacity-50 cursor-not-allowed" : ""}`}
           >
-            <div className="p-6 bg-gradient-to-r text-white rounded-lg shadow-md from-zinc-600 to-zinc-400">
-              <h2 className="text-xl font-bold underline decoration-sky-500">Server {index}</h2>
-              <p className="mt-4 bg-green-200 text-green-900 p-2 rounded">🌐 name: <strong>{server.name}</strong></p>
-              <p className="mt-4 bg-green-200 text-green-900 p-2 rounded">💲 Rate: <strong>{server.rate}x</strong></p>
+            <div className="w-0 flex-1 flex items-center">
+            <span className="flex-1 w-0 ml-2">
+              Server {index}: <strong>{server.name}</strong>
+            </span>
             </div>
-          </div>
+            <div className="ml-4 flex-shrink-0">
+              Rate: <strong>{server.rate}x</strong>
+            </div>
+          </li>
         ))}
-      </div>
+      </ul>
     );
   }
 
