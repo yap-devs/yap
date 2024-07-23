@@ -15,7 +15,7 @@ class ClashController extends Controller
         abort_if(!file_exists($yaml_file), 404);
 
         // 64 TiB, 1989-06-04
-        $userinfo = "upload=$user->traffic_uplink download=$user->traffic_downlink total=70368744177664 expire=612894867";
+        $userinfo = "upload=$user->traffic_uplink; download=$user->traffic_downlink; total=70368744177664; expire=612894867";
 
         return response()->download($yaml_file, 'yap|' . $user->email, [
             'Content-Type' => 'application/x-yaml',
