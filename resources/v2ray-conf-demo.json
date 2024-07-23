@@ -70,10 +70,22 @@
                 "outboundTag": "block",
                 "protocol": [
                     "bittorrent"
-                ],
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "block",
                 "domains": [
                     "geosite:cn",
                     "geosite:private"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "block",
+                "ip": [
+                    "geoip:cn",
+                    "geoip:private"
                 ]
             }
         ]
