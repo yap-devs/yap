@@ -23,11 +23,6 @@ readonly class ClashService
         $vmess_servers = $vmess_servers ?: VmessServer::all();
 
         $proxies = [];
-        $proxy_groups = [
-            'proxies' => [],
-            'name' => 'Proxy',
-            'type' => 'select',
-        ];
         /** @var VmessServer $vmess_server */
         foreach ($vmess_servers as $vmess_server) {
             $name = "[{$vmess_server->rate}x]$vmess_server->name";
@@ -41,12 +36,24 @@ readonly class ClashService
                 'alterId' => 0,
                 'cipher' => 'auto',
             ];
-
-            $proxy_groups['proxies'][] = $name;
         }
 
         $template['proxies'] = $proxies;
-        $template['proxy-groups'] = [$proxy_groups];
+        $template['proxy-groups'] = [
+            [
+                'proxies' => array_column($proxies, 'name'),
+                'name' => 'Proxy',
+                'type' => 'select',
+            ],
+            [
+                'proxies' => array_column($proxies, 'name'),
+                'name' => 'Auto',
+                'type' => 'url-test',
+                'url' => 'http://www.gstatic.cn/generate_204',
+                'interval' => 120,
+                'tolerance' => 40,
+            ],
+        ];
 
         yaml_emit_file(storage_path("clash-config/{$this->user->uuid}.yaml"), $template);
     }
