@@ -38,6 +38,10 @@ class AlipayController extends Controller
             logger()->warning('Alipay payment not found: ' . $out_trade_no);
             return Pay::alipay()->success();
         }
+        if ($payment->status === Payment::STATUS_PAID) {
+            logger()->warning('Alipay payment already paid: ' . $out_trade_no);
+            return Pay::alipay()->success();
+        }
 
         $payment->status = Payment::STATUS_PAID;
         $payload = $payment->payload;
