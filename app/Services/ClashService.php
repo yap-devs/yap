@@ -49,9 +49,8 @@ readonly class ClashService
                 'proxies' => array_column($proxies, 'name'),
                 'name' => 'Auto',
                 'type' => 'url-test',
-                'url' => 'http://www.gstatic.cn/generate_204',
-                'interval' => 120,
-                'tolerance' => 40,
+                'url' => 'https://www.gstatic.com/generate_204',
+                'interval' => 300,
             ],
         ];
 
