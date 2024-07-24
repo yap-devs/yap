@@ -19,6 +19,7 @@ return new class extends Migration
             $table->unsignedTinyInteger('rate')->default(1)->comment('The rate of the server');
             $table->string('internal_server')->default('')->comment('Internal server address for the v2bridge');
             $table->unsignedTinyInteger('enabled')->default(1)->comment('Whether the server is enabled');
+            $table->unsignedTinyInteger('for_low_priority')->default(0)->comment('Whether the server is for low priority users');
             $table->timestamps();
             $table->softDeletes();
         });

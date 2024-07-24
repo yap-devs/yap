@@ -96,14 +96,14 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
       );
     }
 
-    const isUnavailable = (user, index) => user.is_low_priority && index !== 0 || !user.is_valid;
+    const isUnavailable = (user, server) => (user.is_low_priority && !server.for_low_priority) || !user.is_valid;
     return (
       <ul className="divide-y divide-gray-200">
         {servers.map((server, index) => (
           <li
             key={server.id}
             className={`pl-3 pr-4 py-3 flex items-center justify-between text-sm
-            ${isUnavailable(auth.user, index) ? "opacity-50 cursor-not-allowed" : ""}`}
+            ${isUnavailable(auth.user, server) ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             <div className="w-0 flex-1 flex items-center">
             <span className="flex-1 w-0 ml-2">

@@ -54,14 +54,15 @@ class GenerateClashProfileLink implements ShouldQueue
             $servers = [];
             /** @var VmessServer $vmess_server */
             foreach ($this->vmess_servers as $vmess_server) {
+                if ($user->is_low_priority && !$vmess_server->for_low_priority) {
+                    continue;
+                }
+
                 $v2ray = new V2rayService($vmess_server->internal_server);
                 $res = $v2ray->addUser($user->email, $user->uuid);
                 $this->log("Added user $user->email to V2ray server $vmess_server->internal_server: " . json_encode($res));
 
                 $servers[] = $vmess_server;
-                if ($user->is_low_priority) {
-                    break;
-                }
             }
 
             $clash->genConf($servers);
