@@ -46,7 +46,8 @@
     "outbounds": [
         {
             "protocol": "freedom",
-            "settings": {}
+            "settings": {},
+            "tag": "direct"
         },
         {
             "protocol": "blackhole",
@@ -59,11 +60,11 @@
         "domainMatcher": "mph",
         "rules": [
             {
+                "type": "field",
+                "outboundTag": "api",
                 "inboundTag": [
                     "api"
-                ],
-                "outboundTag": "api",
-                "type": "field"
+                ]
             },
             {
                 "type": "field",
@@ -86,6 +87,13 @@
                 "ip": [
                     "geoip:cn",
                     "geoip:private"
+                ]
+            },
+            {
+                "type": "field",
+                "outboundTag": "direct",
+                "inboundTag": [
+                    "main-inbound"
                 ]
             }
         ]
