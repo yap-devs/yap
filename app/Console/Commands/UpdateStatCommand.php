@@ -69,9 +69,11 @@ class UpdateStatCommand extends Command
                 ]);
             }
 
-            $user->increment('traffic_uplink', $total_uplink);
-            $user->increment('traffic_downlink', $total_downlink);
-            $user->increment('traffic_unpaid', $total_uplink + $total_downlink);
+            if (($total_uplink > 0) || ($total_downlink > 0)) {
+                $user->increment('traffic_uplink', $total_uplink);
+                $user->increment('traffic_downlink', $total_downlink);
+                $user->increment('traffic_unpaid', $total_uplink + $total_downlink);
+            }
 
             while ($user->traffic_unpaid > 1024 * 1024 * 1024) {
                 $user->balance -= config('yap.unit_price');
