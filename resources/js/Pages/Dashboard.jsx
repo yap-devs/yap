@@ -4,7 +4,7 @@ import {useState} from "react";
 import {formatBytes} from "@/Utils/formatBytes";
 
 export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
-  const [copyButton, setCopyButton] = useState('Copy');
+  const [copyButton, setCopyButton] = useState('Copy URL');
   const copyToClipboard = async text => {
     try {
       await navigator.clipboard.writeText(text);
@@ -17,7 +17,38 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
     }
   }
 
-  const renderPayReminder = () => {
+  const renderClashUrl = () => {
+    const clashUrlBlock = (
+      <div className="mt-4">
+        <div className="flex flex-col md:flex-row md:space-x-4">
+          <button
+            onClick={() => copyToClipboard(clashUrl)}
+            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded shadow-md transition duration-300 ease-in-out transform hover:scale-105"
+          >
+            {copyButton}
+          </button>
+          <button
+            onClick={() => window.location.href = 'clash://install-config?url=' + encodeURIComponent(clashUrl)}
+            className="bg-[#1E90FF] hover:bg-[#4682B4] text-white font-bold py-2 px-4 rounded shadow-md transition duration-300 ease-in-out transform hover:scale-105 mt-4 md:mt-0"
+          >
+            Import to Clash
+          </button>
+          <button
+            onClick={() => window.location.href = 'shadowrocket://add/sub://' + btoa(clashUrl)}
+            className="bg-[#8A2BE2] hover:bg-[#9370DB] text-white font-bold py-2 px-4 rounded shadow-md transition duration-300 ease-in-out transform hover:scale-105 mt-4 md:mt-0"
+          >
+            Import to Shadowrocket
+          </button>
+          <button
+            onClick={() => window.location.href = 'stash://install-config?url=' + encodeURIComponent(clashUrl)}
+            className="bg-[#FF4500] hover:bg-[#FF6347] text-white font-bold py-2 px-4 rounded shadow-md transition duration-300 ease-in-out transform hover:scale-105 mt-4 md:mt-0"
+          >
+            Import to Stash
+          </button>
+        </div>
+      </div>
+    );
+
     if (auth.user.is_valid) {
       if (auth.user.is_low_priority) {
         return (
@@ -29,28 +60,12 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
                       className="text-blue-500 hover:underline px-1" style={{cursor: 'pointer'}}>upgrading</button>
               your account to high priority to get the best experience.
             </p>
-            <p className="mt-4">Your Clash URL is:</p>
-            <p className="mt-2 text-blue-500">{clashUrl}</p>
-            <button
-              onClick={() => copyToClipboard(clashUrl)}
-              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
-            >
-              {copyButton}
-            </button>
+            {clashUrlBlock}
           </div>
         )
       }
 
-      return (<div className="bg-green-100 border-l-4 border-green-500 text-green-700 p-4" role="alert">
-        <p className="mt-4">Your Clash URL is:</p>
-        <p className="mt-2 text-blue-500">{clashUrl}</p>
-        <button
-          onClick={() => copyToClipboard(clashUrl)}
-          className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded mt-4"
-        >
-          {copyButton}
-        </button>
-      </div>)
+      return clashUrlBlock;
     }
 
     return (<div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4" role="alert">
@@ -144,7 +159,8 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
                 </button>
               </div>
               <div className="p-4 bg-yellow-50 rounded-lg">
-                {renderPayReminder()}
+                <h2 className="text-xl font-semibold">Subscription Information</h2>
+                {renderClashUrl()}
               </div>
             </div>
             <div className="mt-4">
