@@ -39,19 +39,28 @@ readonly class ClashService
         }
 
         $template['proxies'] = $proxies;
+        $proxy_names = array_column($proxies, 'name');
+        $proxy_names_with_auto = array_merge(['Auto', 'Fallback'], $proxy_names);
         $template['proxy-groups'] = [
             [
-                'proxies' => array_column($proxies, 'name'),
+                'proxies' => $proxy_names_with_auto,
                 'name' => 'Proxy',
                 'type' => 'select',
             ],
             [
-                'proxies' => array_column($proxies, 'name'),
+                'proxies' => $proxy_names,
                 'name' => 'Auto',
                 'type' => 'url-test',
                 'url' => 'https://www.gstatic.com/generate_204',
-                'interval' => 300,
+                'interval' => 3600,
             ],
+            [
+                'proxies' => $proxy_names,
+                'name' => 'Fallback',
+                'type' => 'fallback',
+                'url' => 'https://www.gstatic.com/generate_204',
+                'interval' => 3600,
+            ]
         ];
 
         yaml_emit_file(storage_path("clash-config/{$this->user->uuid}.yaml"), $template);
