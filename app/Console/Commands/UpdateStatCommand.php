@@ -128,7 +128,7 @@ class UpdateStatCommand extends Command
         /** @var User $user */
         foreach ($users as $user) {
             // if already paid in the last 24 hours, skip
-            if ($user->last_settled_at && $user->last_settled_at->diffInHours(now()) < 24) {
+            if ($user->last_settled_at && $user->last_settled_at->diffInHours(now()) < 23.5) {
                 continue;
             }
 
