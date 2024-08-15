@@ -63,8 +63,6 @@ class V2rayService
      * @param null $email The email of the user for whom to retrieve traffic stats.
      * @param bool $reset Whether to reset the statistics after retrieving them.
      * @return array The decoded JSON response containing the statistics.
-     *
-     * @throws Throwable
      */
     public function stats($email = null, $reset = false)
     {
