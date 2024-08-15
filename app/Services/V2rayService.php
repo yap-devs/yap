@@ -81,7 +81,14 @@ class V2rayService
 
         $result = Process::run($command);
 
-        throw_if($result->failed(), new Exception('Failed to get stats: ' . $result->errorOutput()));
+        if ($result->failed()) {
+            logger()->driver('job')->log(
+                'warning',
+                "[V2rayService] Failed to get [$this->server] stats: {$result->errorOutput()}"
+            );
+
+            return [];
+        }
 
         $stat = json_decode($result->output(), true);
         if (!$stat) {
