@@ -60,19 +60,16 @@ class UpdateStatCommand extends Command
 
                 $total_uplink += $uplink;
                 $total_downlink += $downlink;
-
-                UserStat::create([
-                    'user_id' => $user->id,
-                    'server_id' => $vmess_server->id,
-                    'traffic_uplink' => $uplink,
-                    'traffic_downlink' => $downlink,
-                ]);
             }
 
             if (($total_uplink > 0) || ($total_downlink > 0)) {
                 $user->increment('traffic_uplink', $total_uplink);
                 $user->increment('traffic_downlink', $total_downlink);
                 $user->increment('traffic_unpaid', $total_uplink + $total_downlink);
+                $user->stats()->create([
+                    'uplink' => $total_uplink,
+                    'downlink' => $total_downlink,
+                ]);
             }
 
             while ($user->traffic_unpaid > 1024 * 1024 * 1024) {

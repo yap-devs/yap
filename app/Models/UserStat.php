@@ -14,7 +14,6 @@ class UserStat extends Model
 
     protected $fillable = [
         'user_id',
-        'server_id',
         'traffic_downlink',
         'traffic_uplink',
     ];
