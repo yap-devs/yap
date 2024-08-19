@@ -66,7 +66,7 @@ class V2rayService
      */
     public function stats($email = null, $reset = false)
     {
-        $command = config('v2ray.v2ray.path') . ' api stats -s ' . $this->server . ' -json';
+        $command = config('v2ray.v2ray.path') . ' api stats -t 10 -s ' . $this->server . ' -json';
 
         if ($reset) {
             $command .= ' -reset';
