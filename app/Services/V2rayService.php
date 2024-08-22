@@ -79,6 +79,11 @@ class V2rayService
 
         $result = Process::run($command);
 
+        $retry = 0;
+        while ($result->failed() && $retry < 3) {
+            $result = Process::run($command);
+            $retry++;
+        }
         if ($result->failed()) {
             logger()->driver('job')->log(
                 'warning',
