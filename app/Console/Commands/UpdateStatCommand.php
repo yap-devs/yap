@@ -67,8 +67,8 @@ class UpdateStatCommand extends Command
                 $user->increment('traffic_downlink', $total_downlink);
                 $user->increment('traffic_unpaid', $total_uplink + $total_downlink);
                 $user->stats()->create([
-                    'uplink' => $total_uplink,
-                    'downlink' => $total_downlink,
+                    'traffic_downlink' => $total_uplink,
+                    'traffic_uplink' => $total_downlink,
                 ]);
             }
 
