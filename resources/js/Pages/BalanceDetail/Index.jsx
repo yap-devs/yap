@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head} from '@inertiajs/react';
+import Pagination from "@/Components/Pagination.jsx";
 
 export default function Index({auth, balanceDetails}) {
   return (<AuthenticatedLayout
@@ -28,7 +29,7 @@ export default function Index({auth, balanceDetails}) {
               </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-              {balanceDetails.map((balanceDetail) => (
+              {balanceDetails.data.map((balanceDetail) => (
                 <tr key={balanceDetail.id}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm text-gray-900">{balanceDetail.created_at}</div>
@@ -43,8 +44,17 @@ export default function Index({auth, balanceDetails}) {
                   </td>
                 </tr>
               ))}
+              {balanceDetails.data.length === 0 && (
+                <tr>
+                  <td colSpan="3" className="px-6 py-4 whitespace-nowrap">
+                    <div className="text-sm text-gray-900 text-center">No records found</div>
+                  </td>
+                </tr>
+              )}
               </tbody>
             </table>
+
+            <Pagination links={balanceDetails.links}/>
           </div>
         </div>
       </div>

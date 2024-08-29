@@ -1,5 +1,6 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, Link} from '@inertiajs/react';
+import Pagination from "@/Components/Pagination.jsx";
 
 export default function Index({auth, payments}) {
   const statusCssMap = {
@@ -21,7 +22,7 @@ export default function Index({auth, payments}) {
         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
           <div className="p-6 text-gray-900" style={{overflowX: 'auto'}}>
             {
-              payments.length === 0 ? (
+              payments.data.length === 0 ? (
                 <div className="text-center text-gray-600">No payments found.</div>
               ) : (
                 <table className="min-w-full divide-y divide-gray-200">
@@ -54,7 +55,7 @@ export default function Index({auth, payments}) {
                   </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                  {payments.map((payment) => (
+                  {payments.data.map((payment) => (
                     <tr key={payment.id}>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm leading-5 text-gray-900">{payment.remote_id}</div>
@@ -88,6 +89,8 @@ export default function Index({auth, payments}) {
                 </table>
               )
             }
+
+            <Pagination links={payments.links}/>
           </div>
         </div>
       </div>
