@@ -11,5 +11,6 @@ return [
     'github' => [
         'webhook_secret' => env('GITHUB_WEBHOOK_SECRET', 'your-github-webhook-secret'),
         'sponsor_url' => env('GITHUB_SPONSOR_URL', 'https://api.github.com/sponsors'),
-    ]
+    ],
+    'reset_subscription_price' => env('YAP_RESET_SUBSCRIPTION_PRICE', 0.5),
 ];
