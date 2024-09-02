@@ -11,7 +11,6 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
-use Throwable;
 
 class GenerateClashProfileLink implements ShouldQueue
 {
@@ -29,7 +28,6 @@ class GenerateClashProfileLink implements ShouldQueue
 
     /**
      * Execute the job.
-     * @throws Throwable
      */
     public function handle()
     {
@@ -75,7 +73,6 @@ class GenerateClashProfileLink implements ShouldQueue
      *
      * @param User $user The user entity to be removed
      * @return void
-     * @throws Throwable
      */
     private function removeUser(User $user)
     {

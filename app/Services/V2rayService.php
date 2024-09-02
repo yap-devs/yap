@@ -3,9 +3,7 @@
 namespace App\Services;
 
 
-use Exception;
 use Illuminate\Support\Facades\Process;
-use Throwable;
 
 class V2rayService
 {
@@ -24,16 +22,12 @@ class V2rayService
      * @param string $email The email of the user.
      * @param string $uuid The UUID of the user.
      * @return array The decoded JSON result of adding the user.
-     *
-     * @throws Throwable
      */
     public function addUser($email, $uuid)
     {
-        $result = Process::run($this->prefix . ' addV2rayVmessUser -e ' . $email . ' -u ' . $uuid);
+        $result = $this->runWithRetry($this->prefix . ' addV2rayVmessUser -e ' . $email . ' -u ' . $uuid);
 
-        throw_if($result->failed(), new Exception('Failed to add user: ' . $result->errorOutput()));
-
-        return json_decode($result->output(), true);
+        return is_null($result) ? [] : json_decode($result, true);
     }
 
     /**
@@ -41,16 +35,12 @@ class V2rayService
      *
      * @param string $email The email of the user to be removed.
      * @return array The decoded JSON response from the V2ray service.
-     *
-     * @throws Throwable
      */
     public function removeUser($email)
     {
-        $result = Process::run($this->prefix . ' removeV2rayUser -e ' . $email);
+        $result = $this->runWithRetry($this->prefix . ' removeV2rayUser -e ' . $email);
 
-        throw_if($result->failed(), new Exception('Failed to remove user: ' . $result->errorOutput()));
-
-        return json_decode($result->output(), true);
+        return is_null($result) ? [] : json_decode($result, true);
     }
 
     /**
@@ -77,23 +67,12 @@ class V2rayService
             $command .= " 'user>>>$email>>>traffic>>>downlink'";
         }
 
-        $result = Process::run($command);
-
-        $retry = 0;
-        while ($result->failed() && $retry < 3) {
-            $result = Process::run($command);
-            $retry++;
-        }
-        if ($result->failed()) {
-            logger()->driver('job')->log(
-                'warning',
-                "[V2rayService] Failed to get [$this->server] stats: {$result->errorOutput()}"
-            );
-
+        $result = $this->runWithRetry($command);
+        if (is_null($result)) {
             return [];
         }
 
-        $stat = json_decode($result->output(), true);
+        $stat = json_decode($result, true);
         if (!$stat) {
             return [];
         }
@@ -110,5 +89,36 @@ class V2rayService
         }
 
         return $res;
+    }
+
+    /**
+     * Run a command with retry.
+     *
+     * Executes the given command and retries a specified number of times if it fails.
+     *
+     * @param string $command The command to be executed.
+     * @param int $retry The maximum number of times to retry the command (default: 3).
+     * @return string|null The output of the command if it succeeds, or null if it fails after all retries.
+     */
+    private function runWithRetry($command, $retry = 3)
+    {
+        $result = Process::run($command);
+
+        $retryCount = 0;
+        while ($result->failed() && $retryCount < $retry) {
+            $result = Process::run($command);
+            $retryCount++;
+        }
+
+        if ($result->failed()) {
+            logger()->driver('job')->log(
+                'warning',
+                "[V2rayService] Command [$command] failed: {$result->errorOutput()}"
+            );
+
+            return null;
+        }
+
+        return $result->output();
     }
 }

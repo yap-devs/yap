@@ -46,7 +46,6 @@ class UpdateUserUuid implements ShouldQueue
      * - Generates a new clash profile with the updated VmessServer records.
      * - Updates the user's UUID in the database once again.
      *
-     * @throws \Throwable
      * @see ClashService
      * @see V2rayService
      * @see User
@@ -75,11 +74,10 @@ class UpdateUserUuid implements ShouldQueue
             $servers[] = $vmess_server;
         }
 
-        // update user uuid in database
-        $this->user->update(['uuid' => $new_uuid]);
-
         // unlink old clash profile
         $clash->delConf();
+        // update user uuid in database
+        $this->user->update(['uuid' => $new_uuid]);
         // create new clash profile
         $clash->genConf($servers);
     }
