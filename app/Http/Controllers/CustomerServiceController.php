@@ -20,6 +20,10 @@ class CustomerServiceController extends Controller
         UpdateUserUuid::dispatch($request->user());
 
         $request->user()->decrement('balance', config('yap.reset_subscription_price'));
+        $request->user()->balanceDetails()->create([
+            'amount' => -config('yap.reset_subscription_price'),
+            'description' => 'Subscription URL reset',
+        ]);
 
         return redirect()->route('customer.service')
             ->withErrors([
