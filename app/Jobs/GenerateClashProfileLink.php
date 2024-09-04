@@ -21,7 +21,9 @@ class GenerateClashProfileLink implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct()
+    public function __construct(
+        public ?User $user = null
+    )
     {
         //
     }
@@ -31,41 +33,57 @@ class GenerateClashProfileLink implements ShouldQueue
      */
     public function handle()
     {
-        $users = User::withTrashed()->get();
         $this->vmess_servers = VmessServer::all();
 
+        if (!is_null($this->user)) {
+            $this->processUser($this->user);
+            return;
+        }
+
+        $users = User::withTrashed()->get();
         foreach ($users as $user) {
-            $clash = new ClashService($user);
+            $this->processUser($user);
+        }
+    }
 
-            if ($user->deleted_at || !$user->is_valid) {
-                if (!$clash->confExists()) {
-                    continue;
-                }
+    /**
+     * Processes a user for V2ray and Clash services.
+     *
+     * @param User $user The user entity to be processed
+     * @return void
+     */
+    private function processUser(User $user)
+    {
+        $clash = new ClashService($user);
 
-                $this->log("User $user->email is invalid, removing...", 'warning');
-                $this->removeUser($user);
-                $clash->delConf();
+        if ($user->deleted_at || !$user->is_valid) {
+            if (!$clash->confExists()) {
+                return;
+            }
+
+            $this->log("User $user->email is invalid, removing...", 'warning');
+            $this->removeUser($user);
+            $clash->delConf();
+            return;
+        }
+
+        $this->log("Generating subscription link for user $user->email");
+        $servers = [];
+        /** @var VmessServer $vmess_server */
+        foreach ($this->vmess_servers as $vmess_server) {
+            if ($user->is_low_priority && !$vmess_server->for_low_priority) {
                 continue;
             }
 
-            $this->log("Generating subscription link for user $user->email");
-            $servers = [];
-            /** @var VmessServer $vmess_server */
-            foreach ($this->vmess_servers as $vmess_server) {
-                if ($user->is_low_priority && !$vmess_server->for_low_priority) {
-                    continue;
-                }
+            $v2ray = new V2rayService($vmess_server->internal_server);
+            $res = $v2ray->addUser($user->email, $user->uuid);
+            $this->log("Added user $user->email to V2ray server $vmess_server->internal_server: " . json_encode($res));
 
-                $v2ray = new V2rayService($vmess_server->internal_server);
-                $res = $v2ray->addUser($user->email, $user->uuid);
-                $this->log("Added user $user->email to V2ray server $vmess_server->internal_server: " . json_encode($res));
-
-                $servers[] = $vmess_server;
-            }
-
-            $clash->genConf($servers);
-            $this->log("Generated: " . storage_path("clash-config/$user->uuid.yaml"));
+            $servers[] = $vmess_server;
         }
+
+        $clash->genConf($servers);
+        $this->log("Generated: " . storage_path("clash-config/$user->uuid.yaml"));
     }
 
     /**
