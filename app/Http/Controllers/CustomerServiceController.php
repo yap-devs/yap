@@ -17,6 +17,13 @@ class CustomerServiceController extends Controller
 
     public function resetSubscription(Request $request)
     {
+        if ($request->user()->balance < config('yap.reset_subscription_price')) {
+            return redirect()->route('customer.service')
+                ->withErrors([
+                    'error' => 'Insufficient balance to reset subscription.',
+                ]);
+        }
+
         UpdateUserUuid::dispatch($request->user());
 
         $request->user()->decrement('balance', config('yap.reset_subscription_price'));
@@ -27,7 +34,7 @@ class CustomerServiceController extends Controller
 
         return redirect()->route('customer.service')
             ->withErrors([
-                'message' => 'Subscription reset successfully, please wait for a few minutes for the changes to take effect.',
+                'success' => 'Subscription reset successfully, please wait for a few minutes for the changes to take effect.',
             ]);
     }
 }
