@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Models\RelayServer;
 use App\Models\User;
 use App\Models\VmessServer;
 use App\Services\ClashService;
@@ -17,6 +18,7 @@ class GenerateClashProfileLink implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     private $vmess_servers;
+    private $relay_servers;
 
     /**
      * Create a new job instance.
@@ -34,6 +36,7 @@ class GenerateClashProfileLink implements ShouldQueue
     public function handle()
     {
         $this->vmess_servers = VmessServer::all();
+        $this->relay_servers = RelayServer::all();
 
         if (!is_null($this->user)) {
             $this->processUser($this->user);
@@ -80,6 +83,12 @@ class GenerateClashProfileLink implements ShouldQueue
             $this->log("Added user $user->email to V2ray server $vmess_server->internal_server: " . json_encode($res));
 
             $servers[] = $vmess_server;
+        }
+        foreach ($this->relay_servers as $relay_server) {
+            if ($user->is_low_priority) {
+                continue;
+            }
+            $servers[] = $relay_server;
         }
 
         $clash->genConf($servers);
