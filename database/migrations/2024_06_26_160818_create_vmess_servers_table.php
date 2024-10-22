@@ -14,7 +14,7 @@ return new class extends Migration
         Schema::create('vmess_servers', function (Blueprint $table) {
             $table->id();
             $table->string('name')->comment('The name of the server');
-            $table->string('server')->unique()->comment('The server address for the clash config `server` field');
+            $table->string('server')->comment('The server address for the clash config `server` field');
             $table->unsignedSmallInteger('port')->comment('The port of the server for clash config `port` field');
             $table->unsignedTinyInteger('rate')->default(1)->comment('The rate of the server');
             $table->string('internal_server')->default('')->comment('Internal server address for the v2bridge');
