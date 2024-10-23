@@ -7,6 +7,7 @@ use App\Http\Controllers\CustomerServiceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\FutoonController;
 use App\Http\Controllers\GithubController;
+use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StatController;
@@ -74,4 +75,8 @@ Route::group(['prefix' => 'balance/detail', 'middleware' => ['auth']], function 
 Route::group(['prefix' => 'customer/service', 'middleware' => ['auth']], function () {
     Route::get('/', [CustomerServiceController::class, 'index'])->name('customer.service');
     Route::post('/resetSubscription', [CustomerServiceController::class, 'resetSubscription'])->name('customer.service.resetSubscription');
+});
+
+Route::group(['prefix' => 'package', 'middleware' => ['auth']], function () {
+    Route::get('/', [PackageController::class, 'index'])->name('package');
 });
