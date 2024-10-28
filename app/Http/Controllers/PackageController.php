@@ -44,7 +44,7 @@ class PackageController extends Controller
         $user->save();
 
         $user->balanceDetails()->create([
-            'amount' => $package->price,
+            'amount' => -$package->price,
             'description' => 'Bought package ' . $package->name,
         ]);
 
