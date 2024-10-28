@@ -4,7 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\GenerateClashProfileLink;
 use App\Models\User;
-use App\Models\UserStat;
+use App\Models\UserPackage;
 use App\Models\VmessServer;
 use App\Services\V2rayService;
 use Illuminate\Console\Command;
@@ -72,6 +72,12 @@ class UpdateStatCommand extends Command
                 ]);
             }
 
+            $this->expirePackage($user);
+            while ($user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()) {
+                $user->traffic_unpaid = $this->processPackage($user, $user->traffic_unpaid);
+                $user->save();
+            }
+
             while ($user->traffic_unpaid > 1024 * 1024 * 1024) {
                 $user->balance -= config('yap.unit_price');
                 $user->traffic_unpaid -= 1024 * 1024 * 1024;
@@ -104,6 +110,41 @@ class UpdateStatCommand extends Command
         }
     }
 
+    private function expirePackage(User $user)
+    {
+        $user->packages()
+            ->where('status', UserPackage::STATUS_ACTIVE)
+            ->where('ended_at', '<', now())
+            ->update(['status' => UserPackage::STATUS_EXPIRED]);
+    }
+
+    private function processPackage(User $user, $traffic)
+    {
+        /** @var UserPackage $user_package */
+        $user_package = $user->packages()
+            ->where('status', UserPackage::STATUS_ACTIVE)
+            ->orderBy('ended_at')
+            ->first();
+
+        if (!$user_package) {
+            return $traffic;
+        }
+
+        if ($user_package->remaining_traffic < $traffic) {
+            $traffic -= $user_package->remaining_traffic;
+            $user_package->remaining_traffic = 0;
+            $user_package->status = UserPackage::STATUS_USED;
+            $user_package->save();
+
+            return $traffic;
+        }
+
+        $user_package->remaining_traffic -= $traffic;
+        $user_package->save();
+
+        return 0;
+    }
+
     private function getAllStats()
     {
         $vmess_servers = VmessServer::all();
@@ -131,6 +172,11 @@ class UpdateStatCommand extends Command
 
             // if never used, skip
             if ($user->traffic_unpaid == 0) {
+                continue;
+            }
+
+            // if have active package, skip
+            if ($user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()) {
                 continue;
             }
 

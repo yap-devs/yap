@@ -43,6 +43,11 @@ class PackageController extends Controller
         $user->balance -= $package->price;
         $user->save();
 
+        $user->balanceDetails()->create([
+            'amount' => $package->price,
+            'description' => 'Bought package ' . $package->name,
+        ]);
+
         return redirect()->route('package')->withErrors([
             'success' => 'Package bought successfully.',
         ]);
