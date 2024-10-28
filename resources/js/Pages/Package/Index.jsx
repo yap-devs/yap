@@ -108,7 +108,10 @@ export default function Index({auth, packages, userPackages}) {
                   </td>
                   <td className="px-6 py-4 whitespace-no-wrap text-right text-sm leading-5 font-medium">
                     <div className="text-sm leading-5 text-gray-900">
-                      <SecondaryButton onClick={() => setConfirmingBuy(_package.id)}>
+                      <SecondaryButton
+                        onClick={() => setConfirmingBuy(_package.id)}
+                        className="mt-4 bg-gradient-to-r from-red-500 to-yellow-500 hover:from-yellow-500 hover:to-red-500 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-110"
+                      >
                         Buy
                       </SecondaryButton>
                     </div>

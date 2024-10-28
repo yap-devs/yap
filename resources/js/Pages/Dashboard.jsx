@@ -157,6 +157,12 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
                 >
                   Go to Charge
                 </button>
+                <button
+                  onClick={() => router.get(route('package'))}
+                  className="ml-6 mt-4 bg-gradient-to-r from-red-500 to-yellow-500 hover:from-yellow-500 hover:to-red-500 text-white font-bold py-2 px-4 rounded-full shadow-lg transition duration-300 ease-in-out transform hover:scale-110"
+                >
+                  🚀 Limited Time Offer! Buy More Traffic Now!
+                </button>
               </div>
               <div className="p-4 bg-yellow-50 rounded-lg">
                 <h2 className="text-xl font-semibold">Subscription Information</h2>
