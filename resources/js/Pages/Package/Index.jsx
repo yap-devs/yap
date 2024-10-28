@@ -55,7 +55,10 @@ export default function Index({auth, packages}) {
                     <div className="text-sm leading-5 text-gray-900">{formatBytes(_package.traffic_limit)}</div>
                   </td>
                   <td className="px-6 py-4 whitespace-no-wrap">
-                    <div className="text-sm leading-5 text-gray-900">{formatPrice(_package.price)}</div>
+                    <div className="text-sm leading-5 text-gray-900">
+                      <span className="line-through text-gray-500 mr-1">{formatPrice(_package.original_price)}</span>
+                      <span className="text-green-600 font-bold text-lg">{formatPrice(_package.price)}</span>
+                    </div>
                   </td>
                   <td className="px-6 py-4 whitespace-no-wrap">
                     <div className="text-sm leading-5 text-gray-900">{_package.duration_days}</div>
