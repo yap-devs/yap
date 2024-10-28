@@ -96,4 +96,9 @@ class User extends Authenticatable
     {
         return $this->hasMany(BalanceDetail::class);
     }
+
+    public function packages()
+    {
+        return $this->hasMany(UserPackage::class);
+    }
 }

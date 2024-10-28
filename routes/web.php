@@ -79,4 +79,5 @@ Route::group(['prefix' => 'customer/service', 'middleware' => ['auth']], functio
 
 Route::group(['prefix' => 'package', 'middleware' => ['auth']], function () {
     Route::get('/', [PackageController::class, 'index'])->name('package');
+    Route::post('/{package}/buy', [PackageController::class, 'buy'])->name('package.buy');
 });
