@@ -32,7 +32,7 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
     const val = e.target.value;
 
     if (val === '') return setFunc(val);
-    if (val < 5) return;
+    if (val < 2) return;
     if (!/^\d+$/.test(val)) return;
 
     setFunc(val);
