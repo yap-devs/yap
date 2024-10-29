@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -16,8 +17,12 @@ class Package extends Model
 
     protected $appends = ['original_price'];
 
-    public function getOriginalPriceAttribute()
+    protected function originalPrice(): Attribute
     {
-        return $this->traffic_limit / 1024 / 1024 / 1024 * config('yap.unit_price');
+        return Attribute::make(
+            get: function (mixed $value, array $attributes) {
+                return $attributes['traffic_limit'] / 1024 / 1024 / 1024 * config('yap.unit_price');
+            }
+        );
     }
 }

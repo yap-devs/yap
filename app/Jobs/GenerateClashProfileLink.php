@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\User;
+use App\Models\UserPackage;
 use App\Models\VmessServer;
 use App\Services\ClashService;
 use App\Services\V2rayService;
@@ -56,7 +57,12 @@ class GenerateClashProfileLink implements ShouldQueue
     {
         $clash = new ClashService($user);
 
-        if ($user->deleted_at || !$user->is_valid) {
+        if (
+            // user deleted
+            $user->deleted_at
+            // or user is not valid and no active packages
+            || (!$user->is_valid && $user->packages()->where('status', UserPackage::STATUS_ACTIVE)->doesntExist())
+        ) {
             if (!$clash->confExists()) {
                 return;
             }
