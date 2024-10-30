@@ -73,7 +73,10 @@ class UpdateStatCommand extends Command
             }
 
             $this->expirePackage($user);
-            while ($user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()) {
+            while (
+                $user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()
+                && $user->traffic_unpaid > 0
+            ) {
                 $user->traffic_unpaid = $this->processPackage($user, $user->traffic_unpaid);
                 $user->save();
             }
