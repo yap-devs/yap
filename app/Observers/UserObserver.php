@@ -11,8 +11,8 @@ class UserObserver
      */
     public function updating(User $user): void
     {
-        // if balance updated, update last_settled_at
-        if ($user->isDirty('balance')) {
+        // if balance decreased, update last_settled_at
+        if ($user->isDirty('balance') && $user->balance < $user->getOriginal('balance')) {
             $user->last_settled_at = now();
         }
     }
