@@ -63,7 +63,15 @@ readonly class ClashService
             ]
         ];
 
-        yaml_emit_file(storage_path("clash-config/{$this->user->uuid}.yaml"), $template);
+        $path = storage_path("clash-config/{$this->user->uuid}.yaml");
+        yaml_emit_file($path, $template);
+        if (file_exists(app_path('ClashYamlCustomizer.php'))) {
+            $customizer = require app_path('ClashYamlCustomizer.php');
+
+            if (is_callable($customizer)) {
+                $customizer($path);
+            }
+        }
     }
 
     public function delConf()
