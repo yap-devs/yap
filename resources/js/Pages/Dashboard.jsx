@@ -1,9 +1,9 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import {Head, router} from '@inertiajs/react';
+import {Head, Link, router} from '@inertiajs/react';
 import {useState} from "react";
 import {formatBytes} from "@/Utils/formatBytes";
 
-export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
+export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraffic}) {
   const [copyButton, setCopyButton] = useState('Copy URL');
   const copyToClipboard = async text => {
     try {
@@ -80,27 +80,6 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
   }
 
   const totalTraffic = formatBytes(auth.user.traffic_downlink + auth.user.traffic_uplink);
-  const renderTrafficUnpaid = () => {
-    const sharedElements = (
-      <>⚠️ Pending traffic: <strong>{formatBytes(auth.user.traffic_unpaid)}</strong>.</>
-    );
-
-    if (auth.user.traffic_unpaid === 0) {
-      return (
-        <>
-          {sharedElements} &nbsp;
-          No pending traffic, how dare you.
-        </>
-      );
-    }
-
-    return (
-      <>
-        {sharedElements} &nbsp;
-        It will be settled soon.
-      </>
-    );
-  };
 
   const renderServers = () => {
     if (servers.length === 0) {
@@ -149,7 +128,12 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers}) {
               <div className="p-4 bg-blue-50 rounded-lg">
                 <h2 className="text-xl font-semibold">Your details</h2>
                 <p className="mt-2"><strong>Total Data used:</strong> {totalTraffic}</p>
-                <p className="mt-2">{renderTrafficUnpaid()}</p>
+                <p className="mt-2">
+                  <strong>Today's Data Usage:</strong> {formatBytes(todayTraffic)}
+                </p>
+                <p className="mt-2 text-blue-500 font-bold">
+                  View historical data usage in <Link href={route('stat')} className="underline">Statistics</Link>.
+                </p>
                 <p className="mt-2"><strong>Rate:</strong> ${unitPrice} per GB by default.</p>
                 <p className="mt-2">
                   <strong>Please consider purchasing traffic packages to get better rates.</strong>
