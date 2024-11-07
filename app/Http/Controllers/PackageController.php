@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Package;
 use App\Models\User;
 use App\Models\UserPackage;
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -30,11 +31,21 @@ class PackageController extends Controller
             ]);
         }
 
+        $started_at = now();
+        if ($user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()) {
+            $started_at = $user->packages()
+                ->where('status', UserPackage::STATUS_ACTIVE)
+                ->orderBy('ended_at', 'desc')
+                ->first()
+                ->ended_at;
+            $started_at = CarbonImmutable::parse($started_at);
+        }
+
         $user_package = new UserPackage([
             'remaining_traffic' => $package->traffic_limit,
             'status' => UserPackage::STATUS_ACTIVE,
-            'started_at' => now(),
-            'ended_at' => now()->addDays($package->duration_days),
+            'started_at' => $started_at,
+            'ended_at' => $started_at->addDays($package->duration_days),
         ]);
         $user_package->package()->associate($package);
         $user_package->user()->associate($user);
