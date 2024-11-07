@@ -178,8 +178,9 @@ export default function Index({auth, packages, userPackages}) {
       <Modal show={confirmingBuy} onClose={() => setConfirmingBuy(false)}>
         <form className="p-6" onSubmit={handleSubmit}>
           <h2 className="text-lg font-medium text-gray-900">Are you sure you want to buy this package?</h2>
-          <p className="mt-1 text-sm text-gray-600">Buying this package will cost you
-            ${packages.find(p => p.id === confirmingBuy)?.price}.</p>
+          <p className="mt-1 text-sm text-gray-600">
+            Buying this package will directly deduct ${packages.find(p => p.id === confirmingBuy)?.price} from your balance.
+          </p>
           <div className="mt-6 flex justify-end">
             <SecondaryButton onClick={() => setConfirmingBuy(false)}>Cancel</SecondaryButton>
             <PrimaryButton className="ms-3">Buy</PrimaryButton>
