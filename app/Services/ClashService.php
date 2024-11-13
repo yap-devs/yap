@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\RelayServer;
 use App\Models\User;
 use App\Models\VmessServer;
 use Illuminate\Support\Facades\File;
@@ -27,15 +28,30 @@ readonly class ClashService
         foreach ($vmess_servers as $vmess_server) {
             $name = "[{$vmess_server->rate}x]$vmess_server->name";
 
-            $proxies[] = [
-                'name' => $name,
-                'type' => 'vmess',
-                'server' => $vmess_server->server,
-                'port' => $vmess_server->port,
-                'uuid' => $this->user->uuid,
-                'alterId' => 0,
-                'cipher' => 'auto',
-            ];
+            if (empty($vmess_server->server) && $vmess_server->relays->isNotEmpty()) {
+                /** @var RelayServer $relay */
+                foreach ($vmess_server->relays as $relay) {
+                    $proxies[] = [
+                        'name' => "[$relay->name]$name",
+                        'type' => 'vmess',
+                        'server' => $relay->server,
+                        'port' => $vmess_server->port,
+                        'uuid' => $this->user->uuid,
+                        'alterId' => 0,
+                        'cipher' => 'auto',
+                    ];
+                }
+            } else {
+                $proxies[] = [
+                    'name' => $name,
+                    'type' => 'vmess',
+                    'server' => $vmess_server->server,
+                    'port' => $vmess_server->port,
+                    'uuid' => $this->user->uuid,
+                    'alterId' => 0,
+                    'cipher' => 'auto',
+                ];
+            }
         }
 
         $template['proxies'] = $proxies;

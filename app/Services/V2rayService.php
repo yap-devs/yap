@@ -10,10 +10,10 @@ class V2rayService
     private string $prefix;
 
     public function __construct(
-        private readonly string $server
+        private readonly string $internal_server
     )
     {
-        $this->prefix = config('v2ray.v2bridge.path') . ' handler -s ' . $this->server;
+        $this->prefix = config('v2ray.v2bridge.path') . ' handler -s ' . $this->internal_server;
     }
 
     /**
@@ -56,7 +56,7 @@ class V2rayService
      */
     public function stats($email = null, $reset = false)
     {
-        $command = config('v2ray.v2ray.path') . ' api stats -t 10 -s ' . $this->server . ' -json';
+        $command = config('v2ray.v2ray.path') . ' api stats -t 10 -s ' . $this->internal_server . ' -json';
 
         if ($reset) {
             $command .= ' -reset';

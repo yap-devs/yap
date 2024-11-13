@@ -21,4 +21,9 @@ class VmessServer extends Model
     {
         return $this->hasMany(UserStat::class);
     }
+
+    public function relays()
+    {
+        return $this->hasMany(RelayServer::class);
+    }
 }
