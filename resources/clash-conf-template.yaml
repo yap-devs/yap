@@ -15,6 +15,8 @@ hosts:
   'alpha.clash.dev': '::1'
 
 rules:
+  - DOMAIN-SUFFIX,linkedin.com,Proxy
+
   #EMAIL port
   - DST-PORT,25,DIRECT
   - DST-PORT,26,DIRECT
@@ -379,6 +381,14 @@ rules:
   - DOMAIN-SUFFIX,alitrip.com,DIRECT
   - DOMAIN-SUFFIX,feizhu.com,DIRECT
   - DOMAIN-SUFFIX,fliggy.com,DIRECT
+
+  # DNS
+  - DOMAIN,dns.google,Proxy
+  - IP-CIDR,1.1.1.1/32,Proxy,no-resolve
+  - IP-CIDR,1.0.0.1/32,Proxy,no-resolve
+  - IP-CIDR,8.8.8.8/32,Proxy,no-resolve
+  - IP-CIDR,119.29.29.29/32,DIRECT,no-resolve
+  - IP-CIDR,114.114.114.114/32,DIRECT,no-resolve
 
   # LAN
   - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
