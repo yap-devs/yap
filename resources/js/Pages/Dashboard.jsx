@@ -134,7 +134,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
                 <p className="mt-2 text-blue-500 font-bold">
                   View historical data usage in <Link href={route('stat')} className="underline">Statistics</Link>.
                 </p>
-                <p className="mt-2"><strong>Rate:</strong> ${unitPrice} per GB by default.</p>
+                <p className="mt-2"><strong>Rate:</strong> ${unitPrice} per GB by default, Pay as you go.</p>
                 <p className="mt-2">
                   <strong>Please consider purchasing traffic packages to get better rates.</strong>
                 </p>
