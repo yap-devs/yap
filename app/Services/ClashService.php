@@ -31,6 +31,10 @@ readonly class ClashService
             if (empty($vmess_server->server) && $vmess_server->relays->isNotEmpty()) {
                 /** @var RelayServer $relay */
                 foreach ($vmess_server->relays as $relay) {
+                    if (!$relay->enabled) {
+                        continue;
+                    }
+
                     $proxies[] = [
                         'name' => "[$relay->name]$name",
                         'type' => 'vmess',

@@ -8,4 +8,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 class RelayServer extends Model
 {
     use SoftDeletes;
+
+    protected $casts = [
+        'enabled' => 'boolean',
+    ];
 }
