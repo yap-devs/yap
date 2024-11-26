@@ -31,7 +31,7 @@ class PackageController extends Controller
             ]);
         }
 
-        $started_at = now();
+        $started_at = CarbonImmutable::now();
         if ($user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()) {
             $started_at = $user->packages()
                 ->where('status', UserPackage::STATUS_ACTIVE)
