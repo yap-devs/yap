@@ -39,7 +39,7 @@ readonly class ClashService
                         'name' => "[$relay->name]$name",
                         'type' => 'vmess',
                         'server' => $relay->server,
-                        'port' => $vmess_server->port,
+                        'port' => $relay->port ?: $vmess_server->port,
                         'uuid' => $this->user->uuid,
                         'alterId' => 0,
                         'cipher' => 'auto',

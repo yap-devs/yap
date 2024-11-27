@@ -16,6 +16,7 @@ return new class extends Migration
             $table->unsignedBigInteger('vmess_server_id');
             $table->string('name');
             $table->string('server');
+            $table->unsignedSmallInteger('port')->default(0);
             $table->unsignedTinyInteger('enabled')->default(1);
             $table->timestamps();
             $table->softDeletes();
