@@ -26,3 +26,15 @@ from user_stats
 where date_format(user_stats.created_at, '%Y-%m-%d') = '2024-11-26'
 group by user_id, day
 order by daily_traffic_gb desc;
+
+-- user active package report
+select user_packages.id,
+       users.name,
+       packages.name,
+       user_packages.ended_at,
+       round(user_packages.remaining_traffic / 1024 / 1024 / 1024, 2) as remaining_gb,
+       round(packages.traffic_limit / 1024 / 1024 / 1024, 2) as total_gb
+from users
+         inner join user_packages on users.id = user_packages.user_id
+         inner join packages on user_packages.package_id = packages.id
+where user_packages.status = 'active' and users.id > 5;
