@@ -26,8 +26,6 @@ readonly class ClashService
         $proxies = [];
         /** @var VmessServer $vmess_server */
         foreach ($vmess_servers as $vmess_server) {
-            $name = "[{$vmess_server->rate}x]$vmess_server->name";
-
             if (empty($vmess_server->server) && $vmess_server->relays->isNotEmpty()) {
                 /** @var RelayServer $relay */
                 foreach ($vmess_server->relays as $relay) {
@@ -36,7 +34,7 @@ readonly class ClashService
                     }
 
                     $proxies[] = [
-                        'name' => "[$relay->name]$name",
+                        'name' => "$vmess_server->name[$relay->name][{$vmess_server->rate}x]",
                         'type' => 'vmess',
                         'server' => $relay->server,
                         'port' => $relay->port ?: $vmess_server->port,
@@ -47,7 +45,7 @@ readonly class ClashService
                 }
             } else {
                 $proxies[] = [
-                    'name' => $name,
+                    'name' => "$vmess_server->name[{$vmess_server->rate}x]",
                     'type' => 'vmess',
                     'server' => $vmess_server->server,
                     'port' => $vmess_server->port,
