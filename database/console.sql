@@ -35,7 +35,7 @@ from user_stats
 where date_format(user_stats.created_at, '%Y-%m-%d') = date_format(now(), '%Y-%m-%d')
    or date_format(user_stats.created_at, '%Y-%m-%d') = date_format(date_sub(now(), interval 1 day), '%Y-%m-%d')
 group by user_id, day
-order by day, daily_traffic_gb desc;
+order by day desc, daily_traffic_gb desc;
 
 -- user active package report
 select user_packages.id,
