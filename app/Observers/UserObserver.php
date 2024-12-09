@@ -16,7 +16,7 @@ class UserObserver
         if ($user->isDirty('balance') && $user->balance < $user->getOriginal('balance')) {
             $user->last_settled_at = now();
 
-            if ($user->balance < config('yap.balance_reminder_threshold')) {
+            if ($user->balance < config('yap.balance_reminder_threshold') && now()->hour === 9) {
                 $user->notify(new BalanceReminder($user));
             }
         }
