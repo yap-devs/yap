@@ -150,20 +150,25 @@ export default function Index({auth, packages, userPackages}) {
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                   {userPackages.map((userPackage) => (
-                    <tr key={userPackage.id}>
+                    <tr
+                      key={userPackage.id}
+                      className={
+                        userPackage.status === "expired" ? "text-gray-500 line-through" : "text-gray-900"
+                      }
+                    >
                       <td className="px-6 py-4 whitespace-no-wrap">
-                        <div className="text-sm leading-5 text-gray-900">{userPackage.package.name}</div>
+                        <div>{userPackage.package.name}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-no-wrap">
-                        <div className="text-sm leading-5 text-gray-900">
+                        <div>
                           {formatBytes(userPackage.remaining_traffic)}/{formatBytes(userPackage.package.traffic_limit)}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-no-wrap">
-                        <div className="text-sm leading-5 text-gray-900">{userPackage.status}</div>
+                        <div>{userPackage.status}</div>
                       </td>
                       <td className="px-6 py-4 whitespace-no-wrap">
-                        <div className="text-sm leading-5 text-gray-900">{userPackage.ended_at}</div>
+                        <div>{userPackage.ended_at}</div>
                       </td>
                     </tr>
                   ))}

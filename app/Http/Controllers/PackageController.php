@@ -15,7 +15,9 @@ class PackageController extends Controller
     {
         $packages = Package::where('status', Package::STATUS_ACTIVE)->get();
 
-        $userPackages = UserPackage::where('user_id', $request->user()->id)->get();
+        $userPackages = UserPackage::where('user_id', $request->user()->id)
+            ->latest()
+            ->get();
 
         return Inertia::render('Package/Index', compact('packages', 'userPackages'));
     }
