@@ -49,6 +49,19 @@ export default function Index({auth, resetSubscriptionPrice}) {
 
         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
           <div className="p-6 text-gray-900">
+            {/* Telegram section */}
+            <div className="pl-6 pb-6 pt-8 mb-6 rounded shadow-lg bg-gradient-to-r from-blue-50 via-blue-100 to-blue-200 border border-blue-300">
+              <h2 className="text-2xl font-bold text-blue-700 flex items-center">
+                <span className="mr-2">📢</span> Telegram
+              </h2>
+              <p className="text-base text-gray-700 mt-2">
+                Join our Telegram channel to get the latest updates and support!
+              </p>
+              <div className="mt-4 text-lg font-semibold text-blue-600 hover:underline">
+                🔗 <a href="https://t.me/yap_devs" target="_blank" rel="noreferrer noopener">@yap_devs</a>
+              </div>
+            </div>
+
             {/*Client Download section */}
             <div className="text-gray-900 pl-6 pb-6 pt-8 rounded shadow mb-6 bg-blue-50">
               <h2 className="text-lg font-semibold text-gray-800">Client Download</h2>
@@ -64,20 +77,6 @@ export default function Index({auth, resetSubscriptionPrice}) {
                    rel="noreferrer noopener">
                   For Android
                 </a>
-              </div>
-            </div>
-
-            {/*Customer Service section */}
-            <div className="text-gray-900 pl-6 pb-6 pt-8 rounded shadow mb-6 bg-blue-50">
-              <h2 className="text-lg font-semibold text-gray-800">Customer Service</h2>
-              <p className="text-sm text-gray-700 mt-2">
-                If you have any questions or concerns, please feel free to contact us.
-              </p>
-              <p className="text-sm text-gray-700">
-                We will respond to your inquiries as soon as possible.
-              </p>
-              <div className="mt-2 space-x-4">
-                Telegram: <a href="https://t.me/yap_devs" target="_blank" rel="noreferrer noopener">@yap_devs</a>
               </div>
             </div>
 
