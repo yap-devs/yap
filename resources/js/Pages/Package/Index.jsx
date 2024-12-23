@@ -153,7 +153,7 @@ export default function Index({auth, packages, userPackages}) {
                     <tr
                       key={userPackage.id}
                       className={
-                        userPackage.status === "expired" ? "text-gray-500 line-through" : "text-gray-900"
+                        userPackage.status !== "active" ? "text-gray-500 line-through" : "text-gray-900"
                       }
                     >
                       <td className="px-6 py-4 whitespace-no-wrap">
