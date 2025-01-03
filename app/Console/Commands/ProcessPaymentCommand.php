@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\Payment;
 use Illuminate\Console\Command;
+use Yansongda\LaravelPay\Facades\Pay;
 
 class ProcessPaymentCommand extends Command
 {
@@ -40,6 +41,28 @@ class ProcessPaymentCommand extends Command
     {
         if ($payment->status !== Payment::STATUS_CREATED) {
             return false;
+        }
+
+        $result = Pay::alipay()->query([
+            'out_trade_no' => $payment->remote_id,
+        ]);
+
+        if ($result->get('trade_status') === 'TRADE_SUCCESS') {
+            logger()->info('Alipay payment success by query: ' . $payment->remote_id);
+            $payment->status = Payment::STATUS_PAID;
+            $payload = $payment->payload;
+            $payload[Payment::STATUS_PAID] = $result->toArray();
+            $payment->payload = $payload;
+            $payment->save();
+
+            $payment->user->increment('balance', $payment->amount);
+
+            $payment->user->balanceDetails()->create([
+                'amount' => $payment->amount,
+                'description' => 'Alipay payment',
+            ]);
+
+            return true;
         }
 
         if ($payment->created_at->diffInHours(now()) > 1) {
