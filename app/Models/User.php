@@ -66,6 +66,8 @@ class User extends Authenticatable
             get: function (mixed $value, array $attributes) {
                 // if you have balance, of course you can use the service
                 return $attributes['balance'] > 0
+                    // or if you have any active packages, you can also use the service
+                    || $this->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()
                     // or you have a github account created N years ago, N - 3 > abs(balance)
                     // e.g. balance = -1, github_created_at = 2019-01-01, now = 2024-01-01, then 2024 - 2019 - 3 = 2 > 1, so it's also valid
                     || Carbon::parse($attributes['github_created_at'])->diffInYears(now()) - 3 > abs($attributes['balance']);
