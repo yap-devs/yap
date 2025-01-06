@@ -9,6 +9,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.2",
+        "ext-bcmath": "*",
         "ext-yaml": "*",
         "inertiajs/inertia-laravel": "^1.0",
         "laravel/framework": "^11.9",
@@ -17,9 +18,9 @@
         "laravel/telescope": "^5.1",
         "laravel/tinker": "^2.9",
         "sentry/sentry-laravel": "^4.6",
+        "spatie/ssh": "^1.13",
         "tightenco/ziggy": "^2.0",
-        "yansongda/laravel-pay": "~3.7.0",
-        "ext-bcmath": "*"
+        "yansongda/laravel-pay": "~3.7.0"
     },
     "require-dev": {
         "barryvdh/laravel-ide-helper": "^3.0",

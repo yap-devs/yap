@@ -14,4 +14,6 @@ return [
     ],
     'reset_subscription_price' => env('YAP_RESET_SUBSCRIPTION_PRICE', 0.5),
     'balance_reminder_threshold' => env('YAP_BALANCE_REMINDER_THRESHOLD', 0.8),
+    'ssh_user' => env('YAP_SSH_USER', 'root'),
+    'ssh_private_key_path' => env('YAP_SSH_PRIVATE_KEY_PATH', '/root/.ssh/id_ed25519'),
 ];
