@@ -12,4 +12,9 @@ class RelayServer extends Model
     protected $casts = [
         'enabled' => 'boolean',
     ];
+
+    public function vmessServer()
+    {
+        return $this->belongsTo(VmessServer::class);
+    }
 }

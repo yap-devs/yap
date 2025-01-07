@@ -25,11 +25,6 @@ class UserStat extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function server()
-    {
-        return $this->belongsTo(VmessServer::class);
-    }
-
     protected function date(): Attribute
     {
         return Attribute::make(
