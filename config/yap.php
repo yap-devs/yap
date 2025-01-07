@@ -16,4 +16,5 @@ return [
     'balance_reminder_threshold' => env('YAP_BALANCE_REMINDER_THRESHOLD', 0.8),
     'ssh_user' => env('YAP_SSH_USER', 'root'),
     'ssh_private_key_path' => env('YAP_SSH_PRIVATE_KEY_PATH', '/root/.ssh/id_ed25519'),
+    'admin_panel_path' => env('YAP_ADMIN_PANEL_PATH', 'admin'),
 ];
