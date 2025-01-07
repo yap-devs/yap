@@ -66,7 +66,6 @@ class GenerateClashProfileLink implements ShouldQueue
             return [$user, []];
         }
 
-        $this->log("Generating subscription link for user $user->email");
         $servers = [];
         /** @var VmessServer $vmess_server */
         foreach ($this->vmess_servers as $vmess_server) {
@@ -78,7 +77,6 @@ class GenerateClashProfileLink implements ShouldQueue
         }
 
         $clash->genConf($servers);
-        $this->log("Generated: " . storage_path("clash-config/$user->uuid.yaml"));
         return [$user, $servers];
     }
 
@@ -106,11 +104,5 @@ class GenerateClashProfileLink implements ShouldQueue
             $v2ray = new V2rayService($internal_server);
             $v2ray->addOrRemoveUsers($users);
         }
-    }
-
-    private function log($message, $level = 'info')
-    {
-        $message = '[GenerateClashProfileLink] ' . $message;
-        logger()->driver('job')->log($level, $message);
     }
 }
