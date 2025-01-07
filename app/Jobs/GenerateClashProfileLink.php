@@ -22,9 +22,7 @@ class GenerateClashProfileLink implements ShouldQueue
     /**
      * Create a new job instance.
      */
-    public function __construct(
-        public ?User $user = null
-    )
+    public function __construct()
     {
         //
     }
@@ -36,24 +34,21 @@ class GenerateClashProfileLink implements ShouldQueue
     {
         $this->vmess_servers = VmessServer::all();
 
-        if (!is_null($this->user)) {
-            $this->processUser($this->user);
-            return;
-        }
-
+        $result = [];
         $users = User::withTrashed()->get();
         foreach ($users as $user) {
-            $this->processUser($user);
+            $result[] = $this->preProcessUser($user);
         }
+        $this->processV2Ray($result);
     }
 
     /**
      * Processes a user for V2ray and Clash services.
      *
      * @param User $user The user entity to be processed
-     * @return void
+     * @return array [$user, array] [$user, servers belonging to the user]
      */
-    private function processUser(User $user)
+    private function preProcessUser(User $user): array
     {
         $clash = new ClashService($user);
 
@@ -64,13 +59,11 @@ class GenerateClashProfileLink implements ShouldQueue
             || (!$user->is_valid && $user->packages()->where('status', UserPackage::STATUS_ACTIVE)->doesntExist())
         ) {
             if (!$clash->confExists()) {
-                return;
+                return [$user, []];
             }
 
-            $this->log("User $user->email is invalid, removing...", 'warning');
-            $this->removeUser($user);
             $clash->delConf();
-            return;
+            return [$user, []];
         }
 
         $this->log("Generating subscription link for user $user->email");
@@ -81,30 +74,37 @@ class GenerateClashProfileLink implements ShouldQueue
                 continue;
             }
 
-            $v2ray = new V2rayService($vmess_server->internal_server);
-            $res = $v2ray->addUser($user->email, $user->uuid);
-            $this->log("Added user $user->email to V2ray server $vmess_server->internal_server: " . json_encode($res));
-
             $servers[] = $vmess_server;
         }
 
         $clash->genConf($servers);
         $this->log("Generated: " . storage_path("clash-config/$user->uuid.yaml"));
+        return [$user, $servers];
     }
 
-    /**
-     * Removes a user from all V2ray servers.
-     *
-     * @param User $user The user entity to be removed
-     * @return void
-     */
-    private function removeUser(User $user)
+    private function processV2Ray(array $result)
     {
-        /** @var VmessServer $vmess_server */
-        foreach ($this->vmess_servers as $vmess_server) {
-            $v2ray = new V2rayService($vmess_server->internal_server);
-            $res = $v2ray->removeUser($user->email);
-            $this->log("Removed user $user->email from V2ray server $vmess_server->internal_server: " . json_encode($res));
+        // ['internal_server' => $users]
+        $server_user_map = [];
+        foreach ($result as $item) {
+            /** @var User $user */
+            /** @var VmessServer $servers */
+            [$user, $servers] = $item;
+            if (empty($servers)) {
+                continue;
+            }
+
+            foreach ($servers as $server) {
+                $server_user_map[$server->internal_server][] = [
+                    'id' => $user->uuid,
+                    'email' => $user->email,
+                ];
+            }
+        }
+
+        foreach ($server_user_map as $internal_server => $users) {
+            $v2ray = new V2rayService($internal_server);
+            $v2ray->addOrRemoveUsers($users);
         }
     }
 

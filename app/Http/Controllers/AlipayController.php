@@ -57,7 +57,7 @@ class AlipayController extends Controller
             'description' => 'Alipay payment',
         ]);
 
-        GenerateClashProfileLink::dispatch($payment->user);
+        GenerateClashProfileLink::dispatch();
 
         return Pay::alipay()->success();
     }

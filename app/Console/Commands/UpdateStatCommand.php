@@ -156,7 +156,7 @@ class UpdateStatCommand extends Command
         /** @var VmessServer $vmess_server */
         foreach ($vmess_servers as $vmess_server) {
             $v2ray = new V2rayService($vmess_server->internal_server);
-            $stats[$vmess_server->id] = $v2ray->stats(reset: true);
+            $stats[$vmess_server->id] = $v2ray->getStats(reset: true);
         }
 
         return $stats;

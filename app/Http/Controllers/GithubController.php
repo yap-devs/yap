@@ -33,7 +33,7 @@ class GithubController extends Controller
             'github_created_at' => $user->user['created_at'],
         ]);
 
-        GenerateClashProfileLink::dispatch($request->user());
+        GenerateClashProfileLink::dispatch();
 
         return redirect()->route('profile.edit');
     }
@@ -74,7 +74,7 @@ class GithubController extends Controller
             'description' => 'GitHub sponsor',
         ]);
 
-        GenerateClashProfileLink::dispatch($user);
+        GenerateClashProfileLink::dispatch();
 
         return response()->json(['message' => 'ok']);
     }
