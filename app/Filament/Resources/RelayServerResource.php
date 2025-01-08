@@ -52,7 +52,7 @@ class RelayServerResource extends Resource
                     ->searchable(),
                 Tables\Columns\TextColumn::make('server')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('port')->numeric(thousandsSeparator: null),
+                Tables\Columns\TextColumn::make('port')->numeric(thousandsSeparator: false),
                 Tables\Columns\ToggleColumn::make('enabled'),
                 Tables\Columns\TextColumn::make('created_at')
                     ->dateTime()

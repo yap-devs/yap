@@ -36,7 +36,7 @@ class UpdateStatCommand extends Command
     public function handle()
     {
         $users = User::all();
-        $vmess_servers = VmessServer::all();
+        $vmess_servers = VmessServer::where('enabled', true)->get();
         $all_stats = $this->getAllStats();
 
         /** @var User $user */
@@ -150,7 +150,7 @@ class UpdateStatCommand extends Command
 
     private function getAllStats()
     {
-        $vmess_servers = VmessServer::all();
+        $vmess_servers = VmessServer::where('enabled', true)->get();
         $stats = [];
 
         /** @var VmessServer $vmess_server */

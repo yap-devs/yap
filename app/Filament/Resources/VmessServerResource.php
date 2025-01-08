@@ -27,7 +27,6 @@ class VmessServerResource extends Resource
                     ->required()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('server')
-                    ->required()
                     ->maxLength(255),
                 Forms\Components\TextInput::make('port')
                     ->required()
@@ -40,14 +39,10 @@ class VmessServerResource extends Resource
                     ->required()
                     ->maxLength(255)
                     ->default(''),
-                Forms\Components\TextInput::make('enabled')
-                    ->required()
-                    ->numeric()
-                    ->default(1),
-                Forms\Components\TextInput::make('for_low_priority')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
+                Forms\Components\Toggle::make('enabled')
+                    ->required(),
+                Forms\Components\Toggle::make('for_low_priority')
+                    ->required(),
             ]);
     }
 
@@ -61,7 +56,7 @@ class VmessServerResource extends Resource
                 Tables\Columns\TextColumn::make('server')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('port')
-                    ->numeric(thousandsSeparator: null)
+                    ->numeric(thousandsSeparator: false)
                     ->sortable(),
                 Tables\Columns\TextColumn::make('rate')
                     ->numeric()

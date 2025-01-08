@@ -32,7 +32,7 @@ class GenerateClashProfileLink implements ShouldQueue
      */
     public function handle()
     {
-        $this->vmess_servers = VmessServer::all();
+        $this->vmess_servers = VmessServer::where('enabled', true)->get();
 
         $result = [];
         $users = User::withTrashed()->get();

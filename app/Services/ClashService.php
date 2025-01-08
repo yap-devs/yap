@@ -21,7 +21,7 @@ readonly class ClashService
     public function genConf($vmess_servers = null)
     {
         $template = yaml_parse_file(resource_path('clash-conf-template.yaml'));
-        $vmess_servers = $vmess_servers ?: VmessServer::all();
+        $vmess_servers = $vmess_servers ?: VmessServer::where('enabled', true)->get();
 
         $proxies = [];
         /** @var VmessServer $vmess_server */
