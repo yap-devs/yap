@@ -55,6 +55,7 @@ class VmessServerResource extends Resource
     {
         return $table
             ->columns([
+                Tables\Columns\TextColumn::make('relays_count')->counts('relays'),
                 Tables\Columns\TextColumn::make('name')
                     ->searchable(),
                 Tables\Columns\TextColumn::make('server')
