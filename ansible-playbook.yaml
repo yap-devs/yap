@@ -1,0 +1,50 @@
+---
+- name: Setup Yap Slave Node
+  hosts: yap
+  become: true
+  tasks:
+    - name: apt update
+      apt:
+        update_cache: yes
+    - name: apt upgrade
+      apt:
+        upgrade: dist
+    - name: apt install
+      ansible.builtin.apt:
+        pkg:
+          - git
+          - vim
+          - curl
+          - wget
+          - htop
+          - tree
+          - unzip
+          - zip
+          - net-tools
+          - jq
+          - zsh
+          - tmux
+          - nethogs
+    - name: ohmyzsh
+      shell: rm -rf ~/.oh-my-zsh && sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended && chsh -s $(which zsh)
+    - name: vimrc
+      shell: rm -rf ~/.vim_runtime && git clone --depth=1 https://github.com/amix/vimrc.git ~/.vim_runtime && sh ~/.vim_runtime/install_awesome_vimrc.sh
+    - name: tailscale
+      shell: curl -fsSL https://tailscale.com/install.sh | sh
+    - name: Download v2ray installer
+      get_url:
+        url: https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh
+        dest: /tmp/install-release.sh
+        mode: 0755
+        force: true
+    - name: Execute the v2ray installer
+      command: "/tmp/install-release.sh"
+    - name: Remove the v2ray installer
+      file:
+        path: /tmp/install-release.sh
+        state: absent
+    - name: Enable v2ray service
+      service:
+        name: v2ray
+        state: started
+        enabled: true
