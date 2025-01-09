@@ -37,9 +37,10 @@ where date_format(user_stats.created_at, '%Y-%m-%d') = date_format(now(), '%Y-%m
 group by user_id, day
 order by day desc, daily_traffic_gb desc;
 
--- user active package report
+-- user package report
 select user_packages.id,
        users.name,
+       user_packages.status,
        packages.name,
        user_packages.ended_at,
        round(user_packages.remaining_traffic / 1024 / 1024 / 1024, 2) as remaining_gb,
@@ -47,5 +48,4 @@ select user_packages.id,
 from users
          inner join user_packages on users.id = user_packages.user_id
          inner join packages on user_packages.package_id = packages.id
-where user_packages.status = 'active'
-  and users.id > 5;
+where users.id > 5;
