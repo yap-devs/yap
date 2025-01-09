@@ -40,7 +40,7 @@ class V2rayService
 
         // 2. compare with given users
         $current_users = $current_config->inbounds[0]->settings->clients ?? [];
-        if ($current_users === $users) {
+        if (array_column($current_users, 'id') == array_column($users, 'id')) {
             logger()->driver('job')->log(
                 'info',
                 "[V2rayService] No need to update V2ray users: $this->internal_server"
