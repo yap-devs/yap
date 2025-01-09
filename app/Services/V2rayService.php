@@ -41,6 +41,10 @@ class V2rayService
         // 2. compare with given users
         $current_users = $current_config->inbounds[0]->settings->clients ?? [];
         if ($current_users === $users) {
+            logger()->driver('job')->log(
+                'info',
+                "[V2rayService] No need to update V2ray users: $this->internal_server"
+            );
             return;
         }
 
@@ -48,6 +52,10 @@ class V2rayService
         $current_config->inbounds[0]->settings->clients = $users;
         $this->ssh->execute('echo \'' . json_encode($current_config) . '\' > /usr/local/etc/v2ray/config.json');
         $this->ssh->execute('systemctl restart v2ray');
+        logger()->driver('job')->log(
+            'info',
+            "[V2rayService] Updated V2ray users: $this->internal_server"
+        );
     }
 
     public function getStats($reset = false)
