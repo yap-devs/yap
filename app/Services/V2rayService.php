@@ -50,6 +50,8 @@ class V2rayService
 
         // 3. write back to json conf
         $current_config->inbounds[0]->settings->clients = $users;
+        // backup first
+        $this->ssh->execute('cp /usr/local/etc/v2ray/config.json /usr/local/etc/v2ray/config.' . now()->format('YmdHis') . '.json');
         $this->ssh->execute('echo \'' . json_encode($current_config) . '\' > /usr/local/etc/v2ray/config.json');
         $this->ssh->execute('systemctl restart v2ray');
         logger()->driver('job')->log(
