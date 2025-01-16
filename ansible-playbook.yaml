@@ -29,8 +29,6 @@
       shell: rm -rf ~/.oh-my-zsh && sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended && chsh -s $(which zsh)
     - name: vimrc
       shell: rm -rf ~/.vim_runtime && git clone --depth=1 https://github.com/amix/vimrc.git ~/.vim_runtime && sh ~/.vim_runtime/install_awesome_vimrc.sh
-    - name: tailscale
-      shell: curl -fsSL https://tailscale.com/install.sh | sh
     - name: Download v2ray installer
       get_url:
         url: https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh
