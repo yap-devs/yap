@@ -25,6 +25,16 @@ where balance_details.amount < 0
 group by month
 order by month desc;
 
+-- last 7-day cost report
+select date_format(balance_details.created_at, '%Y-%m-%d') as day,
+       sum(balance_details.amount)                         as daily_cost
+from balance_details
+where balance_details.amount < 0
+  and user_id > 5
+  and date_format(balance_details.created_at, '%Y-%m-%d') >= date_format(date_sub(now(), interval 7 day), '%Y-%m-%d')
+group by day
+order by day desc;
+
 -- yesterday and today traffic report
 select date_format(user_stats.created_at, '%Y-%m-%d')                                              as day,
        user_id,
