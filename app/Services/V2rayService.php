@@ -62,7 +62,7 @@ class V2rayService
 
     public function getStats($reset = false)
     {
-        $command = config('v2ray.v2ray.path') . ' api stats -s localhost:10085 -json';
+        $command = '/usr/local/bin/v2ray api stats -s localhost:10085 -json';
         if ($reset) {
             $command .= ' -reset';
         }
