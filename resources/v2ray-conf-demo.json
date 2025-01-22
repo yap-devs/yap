@@ -46,7 +46,9 @@
     "outbounds": [
         {
             "protocol": "freedom",
-            "settings": {},
+            "settings": {
+                "domainStrategy": "UseIP"
+            },
             "tag": "direct"
         },
         {
@@ -94,6 +96,19 @@
                 "outboundTag": "direct",
                 "inboundTag": [
                     "main-inbound"
+                ]
+            }
+        ]
+    },
+    "dns": {
+        "servers": [
+            "1.1.1.1",
+            "8.8.8.8",
+            {
+                "address": "localhost",
+                "domains": [
+                    "geosite:category-ai-chat-!cn",
+                    "geosite:category-entertainment"
                 ]
             }
         ]
