@@ -9,6 +9,7 @@ use App\Models\VmessServer;
 use App\Services\V2rayService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Cache;
 use Throwable;
 
 class UpdateStatCommand extends Command
@@ -110,6 +111,18 @@ class UpdateStatCommand extends Command
 
         if ($this->user_status_changed) {
             GenerateClashProfileLink::dispatchSync();
+        }
+
+        $this->clearCache();
+    }
+
+    private function clearCache()
+    {
+        $users = User::all();
+
+        /** @var User $user */
+        foreach ($users as $user) {
+            Cache::forget('today_traffic_' . $user->id);
         }
     }
 
