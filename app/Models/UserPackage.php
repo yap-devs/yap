@@ -27,6 +27,11 @@ class UserPackage extends Model
         'ended_at',
     ];
 
+    protected $casts = [
+        'started_at' => 'datetime',
+        'ended_at' => 'datetime',
+    ];
+
     public function package()
     {
         return $this->belongsTo(Package::class);
