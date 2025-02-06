@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use Illuminate\Console\Command;
 use Yansongda\LaravelPay\Facades\Pay;
@@ -61,6 +62,8 @@ class ProcessPaymentCommand extends Command
                 'amount' => $payment->amount,
                 'description' => 'Alipay payment',
             ]);
+
+            GenerateClashProfileLink::dispatch();
 
             return true;
         }
