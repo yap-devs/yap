@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Models\User;
 use App\Models\UserPackage;
 use App\Notifications\PackageExpireReminder;
+use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class PackageExpireRemindCommand extends Command
@@ -36,7 +37,7 @@ class PackageExpireRemindCommand extends Command
                 ->orderBy('ended_at', 'desc')
                 ->first();
 
-            if ($latest_active_user_package && $latest_active_user_package->ended_at->isTomorrow()) {
+            if ($latest_active_user_package && Carbon::parse($latest_active_user_package->ended_at)->isTomorrow()) {
                 logger()->info("User $user->id will have their package expire tomorrow, sending email to remind them.");
                 // Send email to remind user of package expiration
                 $user->notify(new PackageExpireReminder($user));

@@ -15,7 +15,7 @@ class PackageController extends Controller
     {
         $packages = Package::where('status', Package::STATUS_ACTIVE)->get();
 
-        $userPackages = UserPackage::where('user_id', $request->user()->id)
+        $userPackages = $request->user()->packages()
             ->latest()
             ->get();
 
