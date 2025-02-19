@@ -3,9 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\User;
-use App\Models\VmessServer;
-use App\Services\ClashService;
-use App\Services\V2rayService;
+use App\Notifications\UuidUpdated;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -38,5 +36,7 @@ class UpdateUserUuid implements ShouldQueue
         $this->user->update(['uuid' => (string)Str::uuid()]);
         // create new clash profile
         GenerateClashProfileLink::dispatch();
+        // email user
+        $this->user->notify(new UuidUpdated($this->user));
     }
 }
