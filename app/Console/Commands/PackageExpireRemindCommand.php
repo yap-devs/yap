@@ -38,7 +38,7 @@ class PackageExpireRemindCommand extends Command
                 ->first();
 
             if ($latest_active_user_package && Carbon::parse($latest_active_user_package->ended_at)->isTomorrow()) {
-                logger()->info("User $user->id will have their package expire tomorrow, sending email to remind them.");
+                logger()->driver('job')->info("User $user->id will have their package expire tomorrow, sending email to remind them.");
                 // Send email to remind user of package expiration
                 $user->notify(new PackageExpireReminder($user));
             }
