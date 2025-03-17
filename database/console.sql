@@ -52,10 +52,11 @@ select user_packages.id,
        users.name,
        user_packages.status,
        packages.name,
+       user_packages.started_at,
        user_packages.ended_at,
        round(user_packages.remaining_traffic / 1024 / 1024 / 1024, 2) as remaining_gb,
        round(packages.traffic_limit / 1024 / 1024 / 1024, 2)          as total_gb
 from users
          inner join user_packages on users.id = user_packages.user_id
          inner join packages on user_packages.package_id = packages.id
-where users.id > 5;
+where users.id > 5 and user_packages.status = 'active';
