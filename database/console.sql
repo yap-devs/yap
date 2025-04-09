@@ -59,4 +59,15 @@ select user_packages.id,
 from users
          inner join user_packages on users.id = user_packages.user_id
          inner join packages on user_packages.package_id = packages.id
-where users.id > 5 and user_packages.status = 'active';
+where users.id > 5
+  and user_packages.status = 'active';
+
+-- user total traffic report
+select id,
+       name,
+       balance,
+       round(sum(users.traffic_uplink + users.traffic_downlink) / 1024 / 1024 / 1024, 2) as total_traffic_gb
+from users
+where users.id > 5
+group by id
+order by total_traffic_gb desc;
