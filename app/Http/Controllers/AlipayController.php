@@ -43,7 +43,6 @@ class AlipayController extends Controller
             return Pay::alipay()->success();
         }
 
-        logger()->info('Alipay payment success by notify: ' . $out_trade_no);
         $payment->status = Payment::STATUS_PAID;
         $payload = $payment->payload;
         $payload[Payment::STATUS_PAID] = $result->toArray();

@@ -49,7 +49,6 @@ class ProcessPaymentCommand extends Command
         ]);
 
         if ($result->get('trade_status') === 'TRADE_SUCCESS') {
-            logger()->info('Alipay payment success by query: ' . $payment->remote_id);
             $payment->status = Payment::STATUS_PAID;
             $payload = $payment->payload;
             $payload[Payment::STATUS_PAID] = $result->toArray();
