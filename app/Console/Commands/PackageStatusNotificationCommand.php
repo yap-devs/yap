@@ -31,8 +31,8 @@ class PackageStatusNotificationCommand extends Command
     public function handle()
     {
         $users = User::all();
-        // Define the threshold for low traffic warning (20%)
-        $lowTrafficThreshold = 0.20;
+        // Define the threshold for low traffic warning (10%)
+        $lowTrafficThreshold = 0.10;
 
         foreach ($users as $user) {
             $latest_active_user_package = $user->packages()
