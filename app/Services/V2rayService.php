@@ -67,11 +67,13 @@ class V2rayService
             $command .= ' -reset';
         }
 
-        $stat = json_decode($this->ssh->execute($command)->getOutput(), true);
+        $output = $this->ssh->execute($command)->getOutput();
+        $stat = json_decode($output, true);
         if ($stat === null && json_last_error() !== JSON_ERROR_NONE) {
             logger()->driver('job')->log(
                 'warning',
                 "[V2rayService] Failed to get V2ray stats: $this->internal_server, error: " . json_last_error_msg()
+                . ', output: ' . $output
             );
 
             return [];
