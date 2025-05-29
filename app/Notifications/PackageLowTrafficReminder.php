@@ -49,7 +49,7 @@ class PackageLowTrafficReminder extends Notification
             ->greeting('Hello ' . $this->user->name . ',')
             ->line("We noticed that your package is running low on data.")
             ->line("You have approximately {$remainingGB} GB remaining out of your {$totalGB} GB package ({$percentRemaining}%).")
-            ->line("Please consider purchasing additional data to avoid service interruption.")
+            ->line("Once the data is exhausted, charges will be applied at on-demand rates.")
             ->action('Purchase More Data', url('/package'))
             ->line('Thank you for being with us!');
     }
