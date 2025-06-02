@@ -35,6 +35,10 @@ class ProcessPaymentCommand extends Command
             if ($payment->gateway === Payment::GATEWAY_ALIPAY) {
                 $this->processAlipay($payment);
             }
+
+            if ($payment->gateway === Payment::GATEWAY_USDT) {
+                $this->processUsdt($payment);
+            }
         }
     }
 
@@ -65,6 +69,21 @@ class ProcessPaymentCommand extends Command
             GenerateClashProfileLink::dispatch();
 
             return true;
+        }
+
+        if ($payment->created_at->diffInHours(now()) > 1) {
+            $payment->status = Payment::STATUS_EXPIRED;
+            $payment->save();
+            return true;
+        }
+
+        return false;
+    }
+
+    private function processUsdt(Payment $payment)
+    {
+        if ($payment->status !== Payment::STATUS_CREATED) {
+            return false;
         }
 
         if ($payment->created_at->diffInHours(now()) > 1) {
