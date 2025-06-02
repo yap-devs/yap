@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AlipayController;
 use App\Http\Controllers\BalanceDetailController;
+use App\Http\Controllers\BepusdtController;
 use App\Http\Controllers\ClashController;
 use App\Http\Controllers\CustomerServiceController;
 use App\Http\Controllers\DashboardController;
@@ -81,3 +82,9 @@ Route::group(['prefix' => 'package', 'middleware' => ['auth']], function () {
     Route::get('/', [PackageController::class, 'index'])->name('package');
     Route::post('/{package}/buy', [PackageController::class, 'buy'])->name('package.buy');
 });
+
+Route::group(['prefix' => 'bepusdt', 'middleware' => ['auth']], function () {
+    Route::get('/{payment}/scan', [BepusdtController::class, 'scan'])->name('bepusdt.scan');
+    Route::get('/newOrder', [BepusdtController::class, 'newOrder'])->name('bepusdt.newOrder');
+});
+Route::post('/bepusdt/notify', [BepusdtController::class, 'notify'])->name('bepusdt.notify');

@@ -119,7 +119,7 @@ class AlipayController extends Controller
 
         /** @var Payment $payment */
         $payment = $user->payments()->create([
-            'gateway' => 'alipay',
+            'gateway' => Payment::GATEWAY_ALIPAY,
             'status' => 'created',
             'amount' => $amount,
             'remote_id' => $out_trade_no,
@@ -131,9 +131,6 @@ class AlipayController extends Controller
         return redirect()->route('alipay.scan', compact('payment'));
     }
 
-    /**
-     * @throws RandomException
-     */
     public function scan(Request $request, Payment $payment)
     {
         /** @var User $user */

@@ -60,6 +60,7 @@ class GithubController extends Controller
         }
 
         $user->payments()->create([
+            'gateway' => Payment::GATEWAY_GITHUB,
             'status' => Payment::STATUS_PAID,
             'amount' => $amount,
             'remote_id' => $remote_id,

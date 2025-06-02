@@ -6,7 +6,7 @@ import {Head, router, usePage} from '@inertiajs/react';
 import {useState} from 'react';
 
 export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) {
-  const { errors } = usePage().props;
+  const {errors} = usePage().props;
 
   const redirectToGithubOauth = () => {
     window.location.href = route('github.redirect');
@@ -24,9 +24,13 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
       data: {amount: alipayAmount || 5}
     });
   }
+  const redirectToUSDTPage = () => {
+    window.location.href = route('bepusdt.newOrder', {amount: usdtAmount || 5});
+  }
 
   const [githubAmount, setGithubAmount] = useState(5);
   const [alipayAmount, setAlipayAmount] = useState(5);
+  const [usdtAmount, setUsdtAmount] = useState(5);
 
   const sponsorAmountChange = (e, setFunc) => {
     const val = e.target.value;
@@ -123,6 +127,39 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
     );
   }
 
+  const renderUSDTBlock = () => {
+    return (
+      <div className="rounded-lg shadow-lg overflow-hidden max-w-xs my-3">
+        {
+          errors.amount && (
+            <div className="bg-red-500 text-white py-2 px-4">
+              <p className="font-bold text-xl text-center">{errors.amount}</p>
+            </div>
+          )
+        }
+        <div className="p-4 bg-gray-50">
+          <div className="relative">
+            <input
+              type="number"
+              className="w-full py-2 pl-6 pr-20 rounded-lg border-2 placeholder-gray-500 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600"
+              placeholder="Amount" value={usdtAmount} onChange={(e) => sponsorAmountChange(e, setUsdtAmount())}
+            />
+            <span className="absolute inset-y-0 left-0 flex items-center pl-2">
+            <span className="text-gray-500">$</span>
+          </span>
+            <button
+              className="absolute inset-y-0 right-0 flex items-center px-4 font-bold text-white bg-purple-600 rounded-r-lg hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              type="button"
+              onClick={redirectToUSDTPage}
+            >
+              Charge Now
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthenticatedLayout
       user={auth.user}
@@ -173,6 +210,21 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
             </header>
             <div className="pt-4">
               {renderAlipayBlock()}
+            </div>
+          </div>
+
+          <div className="p-4 sm:p-8 bg-white shadow sm:rounded-lg">
+            <header>
+              <h2 className="text-lg font-medium text-gray-900">
+                USDT (Polygon)
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-600">
+                Charge your account with USDT on the Polygon(MATIC) network.
+              </p>
+            </header>
+            <div className="pt-4">
+              {renderUSDTBlock()}
             </div>
           </div>
 

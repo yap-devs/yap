@@ -82,6 +82,12 @@ export default function Index({auth, payments}) {
                                   className="text-indigo-600 hover:text-indigo-900">Pay</Link>
                           )
                         }
+                        {
+                          (payment.status === 'created') && (payment.gateway === 'usdt') && (
+                            <a href={route('bepusdt.scan', payment)}
+                                  className="text-indigo-600 hover:text-indigo-900">Pay</a>
+                          )
+                        }
                       </td>
                     </tr>
                   ))}

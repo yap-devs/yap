@@ -19,6 +19,7 @@ class Payment extends Model
 
     const GATEWAY_GITHUB = 'github';
     const GATEWAY_ALIPAY = 'alipay';
+    const GATEWAY_USDT = 'usdt';
 
     protected $fillable = [
         'user_id',
