@@ -86,7 +86,7 @@ class ProcessPaymentCommand extends Command
             return false;
         }
 
-        if ($payment->created_at->diffInHours(now()) > 1) {
+        if ($payment->created_at->diffInSeconds(now()) > 1200) {
             $payment->status = Payment::STATUS_EXPIRED;
             $payment->save();
             return true;
