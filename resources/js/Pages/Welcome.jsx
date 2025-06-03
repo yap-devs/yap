@@ -100,34 +100,84 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
           {/* Hero Section - Cloudflare style with rotating headlines */}
           <section className={`relative pt-20 md:pt-32 pb-24 md:pb-40 transition-all duration-700 ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
             <div className={containerClass}>
-              <div className="max-w-3xl min-h-[280px]">
-                <div className={`transition-all duration-500 ${fadeState === 'in' ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-4'}`}>
-                  <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-6 md:mb-8 leading-[1.1]">
-                    {headlines[headlineIndex].title.split(',').map((part, i) =>
-                      i === 0 ?
-                        <span key={i}>{part},<span className={gradientTextClass}> </span></span> :
-                        <span key={i} className={gradientTextClass}>{part}</span>
-                    )}
-                  </h1>
-                  <p className="text-lg md:text-xl text-white/80 max-w-2xl mb-8 md:mb-12 leading-relaxed">
-                    {headlines[headlineIndex].subtitle}
-                  </p>
+              <div className="flex flex-col lg:flex-row items-center justify-between">
+                <div className="max-w-3xl lg:max-w-2xl min-h-[280px]">
+                  <div className={`transition-all duration-500 ${fadeState === 'in' ? 'opacity-100 transform translate-y-0' : 'opacity-0 transform -translate-y-4'}`}>
+                    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold mb-6 md:mb-8 leading-[1.1]">
+                      {headlines[headlineIndex].title.split(',').map((part, i) =>
+                        i === 0 ?
+                          <span key={i}>{part},<span className={gradientTextClass}> </span></span> :
+                          <span key={i} className={gradientTextClass}>{part}</span>
+                      )}
+                    </h1>
+                    <p className="text-lg md:text-xl text-white/80 max-w-2xl mb-8 md:mb-12 leading-relaxed">
+                      {headlines[headlineIndex].subtitle}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-4">
+                    <Link
+                      href={route('register')}
+                      className="inline-flex items-center px-5 py-3 rounded-md bg-gradient-to-r from-[#F48120] to-[#F04E23] text-white font-medium hover:shadow-lg hover:shadow-[#F48120]/20 transition-all duration-300"
+                    >
+                      <span className="inline-block">Get Started</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 inline-block" viewBox="0 0 20 20" fill="currentColor">
+                        <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                      </svg>
+                    </Link>
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-4">
-                  <Link
-                    href={route('register')}
-                    className="inline-flex items-center px-5 py-3 rounded-md bg-gradient-to-r from-[#F48120] to-[#F04E23] text-white font-medium hover:shadow-lg hover:shadow-[#F48120]/20 transition-all duration-300"
-                  >
-                    <span className="inline-block">Get Started</span>
-                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 ml-2 inline-block" viewBox="0 0 20 20" fill="currentColor">
-                      <path fillRule="evenodd" d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z" clipRule="evenodd" />
-                    </svg>
-                  </Link>
+
+                {/* Hero illustration - changes based on current headline */}
+                <div className="hidden lg:block w-full max-w-xl mt-12 lg:mt-0">
+                  <div className={`transition-all duration-500 ${fadeState === 'in' ? 'opacity-100 transform scale-100' : 'opacity-0 transform scale-95'}`}>
+                    {headlineIndex === 0 && (
+                      <div className="relative flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#F48120]/20 to-[#F04E23]/20 rounded-full blur-3xl animate-pulse"></div>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-72 w-72 text-gradient-to-r from-[#F48120] to-[#F04E23] animate-float" viewBox="0 0 20 20" fill="currentColor">
+                          <defs>
+                            <linearGradient id="gradient1" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#F48120" />
+                              <stop offset="100%" stopColor="#F04E23" />
+                            </linearGradient>
+                          </defs>
+                          <path fillRule="evenodd" fill="url(#gradient1)" d="M5.05 3.636a1 1 0 010 1.414 7 7 0 000 9.9 1 1 0 11-1.414 1.414 9 9 0 010-12.728 1 1 0 011.414 0zm9.9 0a1 1 0 011.414 0 9 9 0 010 12.728 1 1 0 11-1.414-1.414 7 7 0 000-9.9 1 1 0 010-1.414zM7.879 6.464a1 1 0 010 1.414 3 3 0 000 4.243 1 1 0 11-1.415 1.414 5 5 0 010-7.07 1 1 0 011.415 0zm4.242 0a1 1 0 011.415 0 5 5 0 010 7.072 1 1 0 01-1.415-1.415 3 3 0 000-4.242 1 1 0 010-1.415z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                    {headlineIndex === 1 && (
+                      <div className="relative flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#F48120]/20 to-[#F04E23]/20 rounded-full blur-3xl animate-pulse"></div>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-72 w-72 text-gradient-to-r from-[#F48120] to-[#F04E23] animate-float" viewBox="0 0 20 20" fill="currentColor">
+                          <defs>
+                            <linearGradient id="gradient2" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#F48120" />
+                              <stop offset="100%" stopColor="#F04E23" />
+                            </linearGradient>
+                          </defs>
+                          <path fillRule="evenodd" fill="url(#gradient2)" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.35.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                    {headlineIndex === 2 && (
+                      <div className="relative flex items-center justify-center">
+                        <div className="absolute inset-0 bg-gradient-to-r from-[#F48120]/20 to-[#F04E23]/20 rounded-full blur-3xl animate-pulse"></div>
+                        <svg xmlns="http://www.w3.org/2000/svg" className="h-72 w-72 text-gradient-to-r from-[#F48120] to-[#F04E23] animate-float" viewBox="0 0 20 20" fill="currentColor">
+                          <defs>
+                            <linearGradient id="gradient3" x1="0%" y1="0%" x2="100%" y2="0%">
+                              <stop offset="0%" stopColor="#F48120" />
+                              <stop offset="100%" stopColor="#F04E23" />
+                            </linearGradient>
+                          </defs>
+                          <path fillRule="evenodd" fill="url(#gradient3)" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              {/* Hero decoration */}
-              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/3 h-80 bg-gradient-to-r from-transparent to-[#F48120]/10 blur-3xl rounded-l-full hidden lg:block"></div>
+              {/* Hero decoration - increased visibility */}
+              <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1/3 h-96 bg-gradient-to-r from-transparent to-[#F48120]/20 blur-3xl rounded-l-full hidden lg:block"></div>
             </div>
           </section>
 
