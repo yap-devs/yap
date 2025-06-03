@@ -64,7 +64,7 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
             <div className="relative">
               <input type="text"
                      className="py-3 px-4 ps-9 pe-20 block w-full border-gray-200 shadow-sm rounded-lg text-sm focus:z-10 focus:border-blue-500 focus:ring-blue-500 disabled:opacity-50 disabled:pointer-events-none"
-                     placeholder="5" value={githubAmount} onChange={(e) => sponsorAmountChange(e, setGithubAmount)}/>
+                     placeholder="5" value={githubAmount} onChange={setGithubAmount}/>
               <div className="absolute inset-y-0 start-0 flex items-center pointer-events-none z-20 ps-4">
                 <span className="text-gray-500">$</span>
               </div>
@@ -96,20 +96,12 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
   const renderAlipayBlock = () => {
     return (
       <div className="rounded-lg shadow-lg overflow-hidden max-w-xs my-3">
-        {
-          errors.amount && (
-            <div className="bg-red-500 text-white py-2 px-4">
-              <p className="font-bold text-xl text-center">{errors.amount}</p>
-            </div>
-          )
-        }
         <div className="p-4 bg-gray-50">
           <div className="relative">
             <input
               type="number"
               className="w-full py-2 pl-6 pr-20 rounded-lg border-2 placeholder-gray-500 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600"
-              placeholder="Amount" value={alipayAmount} onChange={(e) => sponsorAmountChange(e, setAlipayAmount)}
-              min={5}
+              placeholder="Amount" value={alipayAmount} onChange={(e) => setAlipayAmount(e.target.value)}
             />
             <span className="absolute inset-y-0 left-0 flex items-center pl-2">
             <span className="text-gray-500">$</span>
@@ -130,19 +122,12 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
   const renderUSDTBlock = () => {
     return (
       <div className="rounded-lg shadow-lg overflow-hidden max-w-xs my-3">
-        {
-          errors.amount && (
-            <div className="bg-red-500 text-white py-2 px-4">
-              <p className="font-bold text-xl text-center">{errors.amount}</p>
-            </div>
-          )
-        }
         <div className="p-4 bg-gray-50">
           <div className="relative">
             <input
               type="number"
               className="w-full py-2 pl-6 pr-20 rounded-lg border-2 placeholder-gray-500 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-600"
-              placeholder="Amount" value={usdtAmount} onChange={(e) => sponsorAmountChange(e, setUsdtAmount())}
+              placeholder="Amount" value={usdtAmount} onChange={(e) => setUsdtAmount(e.target.value)}
             />
             <span className="absolute inset-y-0 left-0 flex items-center pl-2">
             <span className="text-gray-500">$</span>
@@ -170,7 +155,7 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
           {
-            errors.message &&
+            (errors.message || errors.amount) &&
             <div className="p-4 sm:p-8 bg-red-600 bg-opacity-10 text-red-600 rounded-lg">
               <div className="flex items-center">
                 <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"
@@ -178,7 +163,7 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
                         d="M6 18L18 6M6 6l12 12"/>
                 </svg>
-                <span className="ml-2">{errors.message}</span>
+                <span className="ml-2">{errors.message || errors.amount}</span>
               </div>
             </div>
           }

@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
         ])->validateCsrfTokens(except: [
             '/github/sponsor/webhook',
             '/alipay/notify',
+            '/bepusdt/notify',
         ]);
 
         //
