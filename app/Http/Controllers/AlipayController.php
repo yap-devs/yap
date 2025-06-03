@@ -89,7 +89,7 @@ class AlipayController extends Controller
     public function newOrder(Request $request)
     {
         $request->validate([
-            'amount' => 'required|integer|min:2|max:100',  // in USD
+            'amount' => 'required|numeric|min:2|max:100',  // in USD
         ]);
 
         /** @var User $user */

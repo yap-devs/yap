@@ -24,7 +24,7 @@ class BepusdtController extends Controller
     public function newOrder(Request $request, BepusdtService $bepusdtService)
     {
         $request->validate([
-            'amount' => 'required|integer|min:2',  // in USD
+            'amount' => 'required|numeric|min:2',  // in USD
         ]);
 
         /** @var User $user */
