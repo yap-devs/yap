@@ -12,7 +12,7 @@ order by month desc, monthly_traffic_gb desc;
 select date_format(payments.created_at, '%Y-%m') as month,
        sum(payments.amount)                      as monthly_income
 from payments
-where payments.status = 'paid'
+where payments.status = 'paid' and payments.user_id > 5
 group by month
 order by month desc;
 
