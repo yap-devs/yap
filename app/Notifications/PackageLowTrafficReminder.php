@@ -45,13 +45,13 @@ class PackageLowTrafficReminder extends Notification
         $percentRemaining = round($this->remainingPercentage * 100);
 
         return (new MailMessage)
-            ->subject('Low Package Data Remaining')
-            ->greeting('Hello ' . $this->user->name . ',')
-            ->line("We noticed that your package is running low on data.")
+            ->subject('Notice: Low Data Remaining in Your Package')
+            ->greeting('Dear ' . $this->user->name . ',')
+            ->line('We would like to inform you that your current package is running low on available data.')
             ->line("You have approximately {$remainingGB} GB remaining out of your {$totalGB} GB package ({$percentRemaining}%).")
-            ->line("Once the data is exhausted, charges will be applied at on-demand rates.")
-            ->action('Purchase More Data', url('/package'))
-            ->line('Thank you for being with us!');
+            ->line('To avoid any service disruption or additional charges, please consider purchasing additional data.')
+            ->action('Purchase Additional Data', url('/package'))
+            ->line('Thank you for choosing our services. If you need any assistance, please contact our support team.');
     }
 
     /**

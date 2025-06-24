@@ -38,12 +38,12 @@ class BalanceReminder extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Balance Alert: Low Balance Notification')
-            ->greeting('Hello ' . $this->user->name . ',')
-            ->line('We noticed that your account balance is running low.')
-            ->line('Please remember to recharge your account to avoid any disruptions in service.')
-            ->action('Recharge Now', url('/profile'))
-            ->line('Thank you for being with us!');
+            ->subject('Account Balance Notification')
+            ->greeting('Dear ' . $this->user->name . ',')
+            ->line('This is a reminder that your account balance is currently low. To avoid any interruption of service, please consider recharging your account at your earliest convenience.')
+            ->line('If you have any questions or need assistance, our support team is here to help.')
+            ->action('Recharge Account', url('/profile'))
+            ->line('Thank you for your continued trust in our services.');
     }
 
     /**
