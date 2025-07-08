@@ -56,7 +56,6 @@ export default function UpdateProfileInformation({mustVerifyEmail, status, class
             onChange={(e) => setData('email', e.target.value)}
             required
             autoComplete="username"
-            disabled
           />
 
           <InputError className="mt-2" message={errors.email}/>
