@@ -32,8 +32,12 @@ class UpdateUserUuid implements ShouldQueue
      */
     public function handle(): void
     {
+        $new_uuid = (string)Str::uuid();
+        logger()->driver('job')->info(
+            "[UpdateUserUuid] Updating user[{$this->user->email}] UUID: [{$this->user->uuid}] to [$new_uuid]"
+        );
         // update user uuid in database
-        $this->user->update(['uuid' => (string)Str::uuid()]);
+        $this->user->update(['uuid' => $new_uuid]);
         // create new clash profile
         GenerateClashProfileLink::dispatch();
         // email user
