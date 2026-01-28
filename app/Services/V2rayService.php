@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-
 use Spatie\Ssh\Ssh;
 
 class V2rayService
@@ -29,13 +28,23 @@ class V2rayService
     {
         // 1. read current json conf
         $current_config = json_decode($this->ssh->execute('cat /usr/local/etc/v2ray/config.json')->getOutput());
-        if (is_null($current_config)) {
-            logger()->driver('job')->log(
-                'warning',
-                "[V2rayService] Failed to read current V2ray config: $this->internal_server"
-            );
 
-            return;
+        // If config is empty or just "{}", use the demo config as template
+        if (is_null($current_config) || (is_object($current_config) && empty((array)$current_config))) {
+            logger()->driver('job')->log(
+                'info',
+                "[V2rayService] Empty config detected, using demo config as template: $this->internal_server"
+            );
+            $demo_config_path = resource_path('v2ray-conf-demo.json');
+            $current_config = json_decode(file_get_contents($demo_config_path));
+            if (is_null($current_config)) {
+                logger()->driver('job')->log(
+                    'warning',
+                    "[V2rayService] Failed to read demo V2ray config: $demo_config_path"
+                );
+
+                return;
+            }
         }
 
         // 2. compare with given users
@@ -45,6 +54,7 @@ class V2rayService
                 'info',
                 "[V2rayService] No need to update V2ray users: $this->internal_server"
             );
+
             return;
         }
 
