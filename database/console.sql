@@ -14,16 +14,16 @@ select date_format(payments.created_at, '%Y-%m') as month,
 from payments
 where payments.status = 'paid' and payments.user_id > 5
 group by month
-order by month desc;
+order by month;
 
 -- monthly cost report
 select date_format(balance_details.created_at, '%Y-%m') as month,
-       sum(balance_details.amount)                      as monthly_cost
+       -sum(balance_details.amount)                      as monthly_cost
 from balance_details
 where balance_details.amount < 0
   and user_id > 5
 group by month
-order by month desc;
+order by month;
 
 -- last 7-day cost report
 select date_format(balance_details.created_at, '%Y-%m-%d') as day,
