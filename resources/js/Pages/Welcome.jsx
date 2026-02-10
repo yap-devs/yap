@@ -45,8 +45,12 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
 
           {/* Hero */}
           <section className="relative pt-32 pb-24 sm:pt-40 sm:pb-32 overflow-hidden">
-            {/* Background glow */}
-            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] h-[400px] bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none"></div>
+            {/* Aurora background */}
+            <div className="absolute inset-0 pointer-events-none aurora-bg">
+              <div className="aurora-orb-1 absolute -top-32 left-1/4 w-[500px] h-[500px] bg-indigo-600 rounded-full blur-[140px] opacity-15"></div>
+              <div className="aurora-orb-2 absolute -top-20 right-1/4 w-[400px] h-[400px] bg-violet-500 rounded-full blur-[120px] opacity-12"></div>
+              <div className="aurora-orb-3 absolute top-10 left-1/2 -translate-x-1/2 w-[600px] h-[350px] bg-cyan-500 rounded-full blur-[150px] opacity-10"></div>
+            </div>
 
             <div className="relative max-w-6xl mx-auto px-6 text-center">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.15] text-white">
