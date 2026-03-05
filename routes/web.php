@@ -26,6 +26,14 @@ Route::get('/', function () {
     ]);
 });
 
+Route::get('/policy', function () {
+    return Inertia::render('Policy');
+})->name('policy');
+
+Route::get('/tos', function () {
+    return Inertia::render('Tos');
+})->name('tos');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');

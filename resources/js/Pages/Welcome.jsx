@@ -231,6 +231,10 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
                   Laravel v{laravelVersion} (PHP v{phpVersion})
                 </span>
               </div>
+              <div className="flex items-center gap-6 text-xs text-gray-500">
+                <Link href={route('policy')} className="hover:text-gray-300 transition-colors">Privacy Policy</Link>
+                <Link href={route('tos')} className="hover:text-gray-300 transition-colors">Terms of Service</Link>
+              </div>
               <div className="flex items-center gap-4">
                 <a href="https://t.me/yap_devs" target="_blank" rel="noopener noreferrer"
                    className="text-gray-500 hover:text-gray-300 transition-colors" title="Telegram">
