@@ -25,7 +25,7 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
     });
   }
   const redirectToUSDTPage = () => {
-    window.location.href = route('bepusdt.newOrder', {amount: usdtAmount || 5});
+    router.visit(route('bepusdt.newOrder', {amount: usdtAmount || 5}));
   }
 
   const [githubAmount, setGithubAmount] = useState(5);
