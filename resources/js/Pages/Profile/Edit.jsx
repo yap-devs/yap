@@ -25,7 +25,10 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
     });
   }
   const redirectToUSDTPage = () => {
-    router.visit(route('bepusdt.newOrder', {amount: usdtAmount || 5}));
+    router.visit(route('bepusdt.newOrder'), {
+      method: 'post',
+      data: {amount: usdtAmount || 5}
+    });
   }
 
   const [githubAmount, setGithubAmount] = useState(5);

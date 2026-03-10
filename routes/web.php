@@ -95,7 +95,7 @@ Route::group(['prefix' => 'package', 'middleware' => ['auth']], function () {
 
 Route::group(['prefix' => 'bepusdt', 'middleware' => ['auth']], function () {
     Route::get('/{payment}/scan', [BepusdtController::class, 'scan'])->name('bepusdt.scan');
-    Route::get('/newOrder', [BepusdtController::class, 'newOrder'])
+    Route::post('/newOrder', [BepusdtController::class, 'newOrder'])
         ->middleware('throttle:financial')
         ->name('bepusdt.newOrder');
 });

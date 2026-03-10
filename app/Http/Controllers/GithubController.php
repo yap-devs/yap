@@ -54,6 +54,13 @@ class GithubController extends Controller
         }
 
         $amount = $request->input('sponsorship.tier.monthly_price_in_dollars');
+
+        if (! is_numeric($amount) || $amount <= 0) {
+            logger()->warning('GitHub sponsor webhook: invalid amount', ['amount' => $amount]);
+
+            return response()->json(['message' => 'Invalid amount']);
+        }
+
         $remote_id = $request->input('sponsorship.tier.node_id').'|'.$request->input('sponsorship.tier.created_at');
 
         DB::transaction(function () use ($user, $amount, $remote_id, $request) {

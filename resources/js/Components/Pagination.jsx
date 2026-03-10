@@ -1,5 +1,9 @@
 import { Link } from "@inertiajs/react";
 
+function decodeLabel(label) {
+  return label.replace(/&laquo;/g, '\u00AB').replace(/&raquo;/g, '\u00BB');
+}
+
 export default function Pagination({ links }) {
   if (!links) return null;
 
@@ -19,7 +23,7 @@ export default function Pagination({ links }) {
                     : 'bg-white text-gray-700 border-gray-300 hover:bg-blue-500 hover:text-white'
                 }`}
               >
-                <div dangerouslySetInnerHTML={{ __html: link.label }} />
+                <div>{decodeLabel(link.label)}</div>
               </Link>
             ))}
           </nav>

@@ -25,6 +25,8 @@ class PackageController extends Controller
 
     public function buy(Request $request, Package $package)
     {
+        abort_if($package->status !== Package::STATUS_ACTIVE, 404);
+
         /** @var User $user */
         $user = $request->user();
 
