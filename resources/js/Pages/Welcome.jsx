@@ -234,6 +234,7 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
               <div className="flex items-center gap-6 text-xs text-gray-500">
                 <Link href={route('policy')} className="hover:text-gray-300 transition-colors">Privacy Policy</Link>
                 <Link href={route('tos')} className="hover:text-gray-300 transition-colors">Terms of Service</Link>
+                <Link href={route('commercial.disclosure')} className="hover:text-gray-300 transition-colors">Commercial Disclosure</Link>
               </div>
               <div className="flex items-center gap-4">
                 <a href="https://t.me/yap_devs" target="_blank" rel="noopener noreferrer"
