@@ -40,9 +40,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
 
-Route::get('/clash/{uuid}/yap.yaml', [ClashController::class, 'index'])->name('clash');
+Route::get('/clash/{uuid}/yap.yaml', [ClashController::class, 'index'])
+    ->middleware('throttle:clash-config')
+    ->name('clash');
 
 Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
@@ -62,11 +64,11 @@ Route::group(['prefix' => 'stat', 'middleware' => ['auth']], function () {
 });
 
 Route::get('/futoon/submit', [FutoonController::class, 'submit'])
-    ->middleware('auth')
+    ->middleware(['auth', 'throttle:financial'])
     ->name('futoon.submit');
 Route::get('/futoon/notify', [FutoonController::class, 'notify'])->name('futoon.notify');
 
-Route::group(['prefix' => 'alipay', 'middleware' => ['auth']], function () {
+Route::group(['prefix' => 'alipay', 'middleware' => ['auth', 'throttle:financial']], function () {
     Route::get('/{payment}/query', [AlipayController::class, 'query'])->name('alipay.query');
     Route::get('/{payment}/scan', [AlipayController::class, 'scan'])->name('alipay.scan');
     Route::post('/newOrder', [AlipayController::class, 'newOrder'])->name('alipay.newOrder');
@@ -83,15 +85,17 @@ Route::group(['prefix' => 'balance/detail', 'middleware' => ['auth']], function 
 
 Route::group(['prefix' => 'customer/service', 'middleware' => ['auth']], function () {
     Route::get('/', [CustomerServiceController::class, 'index'])->name('customer.service');
-    Route::post('/resetSubscription', [CustomerServiceController::class, 'resetSubscription'])->name('customer.service.resetSubscription');
+    Route::post('/resetSubscription', [CustomerServiceController::class, 'resetSubscription'])
+        ->middleware('throttle:subscription-reset')
+        ->name('customer.service.resetSubscription');
 });
 
-Route::group(['prefix' => 'package', 'middleware' => ['auth']], function () {
+Route::group(['prefix' => 'package', 'middleware' => ['auth', 'throttle:financial']], function () {
     Route::get('/', [PackageController::class, 'index'])->name('package');
     Route::post('/{package}/buy', [PackageController::class, 'buy'])->name('package.buy');
 });
 
-Route::group(['prefix' => 'bepusdt', 'middleware' => ['auth']], function () {
+Route::group(['prefix' => 'bepusdt', 'middleware' => ['auth', 'throttle:financial']], function () {
     Route::get('/{payment}/scan', [BepusdtController::class, 'scan'])->name('bepusdt.scan');
     Route::get('/newOrder', [BepusdtController::class, 'newOrder'])->name('bepusdt.newOrder');
 });
