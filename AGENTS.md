@@ -186,7 +186,7 @@ test('profile page is displayed', function () {
 
 - Inertia.js bridges Laravel and React (no separate API routes)
 - Data passed to React via `Inertia::render('Page', compact(...))` in controllers
-- Payment gateways: Alipay, BEPUSDT (crypto), Futoon
+- Payment gateways: Alipay, BEPUSDT (crypto)
 - GitHub OAuth login + GitHub Sponsors webhook integration
 - Scheduled commands in `routes/console.php` using `Schedule::command()`
 - `BepusdtService` registered as singleton in `AppServiceProvider`

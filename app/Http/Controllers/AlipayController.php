@@ -6,6 +6,7 @@ use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Random\RandomException;
 use Yansongda\Artful\Exception\ContainerException;
@@ -23,40 +24,46 @@ class AlipayController extends Controller
         try {
             $result = Pay::alipay()->callback();
         } catch (ArtfulException|PayException $e) {
-            logger()->error('Alipay notify failed: ' . $e->getMessage());
+            logger()->error('Alipay notify failed: '.$e->getMessage());
+
             return Pay::alipay()->success();
         }
 
         if ($result->get('trade_status') !== 'TRADE_SUCCESS') {
-            logger()->warning('Alipay trade status is not TRADE_SUCCESS: ' . $result->toJson());
+            logger()->warning('Alipay trade status is not TRADE_SUCCESS: '.$result->toJson());
+
             return Pay::alipay()->success();
         }
 
         $out_trade_no = $result->get('out_trade_no');
         $payment = Payment::where('remote_id', $out_trade_no)->first();
-        if (!$payment) {
-            logger()->warning('Alipay payment not found: ' . $out_trade_no);
-            return Pay::alipay()->success();
-        }
-        if ($payment->status === Payment::STATUS_PAID) {
-            logger()->warning('Alipay payment already paid: ' . $out_trade_no);
+        if (! $payment) {
+            logger()->warning('Alipay payment not found: '.$out_trade_no);
+
             return Pay::alipay()->success();
         }
 
-        $payment->status = Payment::STATUS_PAID;
-        $payload = $payment->payload;
-        $payload[Payment::STATUS_PAID] = $result->toArray();
-        $payment->payload = $payload;
-        $payment->save();
+        DB::transaction(function () use ($payment, $result) {
+            $payment = Payment::lockForUpdate()->find($payment->id);
+            if ($payment->status === Payment::STATUS_PAID) {
+                return;
+            }
 
-        $payment->user->increment('balance', $payment->amount);
+            $payment->status = Payment::STATUS_PAID;
+            $payload = $payment->payload;
+            $payload[Payment::STATUS_PAID] = $result->toArray();
+            $payment->payload = $payload;
+            $payment->save();
 
-        $payment->user->balanceDetails()->create([
-            'amount' => $payment->amount,
-            'description' => 'Alipay payment',
-        ]);
+            $payment->user->increment('balance', $payment->amount);
 
-        GenerateClashProfileLink::dispatch();
+            $payment->user->balanceDetails()->create([
+                'amount' => $payment->amount,
+                'description' => 'Alipay payment',
+            ]);
+
+            GenerateClashProfileLink::dispatch();
+        });
 
         return Pay::alipay()->success();
     }
@@ -72,7 +79,7 @@ class AlipayController extends Controller
         $user = $request->user();
         if ($payment->user->isNot($user)) {
             return redirect()->route('profile.edit')->withErrors([
-                'message' => 'Payment not found.'
+                'message' => 'Payment not found.',
             ]);
         }
 
@@ -97,11 +104,11 @@ class AlipayController extends Controller
 
         if ($user->payments()->where('status', Payment::STATUS_CREATED)->exists()) {
             return redirect()->route('profile.edit')->withErrors([
-                'message' => 'You have an unpaid payment.'
+                'message' => 'You have an unpaid payment.',
             ]);
         }
 
-        $out_trade_no = time() . random_int(100000, 999999);
+        $out_trade_no = time().random_int(100000, 999999);
         $amount = $request->input('amount');
 
         $qr_info = Pay::alipay()->scan([
@@ -111,9 +118,10 @@ class AlipayController extends Controller
         ]);
 
         if ($qr_info['code'] !== '10000') {
-            logger()->critical('Alipay scan failed: ' . json_encode($qr_info));
+            logger()->critical('Alipay scan failed: '.json_encode($qr_info));
+
             return redirect()->route('profile.edit')->withErrors([
-                'message' => 'Failed to create Alipay payment.'
+                'message' => 'Failed to create Alipay payment.',
             ]);
         }
 
@@ -124,8 +132,8 @@ class AlipayController extends Controller
             'amount' => $amount,
             'remote_id' => $out_trade_no,
             'payload' => [
-                Payment::STATUS_CREATED => $qr_info
-            ]
+                Payment::STATUS_CREATED => $qr_info,
+            ],
         ]);
 
         return redirect()->route('alipay.scan', compact('payment'));
@@ -137,13 +145,13 @@ class AlipayController extends Controller
         $user = $request->user();
         if ($payment->user->isNot($user)) {
             return redirect()->route('profile.edit')->withErrors([
-                'message' => 'Payment not found.'
+                'message' => 'Payment not found.',
             ]);
         }
 
         if ($payment->gateway !== Payment::GATEWAY_ALIPAY) {
             return redirect()->route('profile.edit')->withErrors([
-                'message' => 'Invalid payment gateway.'
+                'message' => 'Invalid payment gateway.',
             ]);
         }
 

@@ -43,6 +43,7 @@ class User extends Authenticatable implements FilamentUser
     protected $hidden = [
         'password',
         'remember_token',
+        'github_token',
     ];
 
     protected $appends = ['is_valid', 'is_low_priority'];

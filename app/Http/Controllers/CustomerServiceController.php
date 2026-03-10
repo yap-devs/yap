@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\UpdateUserUuid;
+use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 
 class CustomerServiceController extends Controller
@@ -17,24 +19,33 @@ class CustomerServiceController extends Controller
 
     public function resetSubscription(Request $request)
     {
-        if ($request->user()->balance < config('yap.reset_subscription_price')) {
+        /** @var User $user */
+        $user = $request->user();
+
+        return DB::transaction(function () use ($user) {
+            // Lock the user row to prevent concurrent balance modifications
+            $user = User::lockForUpdate()->find($user->id);
+            $price = config('yap.reset_subscription_price');
+
+            if ($user->balance < $price) {
+                return redirect()->route('customer.service')
+                    ->withErrors([
+                        'error' => 'Insufficient balance to reset subscription.',
+                    ]);
+            }
+
+            UpdateUserUuid::dispatch($user);
+
+            $user->decrement('balance', $price);
+            $user->balanceDetails()->create([
+                'amount' => -$price,
+                'description' => 'Subscription URL reset',
+            ]);
+
             return redirect()->route('customer.service')
                 ->withErrors([
-                    'error' => 'Insufficient balance to reset subscription.',
+                    'success' => 'Subscription reset successfully, please wait for a few minutes for the changes to take effect.',
                 ]);
-        }
-
-        UpdateUserUuid::dispatch($request->user());
-
-        $request->user()->decrement('balance', config('yap.reset_subscription_price'));
-        $request->user()->balanceDetails()->create([
-            'amount' => -config('yap.reset_subscription_price'),
-            'description' => 'Subscription URL reset',
-        ]);
-
-        return redirect()->route('customer.service')
-            ->withErrors([
-                'success' => 'Subscription reset successfully, please wait for a few minutes for the changes to take effect.',
-            ]);
+        });
     }
 }

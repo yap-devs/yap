@@ -6,7 +6,6 @@ use App\Http\Controllers\BepusdtController;
 use App\Http\Controllers\ClashController;
 use App\Http\Controllers\CustomerServiceController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\FutoonController;
 use App\Http\Controllers\GithubController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PaymentController;
@@ -62,11 +61,6 @@ Route::post('/github/sponsor/webhook', [GithubController::class, 'sponsorWebhook
 Route::group(['prefix' => 'stat', 'middleware' => ['auth']], function () {
     Route::get('/', [StatController::class, 'index'])->name('stat');
 });
-
-Route::get('/futoon/submit', [FutoonController::class, 'submit'])
-    ->middleware(['auth', 'throttle:financial'])
-    ->name('futoon.submit');
-Route::get('/futoon/notify', [FutoonController::class, 'notify'])->name('futoon.notify');
 
 Route::group(['prefix' => 'alipay', 'middleware' => ['auth', 'throttle:financial']], function () {
     Route::get('/{payment}/query', [AlipayController::class, 'query'])->name('alipay.query');

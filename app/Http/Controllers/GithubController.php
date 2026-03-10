@@ -6,6 +6,7 @@ use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\InvalidStateException;
 
@@ -44,7 +45,7 @@ class GithubController extends Controller
 
         $user = User::where('github_id', $request->input('sponsorship.sponsor.id'))->first();
 
-        if (!$user) {
+        if (! $user) {
             return response()->json(['message' => 'User not found']);
         }
 
@@ -53,29 +54,31 @@ class GithubController extends Controller
         }
 
         $amount = $request->input('sponsorship.tier.monthly_price_in_dollars');
-        $remote_id = $request->input('sponsorship.tier.node_id') . '|' . $request->input('sponsorship.tier.created_at');
+        $remote_id = $request->input('sponsorship.tier.node_id').'|'.$request->input('sponsorship.tier.created_at');
 
-        if (Payment::where('remote_id', $remote_id)->exists()) {
-            return response()->json(['message' => 'Payment already exists']);
-        }
+        DB::transaction(function () use ($user, $amount, $remote_id, $request) {
+            // Re-check inside transaction to prevent duplicate processing
+            if (Payment::where('remote_id', $remote_id)->exists()) {
+                return;
+            }
 
-        $user->payments()->create([
-            'gateway' => Payment::GATEWAY_GITHUB,
-            'status' => Payment::STATUS_PAID,
-            'amount' => $amount,
-            'remote_id' => $remote_id,
-            'payload' => $request->all(),
-        ]);
+            $user->payments()->create([
+                'gateway' => Payment::GATEWAY_GITHUB,
+                'status' => Payment::STATUS_PAID,
+                'amount' => $amount,
+                'remote_id' => $remote_id,
+                'payload' => $request->all(),
+            ]);
 
-        $user->balance += $amount;
-        $user->save();
+            $user->increment('balance', $amount);
 
-        $user->balanceDetails()->create([
-            'amount' => $amount,
-            'description' => 'GitHub sponsor',
-        ]);
+            $user->balanceDetails()->create([
+                'amount' => $amount,
+                'description' => 'GitHub sponsor',
+            ]);
 
-        GenerateClashProfileLink::dispatch();
+            GenerateClashProfileLink::dispatch();
+        });
 
         return response()->json(['message' => 'ok']);
     }
