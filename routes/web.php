@@ -62,10 +62,12 @@ Route::group(['prefix' => 'stat', 'middleware' => ['auth']], function () {
     Route::get('/', [StatController::class, 'index'])->name('stat');
 });
 
-Route::group(['prefix' => 'alipay', 'middleware' => ['auth', 'throttle:financial']], function () {
+Route::group(['prefix' => 'alipay', 'middleware' => ['auth']], function () {
     Route::get('/{payment}/query', [AlipayController::class, 'query'])->name('alipay.query');
     Route::get('/{payment}/scan', [AlipayController::class, 'scan'])->name('alipay.scan');
-    Route::post('/newOrder', [AlipayController::class, 'newOrder'])->name('alipay.newOrder');
+    Route::post('/newOrder', [AlipayController::class, 'newOrder'])
+        ->middleware('throttle:financial')
+        ->name('alipay.newOrder');
 });
 Route::post('/alipay/notify', [AlipayController::class, 'notify']);
 
@@ -84,13 +86,17 @@ Route::group(['prefix' => 'customer/service', 'middleware' => ['auth']], functio
         ->name('customer.service.resetSubscription');
 });
 
-Route::group(['prefix' => 'package', 'middleware' => ['auth', 'throttle:financial']], function () {
+Route::group(['prefix' => 'package', 'middleware' => ['auth']], function () {
     Route::get('/', [PackageController::class, 'index'])->name('package');
-    Route::post('/{package}/buy', [PackageController::class, 'buy'])->name('package.buy');
+    Route::post('/{package}/buy', [PackageController::class, 'buy'])
+        ->middleware('throttle:financial')
+        ->name('package.buy');
 });
 
-Route::group(['prefix' => 'bepusdt', 'middleware' => ['auth', 'throttle:financial']], function () {
+Route::group(['prefix' => 'bepusdt', 'middleware' => ['auth']], function () {
     Route::get('/{payment}/scan', [BepusdtController::class, 'scan'])->name('bepusdt.scan');
-    Route::get('/newOrder', [BepusdtController::class, 'newOrder'])->name('bepusdt.newOrder');
+    Route::get('/newOrder', [BepusdtController::class, 'newOrder'])
+        ->middleware('throttle:financial')
+        ->name('bepusdt.newOrder');
 });
 Route::post('/bepusdt/notify', [BepusdtController::class, 'notify'])->name('bepusdt.notify');
