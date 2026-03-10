@@ -32,7 +32,7 @@ export default function CommercialDisclosure() {
                         Seller
                       </th>
                       <td className="px-6 py-4">
-                        [Seller / Business name]
+                        Will be disclosed without delay upon request.
                       </td>
                     </tr>
                     <tr>
@@ -40,7 +40,7 @@ export default function CommercialDisclosure() {
                         Head of Operations
                       </th>
                       <td className="px-6 py-4">
-                        [Name of head of operations]
+                        Will be disclosed without delay upon request.
                       </td>
                     </tr>
                     <tr>
@@ -48,11 +48,7 @@ export default function CommercialDisclosure() {
                         Address
                       </th>
                       <td className="px-6 py-4">
-                        [Business address]
-                        <br/>
-                        <span className="text-xs text-gray-500">
-                          Full address will be disclosed without delay upon request.
-                        </span>
+                        Will be disclosed without delay upon request.
                       </td>
                     </tr>
                     <tr>
@@ -60,11 +56,7 @@ export default function CommercialDisclosure() {
                         Phone Number
                       </th>
                       <td className="px-6 py-4">
-                        [Phone number]
-                        <br/>
-                        <span className="text-xs text-gray-500">
-                          Will be disclosed without delay upon request.
-                        </span>
+                        Will be disclosed without delay upon request.
                       </td>
                     </tr>
                     <tr>
@@ -72,7 +64,7 @@ export default function CommercialDisclosure() {
                         Email Address
                       </th>
                       <td className="px-6 py-4">
-                        [Email address]
+                        Will be disclosed without delay upon request.
                       </td>
                     </tr>
                     <tr>
