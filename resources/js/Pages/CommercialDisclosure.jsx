@@ -3,7 +3,9 @@ import {Head, Link} from '@inertiajs/react';
 export default function CommercialDisclosure() {
   const hostname = typeof window !== 'undefined' ? window.location.hostname : 'example.com';
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://example.com';
-  const contactEmail = `contact@${hostname}`;
+  const parts = hostname.split('.');
+  const rootDomain = parts.length > 2 ? parts.slice(-2).join('.') : hostname;
+  const contactEmail = `contact@${rootDomain}`;
 
   return (
     <>
