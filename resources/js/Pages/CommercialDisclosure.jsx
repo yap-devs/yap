@@ -33,6 +33,8 @@ export default function CommercialDisclosure() {
               <div className="overflow-hidden rounded-xl border border-white/5">
                 <table className="w-full text-left">
                   <tbody className="divide-y divide-white/5">
+
+                    {/* 1. 法人名 */}
                     <tr>
                       <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
                         販売業者<br/>
@@ -46,19 +48,8 @@ export default function CommercialDisclosure() {
                         </span>
                       </td>
                     </tr>
-                    <tr>
-                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
-                        運営責任者<br/>
-                        <span className="text-xs text-gray-500 font-normal">Head of Operations</span>
-                      </th>
-                      <td className="px-6 py-4">
-                        請求があった場合は遅滞なく開示します。
-                        <br/>
-                        <span className="text-xs text-gray-500">
-                          Will be disclosed without delay upon request.
-                        </span>
-                      </td>
-                    </tr>
+
+                    {/* 2. 住所 */}
                     <tr>
                       <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
                         所在地<br/>
@@ -72,6 +63,8 @@ export default function CommercialDisclosure() {
                         </span>
                       </td>
                     </tr>
+
+                    {/* 3. 電話番号 */}
                     <tr>
                       <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
                         電話番号<br/>
@@ -85,6 +78,8 @@ export default function CommercialDisclosure() {
                         </span>
                       </td>
                     </tr>
+
+                    {/* 4. メールアドレス */}
                     <tr>
                       <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
                         メールアドレス<br/>
@@ -97,30 +92,19 @@ export default function CommercialDisclosure() {
                         </a>
                       </td>
                     </tr>
+
+                    {/* 5. 運営責任者 */}
                     <tr>
                       <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
-                        ウェブサイト<br/>
-                        <span className="text-xs text-gray-500 font-normal">Website URL</span>
+                        運営責任者<br/>
+                        <span className="text-xs text-gray-500 font-normal">Head of Operations</span>
                       </th>
                       <td className="px-6 py-4">
-                        <Link href="/" className="text-indigo-400 hover:text-indigo-300 underline">
-                          {origin}
-                        </Link>
+                        Yap Devs
                       </td>
                     </tr>
-                    <tr>
-                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
-                        販売価格<br/>
-                        <span className="text-xs text-gray-500 font-normal">Pricing</span>
-                      </th>
-                      <td className="px-6 py-4">
-                        各商品ページに記載の金額（税込）
-                        <br/>
-                        <span className="text-xs text-gray-500">
-                          As displayed on each product/service page (tax included).
-                        </span>
-                      </td>
-                    </tr>
+
+                    {/* 6. 追加手数料 */}
                     <tr>
                       <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
                         商品代金以外の必要料金<br/>
@@ -134,46 +118,8 @@ export default function CommercialDisclosure() {
                         </span>
                       </td>
                     </tr>
-                    <tr>
-                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
-                        支払方法<br/>
-                        <span className="text-xs text-gray-500 font-normal">Payment Methods</span>
-                      </th>
-                      <td className="px-6 py-4">
-                        <ul className="list-disc list-inside space-y-1">
-                          <li>Alipay</li>
-                          <li>暗号資産（USDT / BEPUSDT）</li>
-                          <li>GitHub Sponsors</li>
-                        </ul>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
-                        支払時期<br/>
-                        <span className="text-xs text-gray-500 font-normal">Payment Period</span>
-                      </th>
-                      <td className="px-6 py-4">
-                        ご注文時にお支払いいただきます。各決済手段はただちに処理されます。
-                        <br/>
-                        <span className="text-xs text-gray-500">
-                          Payment is due at the time of purchase. All payment methods are processed immediately.
-                        </span>
-                      </td>
-                    </tr>
-                    <tr>
-                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
-                        引渡時期<br/>
-                        <span className="text-xs text-gray-500 font-normal">Delivery Timing</span>
-                      </th>
-                      <td className="px-6 py-4">
-                        お支払い確認後、ただちにサービスをご利用いただけます。トラフィック残高はお支払い完了後、即座にアカウントに反映されます。
-                        <br/>
-                        <span className="text-xs text-gray-500">
-                          Service is available immediately after payment confirmation.
-                          Traffic balance is credited to your account instantly upon successful payment processing.
-                        </span>
-                      </td>
-                    </tr>
+
+                    {/* 7. 交換および返品に関するポリシー */}
                     <tr>
                       <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
                         返品・交換について<br/>
@@ -225,6 +171,82 @@ export default function CommercialDisclosure() {
                         </span>
                       </td>
                     </tr>
+
+                    {/* 8. 配達時間 */}
+                    <tr>
+                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
+                        引渡時期<br/>
+                        <span className="text-xs text-gray-500 font-normal">Delivery Timing</span>
+                      </th>
+                      <td className="px-6 py-4">
+                        お支払い確認後、ただちにサービスをご利用いただけます。トラフィック残高はお支払い完了後、即座にアカウントに反映されます。
+                        <br/>
+                        <span className="text-xs text-gray-500">
+                          Service is available immediately after payment confirmation.
+                          Traffic balance is credited to your account instantly upon successful payment processing.
+                        </span>
+                      </td>
+                    </tr>
+
+                    {/* 9. 利用可能な決済手段 */}
+                    <tr>
+                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
+                        支払方法<br/>
+                        <span className="text-xs text-gray-500 font-normal">Payment Methods</span>
+                      </th>
+                      <td className="px-6 py-4">
+                        <ul className="list-disc list-inside space-y-1">
+                          <li>Alipay</li>
+                          <li>暗号資産（USDT / BEPUSDT）</li>
+                          <li>GitHub Sponsors</li>
+                        </ul>
+                      </td>
+                    </tr>
+
+                    {/* 10. 決済期間 */}
+                    <tr>
+                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
+                        支払時期<br/>
+                        <span className="text-xs text-gray-500 font-normal">Payment Period</span>
+                      </th>
+                      <td className="px-6 py-4">
+                        ご注文時にお支払いいただきます。各決済手段はただちに処理されます。
+                        <br/>
+                        <span className="text-xs text-gray-500">
+                          Payment is due at the time of purchase. All payment methods are processed immediately.
+                        </span>
+                      </td>
+                    </tr>
+
+                    {/* 11. 価格 */}
+                    <tr>
+                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
+                        販売価格<br/>
+                        <span className="text-xs text-gray-500 font-normal">Pricing</span>
+                      </th>
+                      <td className="px-6 py-4">
+                        各商品ページに記載の金額（税込）
+                        <br/>
+                        <span className="text-xs text-gray-500">
+                          As displayed on each product/service page (tax included).
+                        </span>
+                      </td>
+                    </tr>
+
+                    {/* Optional: ウェブサイト */}
+                    <tr>
+                      <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
+                        ウェブサイト<br/>
+                        <span className="text-xs text-gray-500 font-normal">Website URL</span>
+                      </th>
+                      <td className="px-6 py-4">
+                        <Link href="/" className="text-indigo-400 hover:text-indigo-300 underline">
+                          {origin}
+                        </Link>
+                      </td>
+                    </tr>
+
+                    {/* Optional: 動作環境 */}
                     <tr>
                       <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
                         動作環境<br/>
@@ -239,6 +261,8 @@ export default function CommercialDisclosure() {
                         </span>
                       </td>
                     </tr>
+
+                    {/* Optional: お問い合わせ先 */}
                     <tr>
                       <th className="bg-white/[0.02] px-6 py-4 text-sm font-medium text-gray-200 whitespace-nowrap w-1/3 align-top">
                         お問い合わせ先<br/>
@@ -261,6 +285,7 @@ export default function CommercialDisclosure() {
                         </a>
                       </td>
                     </tr>
+
                   </tbody>
                 </table>
               </div>
