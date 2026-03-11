@@ -1,6 +1,10 @@
 import {Head, Link} from '@inertiajs/react';
 
 export default function CommercialDisclosure() {
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'example.com';
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://example.com';
+  const contactEmail = `contact@${hostname}`;
+
   return (
     <>
       <Head title="特定商取引法に基づく表記 - Commercial Disclosure"/>
@@ -85,9 +89,9 @@ export default function CommercialDisclosure() {
                         <span className="text-xs text-gray-500 font-normal">Email Address</span>
                       </th>
                       <td className="px-6 py-4">
-                        <a href="mailto:contact@yap.example.com"
+                        <a href={`mailto:${contactEmail}`}
                            className="text-indigo-400 hover:text-indigo-300 underline">
-                          contact@yap.example.com
+                          {contactEmail}
                         </a>
                       </td>
                     </tr>
@@ -98,7 +102,7 @@ export default function CommercialDisclosure() {
                       </th>
                       <td className="px-6 py-4">
                         <Link href="/" className="text-indigo-400 hover:text-indigo-300 underline">
-                          {typeof window !== 'undefined' ? window.location.origin : 'https://yap.example.com'}
+                          {origin}
                         </Link>
                       </td>
                     </tr>
@@ -239,9 +243,9 @@ export default function CommercialDisclosure() {
                         <span className="text-xs text-gray-500 font-normal">Contact</span>
                       </th>
                       <td className="px-6 py-4">
-                        <a href="mailto:contact@yap.example.com"
+                        <a href={`mailto:${contactEmail}`}
                            className="text-indigo-400 hover:text-indigo-300 underline">
-                          contact@yap.example.com
+                          {contactEmail}
                         </a>
                         <br/>
                         <a href="https://t.me/yap_devs" target="_blank" rel="noopener noreferrer"
