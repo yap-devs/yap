@@ -1,11 +1,21 @@
 import {Head, Link} from '@inertiajs/react';
 
-export default function CommercialDisclosure() {
+export default function CommercialDisclosure({seller, address, phone, headOfOperations}) {
   const hostname = typeof window !== 'undefined' ? window.location.hostname : 'example.com';
   const origin = typeof window !== 'undefined' ? window.location.origin : 'https://example.com';
   const parts = hostname.split('.');
   const rootDomain = parts.length > 2 ? parts.slice(-2).join('.') : hostname;
   const contactEmail = `contact@${rootDomain}`;
+
+  const uponRequest = (
+    <>
+      請求があった場合は遅滞なく開示します。
+      <br/>
+      <span className="text-xs text-gray-500">
+        Will be disclosed without delay upon request.
+      </span>
+    </>
+  );
 
   return (
     <>
@@ -41,11 +51,7 @@ export default function CommercialDisclosure() {
                         <span className="text-xs text-gray-500 font-normal">Seller</span>
                       </th>
                       <td className="px-6 py-4">
-                        請求があった場合は遅滞なく開示します。
-                        <br/>
-                        <span className="text-xs text-gray-500">
-                          Will be disclosed without delay upon request.
-                        </span>
+                        {seller || uponRequest}
                       </td>
                     </tr>
 
@@ -56,11 +62,7 @@ export default function CommercialDisclosure() {
                         <span className="text-xs text-gray-500 font-normal">Address</span>
                       </th>
                       <td className="px-6 py-4">
-                        請求があった場合は遅滞なく開示します。
-                        <br/>
-                        <span className="text-xs text-gray-500">
-                          Will be disclosed without delay upon request.
-                        </span>
+                        {address || uponRequest}
                       </td>
                     </tr>
 
@@ -71,11 +73,7 @@ export default function CommercialDisclosure() {
                         <span className="text-xs text-gray-500 font-normal">Phone Number</span>
                       </th>
                       <td className="px-6 py-4">
-                        請求があった場合は遅滞なく開示します。
-                        <br/>
-                        <span className="text-xs text-gray-500">
-                          Will be disclosed without delay upon request.
-                        </span>
+                        {phone || uponRequest}
                       </td>
                     </tr>
 
@@ -100,7 +98,15 @@ export default function CommercialDisclosure() {
                         <span className="text-xs text-gray-500 font-normal">Head of Operations</span>
                       </th>
                       <td className="px-6 py-4">
-                        Yap Devs
+                        {headOfOperations || (
+                          <span className="text-yellow-500">
+                            未設定（YAP_CD_HEAD_OF_OPERATIONS を .env に設定してください）
+                            <br/>
+                            <span className="text-xs">
+                              Not configured — please set YAP_CD_HEAD_OF_OPERATIONS in your .env file.
+                            </span>
+                          </span>
+                        )}
                       </td>
                     </tr>
 

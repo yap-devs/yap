@@ -34,7 +34,12 @@ Route::get('/tos', function () {
 })->name('tos');
 
 Route::get('/commercial-disclosure', function () {
-    return Inertia::render('CommercialDisclosure');
+    return Inertia::render('CommercialDisclosure', [
+        'seller' => config('yap.commercial_disclosure.seller'),
+        'address' => config('yap.commercial_disclosure.address'),
+        'phone' => config('yap.commercial_disclosure.phone'),
+        'headOfOperations' => config('yap.commercial_disclosure.head_of_operations'),
+    ]);
 })->name('commercial.disclosure');
 
 Route::middleware('auth')->group(function () {
