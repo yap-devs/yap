@@ -31,10 +31,30 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL, s
     });
   }
   const redirectToStripePage = () => {
-    router.visit(route('stripe.newOrder'), {
-      method: 'post',
-      data: {amount: stripeAmount || 5}
-    });
+    // Use a regular form POST instead of Inertia router.visit() because the backend
+    // redirects to checkout.stripe.com which blocks cross-origin XHR (CORS).
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = route('stripe.newOrder');
+
+    // Read CSRF token from XSRF-TOKEN cookie (set by Laravel)
+    const xsrfCookie = document.cookie.split('; ').find(c => c.startsWith('XSRF-TOKEN='));
+    const token = xsrfCookie ? decodeURIComponent(xsrfCookie.split('=')[1]) : '';
+
+    const tokenInput = document.createElement('input');
+    tokenInput.type = 'hidden';
+    tokenInput.name = '_token';
+    tokenInput.value = token;
+    form.appendChild(tokenInput);
+
+    const amountInput = document.createElement('input');
+    amountInput.type = 'hidden';
+    amountInput.name = 'amount';
+    amountInput.value = stripeAmount || 5;
+    form.appendChild(amountInput);
+
+    document.body.appendChild(form);
+    form.submit();
   }
 
   const [githubAmount, setGithubAmount] = useState(5);
