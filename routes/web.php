@@ -10,6 +10,7 @@ use App\Http\Controllers\GithubController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\RechargeController;
 use App\Http\Controllers\StatController;
 use App\Http\Controllers\StripeController;
 use App\Http\Middleware\ValidateGithubWebhook;
@@ -57,6 +58,10 @@ Route::get('/clash/{uuid}/yap.yaml', [ClashController::class, 'index'])
 
 Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+});
+
+Route::group(['prefix' => 'recharge', 'middleware' => ['auth']], function () {
+    Route::get('/', [RechargeController::class, 'index'])->name('recharge');
 });
 
 Route::group(['prefix' => 'auth/github', 'middleware' => ['auth']], function () {

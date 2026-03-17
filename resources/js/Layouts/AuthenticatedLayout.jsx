@@ -24,24 +24,17 @@ export default function Authenticated({user, header, children}) {
                 <NavLink href={route('dashboard')} active={route().current('dashboard')}>
                   Dashboard
                 </NavLink>
+                <NavLink href={route('recharge')} active={route().current('recharge')}>
+                  Recharge
+                </NavLink>
                 <NavLink href={route('package')} active={route().current('package')}>
-                  Package
+                  Traffic Packages
                 </NavLink>
                 <NavLink href={route('stat')} active={route().current('stat')}>
-                  Stat
+                  Statistics
                 </NavLink>
-                <NavLink href={route('payment')} active={route().current('payment')}>
-                  Payment
-                </NavLink>
-                <NavLink href={route('balance.detail')} active={route().current('balance.detail')}>
-                  Balance Detail
-                </NavLink>
-                <NavLink
-                  href={route('customer.service')}
-                  active={route().current('customer.service')}
-                  className="transition-all duration-200 ease-in-out transform animate-pulse bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-transparent bg-clip-text"
-                >
-                  <span>Customer Service</span>
+                <NavLink href={route('customer.service')} active={route().current('customer.service')}>
+                  Support
                 </NavLink>
               </div>
             </div>
@@ -74,6 +67,8 @@ export default function Authenticated({user, header, children}) {
 
                   <Dropdown.Content>
                     <Dropdown.Link href={route('profile.edit')}>Profile</Dropdown.Link>
+                    <Dropdown.Link href={route('payment')}>Payment History</Dropdown.Link>
+                    <Dropdown.Link href={route('balance.detail')}>Balance Detail</Dropdown.Link>
                     <Dropdown.Link href={route('logout')} method="post" as="button">
                       Log Out
                     </Dropdown.Link>
@@ -113,20 +108,17 @@ export default function Authenticated({user, header, children}) {
             <ResponsiveNavLink href={route('dashboard')} active={route().current('dashboard')}>
               Dashboard
             </ResponsiveNavLink>
+            <ResponsiveNavLink href={route('recharge')} active={route().current('recharge')}>
+              Recharge
+            </ResponsiveNavLink>
             <ResponsiveNavLink href={route('package')} active={route().current('package')}>
-              Package
+              Traffic Packages
             </ResponsiveNavLink>
             <ResponsiveNavLink href={route('stat')} active={route().current('stat')}>
-              Stat
-            </ResponsiveNavLink>
-            <ResponsiveNavLink href={route('payment')} active={route().current('payment')}>
-              Payment
-            </ResponsiveNavLink>
-            <ResponsiveNavLink href={route('balance.detail')} active={route().current('balance.detail')}>
-              Balance Detail
+              Statistics
             </ResponsiveNavLink>
             <ResponsiveNavLink href={route('customer.service')} active={route().current('customer.service')}>
-              Customer Service
+              Support
             </ResponsiveNavLink>
           </div>
 
@@ -138,6 +130,8 @@ export default function Authenticated({user, header, children}) {
 
             <div className="mt-3 space-y-1">
               <ResponsiveNavLink href={route('profile.edit')}>Profile</ResponsiveNavLink>
+              <ResponsiveNavLink href={route('payment')}>Payment History</ResponsiveNavLink>
+              <ResponsiveNavLink href={route('balance.detail')}>Balance Detail</ResponsiveNavLink>
               <ResponsiveNavLink method="post" href={route('logout')} as="button">
                 Log Out
               </ResponsiveNavLink>

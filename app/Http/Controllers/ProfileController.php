@@ -22,8 +22,6 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'mustVerifyEmail' => $request->user() instanceof MustVerifyEmail,
             'status' => session('status'),
-            'githubSponsorURL' => config('yap.github.sponsor_url'),
-            'stripeSandbox' => str_starts_with(config('yap.payment.stripe.secret'), 'sk_test_'),
         ]);
     }
 
