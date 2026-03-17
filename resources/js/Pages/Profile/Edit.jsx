@@ -296,6 +296,9 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL, s
         </div>
 
         <div className="p-4 bg-white text-gray-800">
+          <div className="mb-3 px-2 py-1.5 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700 text-center">
+            Only <span className="font-semibold">Polygon (MATIC)</span> chain is supported
+          </div>
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
               Amount (USD)
