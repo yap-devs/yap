@@ -43,6 +43,18 @@ class StripeController extends Controller
         $out_trade_no = 'S' . time() . random_int(100000, 999999);
         $amount = $request->input('amount');
 
+        // Create payment record first so we have the ID for the success URL
+        /** @var Payment $payment */
+        $payment = $user->payments()->create([
+            'gateway' => Payment::GATEWAY_STRIPE,
+            'status' => Payment::STATUS_CREATED,
+            'amount' => $amount,
+            'remote_id' => $out_trade_no,
+            'payload' => [
+                Payment::STATUS_CREATED => [],
+            ],
+        ]);
+
         try {
             $session = Session::create([
                 // Let Stripe determine available payment methods based on Dashboard settings,
@@ -59,7 +71,7 @@ class StripeController extends Controller
                     'quantity' => 1,
                 ]],
                 'mode' => 'payment',
-                'success_url' => route('stripe.success', ['payment' => '__PAYMENT_ID__']) . '?session_id={CHECKOUT_SESSION_ID}',
+                'success_url' => route('stripe.success', ['payment' => $payment->id]) . '?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => route('profile.edit'),
                 'metadata' => [
                     'order_id' => $out_trade_no,
@@ -67,30 +79,21 @@ class StripeController extends Controller
             ]);
         } catch (ApiErrorException $e) {
             logger()->critical('Stripe session creation failed: ' . $e->getMessage());
+            $payment->delete();
 
             return redirect()->route('profile.edit')->withErrors([
                 'message' => 'Failed to create Stripe payment.',
             ]);
         }
 
-        /** @var Payment $payment */
-        $payment = $user->payments()->create([
-            'gateway' => Payment::GATEWAY_STRIPE,
-            'status' => Payment::STATUS_CREATED,
-            'amount' => $amount,
-            'remote_id' => $out_trade_no,
-            'payload' => [
-                Payment::STATUS_CREATED => [
-                    'session_id' => $session->id,
-                    'checkout_url' => $session->url,
-                ],
+        // Store session details in payment payload
+        $payment->payload = [
+            Payment::STATUS_CREATED => [
+                'session_id' => $session->id,
+                'checkout_url' => $session->url,
             ],
-        ]);
-
-        // Replace placeholder with actual payment ID in success_url
-        $session = Session::update($session->id, [
-            'success_url' => route('stripe.success', ['payment' => $payment->id]) . '?session_id={CHECKOUT_SESSION_ID}',
-        ]);
+        ];
+        $payment->save();
 
         return redirect()->away($session->url);
     }
@@ -161,6 +164,7 @@ class StripeController extends Controller
 
     /**
      * Credit user balance for a completed Stripe Checkout session.
+     *
      * @throws \Throwable
      */
     private function fulfillPayment(object $session): void

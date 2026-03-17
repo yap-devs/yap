@@ -15,7 +15,7 @@
         "laravel/socialite": "^5.15",
         "laravel/telescope": "^5.1",
         "laravel/tinker": "^2.9",
-        "sentry/sentry-laravel": "^4.6",
+        "sentry/sentry-laravel": "^4.22",
         "spatie/ssh": "^1.13",
         "stripe/stripe-php": "^19.4",
         "tightenco/ziggy": "^2.0",
