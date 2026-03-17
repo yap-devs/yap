@@ -121,12 +121,13 @@ export default function Index({auth, packages, userPackages}) {
                       <div className="text-sm leading-5 text-gray-900">{_package.duration_days}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-no-wrap text-right text-sm leading-5 font-medium">
-                      <SecondaryButton
+                      <button
+                        type="button"
                         onClick={() => setConfirmingBuy(_package.id)}
-                        className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition duration-200"
+                        className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition duration-200"
                       >
                         Buy
-                      </SecondaryButton>
+                      </button>
                     </td>
                   </tr>
                 ))}
