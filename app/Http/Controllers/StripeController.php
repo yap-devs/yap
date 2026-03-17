@@ -102,6 +102,29 @@ class StripeController extends Controller
         return Inertia::location($session->url);
     }
 
+    public function pay(Request $request, Payment $payment)
+    {
+        /** @var User $user */
+        $user = $request->user();
+        abort_if($payment->user->isNot($user), 404);
+        abort_if($payment->gateway !== Payment::GATEWAY_STRIPE, 404);
+
+        if ($payment->status !== Payment::STATUS_CREATED) {
+            return redirect()->route('profile.edit')->withErrors([
+                'message' => 'Payment is no longer available.',
+            ]);
+        }
+
+        $checkout_url = $payment->payload[Payment::STATUS_CREATED]['checkout_url'] ?? null;
+        if (! $checkout_url) {
+            return redirect()->route('profile.edit')->withErrors([
+                'message' => 'Checkout session not found.',
+            ]);
+        }
+
+        return Inertia::location($checkout_url);
+    }
+
     public function success(Request $request, Payment $payment)
     {
         /** @var User $user */

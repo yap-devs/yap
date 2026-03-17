@@ -115,6 +115,7 @@ Route::group(['prefix' => 'stripe', 'middleware' => ['auth']], function () {
     Route::post('/newOrder', [StripeController::class, 'newOrder'])
         ->middleware('throttle:financial')
         ->name('stripe.newOrder');
+    Route::get('/{payment}/pay', [StripeController::class, 'pay'])->name('stripe.pay');
     Route::get('/{payment}/success', [StripeController::class, 'success'])->name('stripe.success');
 });
 Route::post('/stripe/webhook', [StripeController::class, 'webhook'])->name('stripe.webhook');
