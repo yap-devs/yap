@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 use Random\RandomException;
 use Throwable;
 
@@ -79,7 +80,7 @@ class BepusdtController extends Controller
             ]);
         }
 
-        return redirect()->away($payment_url);
+        return Inertia::location($payment_url);
     }
 
     /**
