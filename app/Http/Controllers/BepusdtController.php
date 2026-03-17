@@ -32,8 +32,8 @@ class BepusdtController extends Controller
         $user = $request->user();
 
         if ($user->payments()->where('status', Payment::STATUS_CREATED)->exists()) {
-            return redirect()->route('profile.edit')->withErrors([
-                'message' => 'You have an unpaid payment.',
+            return redirect()->route('recharge')->withErrors([
+                'message' => 'You have an unpaid payment. Please complete or cancel it before creating a new one.',
             ]);
         }
 
@@ -60,13 +60,13 @@ class BepusdtController extends Controller
         /** @var User $user */
         $user = $request->user();
         if ($payment->user->isNot($user)) {
-            return redirect()->route('profile.edit')->withErrors([
+            return redirect()->route('recharge')->withErrors([
                 'message' => 'Payment not found.',
             ]);
         }
 
         if ($payment->gateway !== Payment::GATEWAY_USDT) {
-            return redirect()->route('profile.edit')->withErrors([
+            return redirect()->route('recharge')->withErrors([
                 'message' => 'Invalid payment gateway.',
             ]);
         }
@@ -75,7 +75,7 @@ class BepusdtController extends Controller
         $payment_url = Arr::get($info, 'data.payment_url');
 
         if (! $payment_url) {
-            return redirect()->route('profile.edit')->withErrors([
+            return redirect()->route('recharge')->withErrors([
                 'message' => 'Payment URL not found.',
             ]);
         }

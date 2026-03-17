@@ -2,8 +2,32 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, router, usePage} from '@inertiajs/react';
 import {useState, useEffect} from 'react';
 
-export default function Index({auth, githubSponsorURL, stripeSandbox}) {
+export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPayment}) {
   const {errors} = usePage().props;
+
+  const gatewayLabels = {
+    alipay: 'Alipay',
+    usdt: 'USDT',
+    stripe: 'Stripe',
+    github: 'GitHub Sponsors',
+  };
+
+  const continuePendingPayment = () => {
+    if (!pendingPayment) return;
+    const {id, gateway} = pendingPayment;
+    if (gateway === 'alipay') {
+      router.get(route('alipay.scan', {payment: id}));
+    } else if (gateway === 'usdt') {
+      router.get(route('bepusdt.scan', {payment: id}));
+    } else if (gateway === 'stripe') {
+      router.get(route('stripe.pay', {payment: id}));
+    }
+  };
+
+  const cancelPendingPayment = () => {
+    if (!pendingPayment) return;
+    router.post(route('recharge.cancel', {payment: pendingPayment.id}));
+  };
 
   const redirectToGithubOauth = () => {
     window.location.href = route('github.redirect');
@@ -286,6 +310,44 @@ export default function Index({auth, githubSponsorURL, stripeSandbox}) {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
                 <span>{errors.message || errors.amount}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Pending Payment Banner */}
+          {pendingPayment && (
+            <div className="mb-6 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
+              <div className="flex items-start justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-amber-800">You have an unpaid order</h3>
+                  <p className="mt-1 text-sm text-amber-700">
+                    {gatewayLabels[pendingPayment.gateway] || pendingPayment.gateway} - ${pendingPayment.amount}
+                    <span className="ml-2 text-amber-600 text-xs">
+                      Created: {pendingPayment.created_at}
+                    </span>
+                  </p>
+                  <p className="mt-1 text-xs text-amber-600">
+                    Please complete this payment or cancel it before creating a new one.
+                  </p>
+                </div>
+                <div className="flex gap-2 ml-4 shrink-0">
+                  {pendingPayment.gateway !== 'github' && (
+                    <button
+                      type="button"
+                      onClick={continuePendingPayment}
+                      className="px-3 py-1.5 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors"
+                    >
+                      Continue Payment
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={cancelPendingPayment}
+                    className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-white border border-amber-300 hover:bg-amber-50 rounded-md transition-colors"
+                  >
+                    Cancel Order
+                  </button>
+                </div>
               </div>
             </div>
           )}

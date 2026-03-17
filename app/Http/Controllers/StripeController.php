@@ -36,12 +36,12 @@ class StripeController extends Controller
         $user = $request->user();
 
         if ($user->payments()->where('status', Payment::STATUS_CREATED)->exists()) {
-            return redirect()->route('profile.edit')->withErrors([
-                'message' => 'You have an unpaid payment.',
+            return redirect()->route('recharge')->withErrors([
+                'message' => 'You have an unpaid payment. Please complete or cancel it before creating a new one.',
             ]);
         }
 
-        $out_trade_no = 'S' . time() . random_int(100000, 999999);
+        $out_trade_no = 'S'.time().random_int(100000, 999999);
         $amount = $request->input('amount');
 
         // Create payment record first so we have the ID for the success URL
@@ -73,17 +73,17 @@ class StripeController extends Controller
                     'quantity' => 1,
                 ]],
                 'mode' => 'payment',
-                'success_url' => route('stripe.success', ['payment' => $payment->id]) . '?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => route('profile.edit'),
+                'success_url' => route('stripe.success', ['payment' => $payment->id]).'?session_id={CHECKOUT_SESSION_ID}',
+                'cancel_url' => route('recharge'),
                 'metadata' => [
                     'order_id' => $out_trade_no,
                 ],
             ]);
         } catch (ApiErrorException $e) {
-            logger()->critical('Stripe session creation failed: ' . $e->getMessage());
+            logger()->critical('Stripe session creation failed: '.$e->getMessage());
             $payment->delete();
 
-            return redirect()->route('profile.edit')->withErrors([
+            return redirect()->route('recharge')->withErrors([
                 'message' => 'Failed to create Stripe payment.',
             ]);
         }
@@ -111,14 +111,14 @@ class StripeController extends Controller
         abort_if($payment->gateway !== Payment::GATEWAY_STRIPE, 404);
 
         if ($payment->status !== Payment::STATUS_CREATED) {
-            return redirect()->route('profile.edit')->withErrors([
+            return redirect()->route('recharge')->withErrors([
                 'message' => 'Payment is no longer available.',
             ]);
         }
 
         $checkout_url = $payment->payload[Payment::STATUS_CREATED]['checkout_url'] ?? null;
-        if (!$checkout_url) {
-            return redirect()->route('profile.edit')->withErrors([
+        if (! $checkout_url) {
+            return redirect()->route('recharge')->withErrors([
                 'message' => 'Checkout session not found.',
             ]);
         }
@@ -131,14 +131,14 @@ class StripeController extends Controller
         /** @var User $user */
         $user = $request->user();
         if ($payment->user->isNot($user)) {
-            return redirect()->route('profile.edit')->withErrors([
+            return redirect()->route('recharge')->withErrors([
                 'message' => 'Payment not found.',
             ]);
         }
 
         // The actual payment confirmation happens via webhook.
         // This page just shows a thank-you message.
-        return redirect()->route('profile.edit');
+        return redirect()->route('recharge');
     }
 
     public function webhook(Request $request)
@@ -150,7 +150,7 @@ class StripeController extends Controller
         try {
             $event = Webhook::constructEvent($payload, $sig_header, $webhook_secret);
         } catch (SignatureVerificationException $e) {
-            logger()->error('Stripe webhook signature verification failed: ' . $e->getMessage());
+            logger()->error('Stripe webhook signature verification failed: '.$e->getMessage());
 
             return response('Invalid signature', 400);
         }
@@ -199,15 +199,15 @@ class StripeController extends Controller
     {
         $order_id = $session->metadata->order_id ?? null;
 
-        if (!$order_id) {
+        if (! $order_id) {
             logger()->warning('Stripe webhook: missing order_id in metadata');
 
             return;
         }
 
         $payment = Payment::where('remote_id', $order_id)->first();
-        if (!$payment) {
-            logger()->warning('Stripe webhook: payment not found: ' . $order_id);
+        if (! $payment) {
+            logger()->warning('Stripe webhook: payment not found: '.$order_id);
 
             return;
         }

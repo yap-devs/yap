@@ -62,6 +62,7 @@ Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], fu
 
 Route::group(['prefix' => 'recharge', 'middleware' => ['auth']], function () {
     Route::get('/', [RechargeController::class, 'index'])->name('recharge');
+    Route::post('/{payment}/cancel', [RechargeController::class, 'cancel'])->name('recharge.cancel');
 });
 
 Route::group(['prefix' => 'auth/github', 'middleware' => ['auth']], function () {
