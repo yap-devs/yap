@@ -89,9 +89,9 @@ export default function Index({auth, payments}) {
                           )
                         }
                         {
-                          (payment.status === 'created') && (payment.gateway === 'stripe') && payment.payload?.created?.checkout_url && (
-                            <a href={payment.payload.created.checkout_url}
-                                  className="text-indigo-600 hover:text-indigo-900">Pay</a>
+                          (payment.status === 'created') && (payment.gateway === 'stripe') && (
+                            <Link href={route('stripe.pay', payment)}
+                                  className="text-indigo-600 hover:text-indigo-900">Pay</Link>
                           )
                         }
                       </td>
