@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
 use Random\RandomException;
 use Stripe\Checkout\Session;
 use Stripe\Exception\ApiErrorException;
@@ -40,7 +41,7 @@ class StripeController extends Controller
             ]);
         }
 
-        $out_trade_no = 'S' . time() . random_int(100000, 999999);
+        $out_trade_no = 'S'.time().random_int(100000, 999999);
         $amount = $request->input('amount');
 
         // Create payment record first so we have the ID for the success URL
@@ -71,14 +72,14 @@ class StripeController extends Controller
                     'quantity' => 1,
                 ]],
                 'mode' => 'payment',
-                'success_url' => route('stripe.success', ['payment' => $payment->id]) . '?session_id={CHECKOUT_SESSION_ID}',
+                'success_url' => route('stripe.success', ['payment' => $payment->id]).'?session_id={CHECKOUT_SESSION_ID}',
                 'cancel_url' => route('profile.edit'),
                 'metadata' => [
                     'order_id' => $out_trade_no,
                 ],
             ]);
         } catch (ApiErrorException $e) {
-            logger()->critical('Stripe session creation failed: ' . $e->getMessage());
+            logger()->critical('Stripe session creation failed: '.$e->getMessage());
             $payment->delete();
 
             return redirect()->route('profile.edit')->withErrors([
@@ -95,7 +96,10 @@ class StripeController extends Controller
         ];
         $payment->save();
 
-        return redirect()->away($session->url);
+        // Return checkout URL for frontend redirect via Inertia location header.
+        // Cannot use redirect()->away() because Inertia XHR cannot follow
+        // cross-origin redirects (CORS blocks it).
+        return Inertia::location($session->url);
     }
 
     public function success(Request $request, Payment $payment)
@@ -122,7 +126,7 @@ class StripeController extends Controller
         try {
             $event = Webhook::constructEvent($payload, $sig_header, $webhook_secret);
         } catch (SignatureVerificationException $e) {
-            logger()->error('Stripe webhook signature verification failed: ' . $e->getMessage());
+            logger()->error('Stripe webhook signature verification failed: '.$e->getMessage());
 
             return response('Invalid signature', 400);
         }
@@ -171,15 +175,15 @@ class StripeController extends Controller
     {
         $order_id = $session->metadata->order_id ?? null;
 
-        if (!$order_id) {
+        if (! $order_id) {
             logger()->warning('Stripe webhook: missing order_id in metadata');
 
             return;
         }
 
         $payment = Payment::where('remote_id', $order_id)->first();
-        if (!$payment) {
-            logger()->warning('Stripe webhook: payment not found: ' . $order_id);
+        if (! $payment) {
+            logger()->warning('Stripe webhook: payment not found: '.$order_id);
 
             return;
         }
