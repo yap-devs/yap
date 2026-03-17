@@ -1,7 +1,17 @@
 # AGENTS.md - YAP (Yet Another Panel)
 
-Laravel 11 + React 18 (Inertia.js) application for managing VPN/proxy subscriptions.
+Laravel 12 + React 18 (Inertia.js) application for managing VPN/proxy subscriptions.
 PHP 8.2+ backend, JavaScript/JSX frontend, Filament admin panel, Tailwind CSS.
+
+## Development Environment
+
+If the working directory is on a Windows filesystem mount (e.g. path starts with `/mnt/c/`,
+`/mnt/d/`, etc.), **always use the Windows-native tools** (`php.exe`, `composer.bat`,
+`node.exe`, `npm.cmd`, etc.) via `powershell.exe -Command "..."` or `cmd.exe /c "..."`
+instead of the WSL-local binaries. The WSL environment may be missing PHP extensions
+(e.g. `ext-yaml`, `ext-intl`) that the Windows PHP installation has. **Never** use
+`--ignore-platform-reqs` or `--ignore-platform-req` to work around missing extensions —
+ask the user to run the command on Windows or install the missing extensions first.
 
 ## Build / Lint / Test Commands
 
