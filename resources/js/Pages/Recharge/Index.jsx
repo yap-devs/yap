@@ -1,9 +1,11 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, router, usePage} from '@inertiajs/react';
 import {useState, useEffect} from 'react';
+import Modal from '@/Components/Modal';
 
 export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPayment}) {
   const {errors} = usePage().props;
+  const [confirmingCancel, setConfirmingCancel] = useState(false);
 
   const gatewayLabels = {
     alipay: 'Alipay',
@@ -26,7 +28,9 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
 
   const cancelPendingPayment = () => {
     if (!pendingPayment) return;
-    router.post(route('recharge.cancel', {payment: pendingPayment.id}));
+    router.post(route('recharge.cancel', {payment: pendingPayment.id}), {}, {
+      onSuccess: () => setConfirmingCancel(false),
+    });
   };
 
   const redirectToGithubOauth = () => {
@@ -342,7 +346,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
                   )}
                   <button
                     type="button"
-                    onClick={cancelPendingPayment}
+                    onClick={() => setConfirmingCancel(true)}
                     className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-white border border-amber-300 hover:bg-amber-50 rounded-md transition-colors"
                   >
                     Cancel Order
@@ -439,6 +443,32 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
           </div>
         </div>
       </div>
+
+      <Modal show={confirmingCancel} onClose={() => setConfirmingCancel(false)} maxWidth="md">
+        <div className="p-6">
+          <h2 className="text-lg font-medium text-gray-900">Cancel this order?</h2>
+          <p className="mt-2 text-sm text-gray-600">
+            Are you sure you want to cancel the {pendingPayment ? (gatewayLabels[pendingPayment.gateway] || pendingPayment.gateway) : ''} order
+            of ${pendingPayment?.amount}? You can only cancel up to 2 orders per day.
+          </p>
+          <div className="mt-6 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setConfirmingCancel(false)}
+              className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+            >
+              Keep Order
+            </button>
+            <button
+              type="button"
+              onClick={cancelPendingPayment}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+            >
+              Confirm Cancel
+            </button>
+          </div>
+        </div>
+      </Modal>
     </AuthenticatedLayout>
   );
 }
