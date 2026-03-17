@@ -20,7 +20,9 @@ class V2rayService
 
         $this->ssh = Ssh::create(config('yap.ssh_user'), $host, $port)
             ->disableStrictHostKeyChecking()
-            ->usePrivateKey(config('yap.ssh_private_key_path'));
+            ->usePrivateKey(config('yap.ssh_private_key_path'))
+            ->addExtraOption('-o ConnectTimeout=5')
+            ->setTimeout(10);
     }
 
     public function addOrRemoveUsers(array $users)

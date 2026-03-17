@@ -12,6 +12,7 @@ use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Throwable;
 
 class GenerateClashProfileLink implements ShouldQueue
 {
@@ -63,6 +64,7 @@ class GenerateClashProfileLink implements ShouldQueue
             }
 
             $clash->delConf();
+
             return [$user, []];
         }
 
@@ -77,6 +79,7 @@ class GenerateClashProfileLink implements ShouldQueue
         }
 
         $clash->genConf($servers);
+
         return [$user, $servers];
     }
 
@@ -101,8 +104,15 @@ class GenerateClashProfileLink implements ShouldQueue
         }
 
         foreach ($server_user_map as $internal_server => $users) {
-            $v2ray = new V2rayService($internal_server);
-            $v2ray->addOrRemoveUsers($users);
+            try {
+                $v2ray = new V2rayService($internal_server);
+                $v2ray->addOrRemoveUsers($users);
+            } catch (Throwable $e) {
+                logger()->driver('job')->log(
+                    'error',
+                    "[GenerateClashProfileLink] Failed to update V2ray server: $internal_server, error: {$e->getMessage()}"
+                );
+            }
         }
     }
 }

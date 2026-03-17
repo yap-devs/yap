@@ -32,6 +32,7 @@ class UpdateStatCommand extends Command
 
     /**
      * Execute the console command.
+     *
      * @throws Throwable
      */
     public function handle()
@@ -168,8 +169,15 @@ class UpdateStatCommand extends Command
 
         /** @var VmessServer $vmess_server */
         foreach ($vmess_servers as $vmess_server) {
-            $v2ray = new V2rayService($vmess_server->internal_server);
-            $stats[$vmess_server->id] = $v2ray->getStats(reset: true);
+            try {
+                $v2ray = new V2rayService($vmess_server->internal_server);
+                $stats[$vmess_server->id] = $v2ray->getStats(reset: true);
+            } catch (Throwable $e) {
+                logger()->driver('job')->log(
+                    'error',
+                    "[UpdateStatCommand] Failed to get stats from server: {$vmess_server->internal_server}, error: {$e->getMessage()}"
+                );
+            }
         }
 
         return $stats;
