@@ -9,17 +9,25 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Payment extends Model
 {
-    use HasFactory, SoftDeletes, SerializeDate;
+    use HasFactory, SerializeDate, SoftDeletes;
 
     const STATUS_CREATED = 'created';
+
     const STATUS_PAID = 'paid';
+
     const STATUS_CANCELLED = 'cancelled';
+
     const STATUS_EXPIRED = 'expired';
+
     const STATUS_REFUNDED = 'refunded';
 
     const GATEWAY_GITHUB = 'github';
+
     const GATEWAY_ALIPAY = 'alipay';
+
     const GATEWAY_USDT = 'usdt';
+
+    const GATEWAY_STRIPE = 'stripe';
 
     protected $fillable = [
         'user_id',

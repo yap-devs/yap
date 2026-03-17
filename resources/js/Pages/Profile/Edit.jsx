@@ -5,7 +5,7 @@ import UpdateProfileInformationForm from './Partials/UpdateProfileInformationFor
 import {Head, router, usePage} from '@inertiajs/react';
 import {useState, useEffect} from 'react';
 
-export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) {
+export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL, stripeSandbox}) {
   const {errors} = usePage().props;
 
   const redirectToGithubOauth = () => {
@@ -30,14 +30,22 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
       data: {amount: usdtAmount || 5}
     });
   }
+  const redirectToStripePage = () => {
+    router.visit(route('stripe.newOrder'), {
+      method: 'post',
+      data: {amount: stripeAmount || 5}
+    });
+  }
 
   const [githubAmount, setGithubAmount] = useState(5);
   const [alipayAmount, setAlipayAmount] = useState(5);
   const [usdtAmount, setUsdtAmount] = useState(5);
+  const [stripeAmount, setStripeAmount] = useState(5);
 
   // State for validation messages
   const [alipayError, setAlipayError] = useState('');
   const [usdtError, setUsdtError] = useState('');
+  const [stripeError, setStripeError] = useState('');
 
   // Validate initial values on component mount
   useEffect(() => {
@@ -353,6 +361,115 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
     );
   }
 
+  const renderStripeBlock = () => {
+    const incrementAmount = () => {
+      const newAmount = parseInt(stripeAmount || 0) + 1;
+      if (newAmount <= 100) {
+        setStripeAmount(newAmount);
+        if (newAmount >= 2) {
+          setStripeError('');
+        }
+      } else {
+        setStripeError('Amount cannot exceed $100');
+      }
+    };
+
+    const decrementAmount = () => {
+      const newAmount = parseInt(stripeAmount || 0) - 1;
+      if (newAmount >= 2) {
+        setStripeAmount(newAmount);
+        setStripeError('');
+      } else {
+        setStripeAmount(newAmount);
+        setStripeError('Amount must be at least $2');
+      }
+    };
+
+    return (
+      <div className="rounded-lg shadow-md overflow-hidden max-w-md my-2 border border-purple-200 hover:shadow-lg transition-shadow duration-200">
+        <div className="p-4 bg-purple-500 text-white">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-semibold flex items-center">
+              <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 4H3C1.89543 4 1 4.89543 1 6V18C1 19.1046 1.89543 20 3 20H21C22.1046 20 23 19.1046 23 18V6C23 4.89543 22.1046 4 21 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M1 10H23" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+              </svg>
+              Stripe
+            </h3>
+            <div className="flex items-center gap-2">
+              {stripeSandbox && (
+                <span className="text-xs bg-yellow-400 text-yellow-900 font-bold px-2 py-1 rounded">TEST MODE</span>
+              )}
+              <span className="text-xs bg-purple-400/30 px-2 py-1 rounded">Card &amp; more</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-4 bg-white text-gray-800">
+          <div className="mb-4">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Amount (USD)
+            </label>
+            <div className="flex items-center">
+              <div className="relative flex-grow">
+                <input
+                  type="text"
+                  className="w-full py-2 pl-6 pr-4 rounded-md border border-gray-300 bg-white placeholder-gray-400 text-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-purple-500 text-center font-medium"
+                  placeholder="5"
+                  value={stripeAmount}
+                  onChange={(e) => sponsorAmountChange(e, setStripeAmount, setStripeError)}
+                />
+                <span className="absolute inset-y-0 left-0 flex items-center pl-2">
+                  <span className="text-gray-500">$</span>
+                </span>
+              </div>
+              <div className="flex flex-col ml-2">
+                <button
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-t p-1 transition-colors"
+                  onClick={incrementAmount}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 15l7-7 7 7"></path>
+                  </svg>
+                </button>
+                <button
+                  className="bg-gray-100 hover:bg-gray-200 text-gray-600 rounded-b p-1 transition-colors"
+                  onClick={decrementAmount}
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+              </div>
+            </div>
+            {stripeError ? (
+              <div className="mt-2 p-2 bg-red-50 border-l-4 border-red-500 text-red-700">
+                <span className="text-sm">{stripeError}</span>
+              </div>
+            ) : (
+              <div className="mt-1 text-xs text-gray-500 text-center">
+                Enter amount between $2-$100
+              </div>
+            )}
+          </div>
+
+          <button
+            className={`w-full py-2 px-4 font-medium text-white rounded-md transition-colors ${
+              !stripeAmount || parseInt(stripeAmount) < 2 || parseInt(stripeAmount) > 100
+                ? 'bg-gray-400 cursor-not-allowed'
+                : 'bg-purple-500 hover:bg-purple-600'
+            }`}
+            type="button"
+            onClick={redirectToStripePage}
+            disabled={!stripeAmount || parseInt(stripeAmount) < 2 || parseInt(stripeAmount) > 100}
+          >
+            Charge Now
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AuthenticatedLayout
       user={auth.user}
@@ -395,6 +512,9 @@ export default function Edit({auth, mustVerifyEmail, status, githubSponsorURL}) 
               </div>
               <div className="flex-1 flex justify-center">
                 {renderUSDTBlock()}
+              </div>
+              <div className="flex-1 flex justify-center">
+                {renderStripeBlock()}
               </div>
             </div>
           </div>

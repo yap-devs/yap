@@ -6,7 +6,12 @@ return [
         'usd_rmb_rate' => env('YAP_USD_RMB_RATE', 7.3),
         'alipay' => [
             'subject' => env('ALIPAY_SUBJECT', 'Yap Donation'),
-        ]
+        ],
+        'stripe' => [
+            'key' => env('STRIPE_KEY', ''),
+            'secret' => env('STRIPE_SECRET', ''),
+            'webhook_secret' => env('STRIPE_WEBHOOK_SECRET', ''),
+        ],
     ],
     'github' => [
         'webhook_secret' => env('GITHUB_WEBHOOK_SECRET', 'your-github-webhook-secret'),

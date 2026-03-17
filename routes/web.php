@@ -11,6 +11,7 @@ use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\StatController;
+use App\Http\Controllers\StripeController;
 use App\Http\Middleware\ValidateGithubWebhook;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -109,3 +110,11 @@ Route::group(['prefix' => 'bepusdt', 'middleware' => ['auth']], function () {
         ->name('bepusdt.newOrder');
 });
 Route::post('/bepusdt/notify', [BepusdtController::class, 'notify'])->name('bepusdt.notify');
+
+Route::group(['prefix' => 'stripe', 'middleware' => ['auth']], function () {
+    Route::post('/newOrder', [StripeController::class, 'newOrder'])
+        ->middleware('throttle:financial')
+        ->name('stripe.newOrder');
+    Route::get('/{payment}/success', [StripeController::class, 'success'])->name('stripe.success');
+});
+Route::post('/stripe/webhook', [StripeController::class, 'webhook'])->name('stripe.webhook');
