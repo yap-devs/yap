@@ -31,11 +31,25 @@ class AppServiceProvider extends ServiceProvider
         Model::unguard();
 
         RateLimiter::for('financial', function (Request $request) {
-            return Limit::perMinute(2)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(2)->by($request->user()?->id ?: $request->ip())->response(function (Request $request) {
+                logger()->driver('throttle')->warning('RateLimiter [financial]: ' . $request->path(), [
+                    'user_id' => $request->user()?->id,
+                    'ip' => $request->ip(),
+                ]);
+
+                abort(429, 'Too many requests.');
+            });
         });
 
         RateLimiter::for('subscription-reset', function (Request $request) {
-            return Limit::perMinute(1)->by($request->user()?->id ?: $request->ip());
+            return Limit::perMinute(1)->by($request->user()?->id ?: $request->ip())->response(function (Request $request) {
+                logger()->driver('throttle')->warning('RateLimiter [subscription-reset]: ' . $request->path(), [
+                    'user_id' => $request->user()?->id,
+                    'ip' => $request->ip(),
+                ]);
+
+                abort(429, 'Too many requests.');
+            });
         });
     }
 }

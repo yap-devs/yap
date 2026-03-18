@@ -38,6 +38,10 @@ class ThrottleByDistinctIp
 
         // New IP: check if we've exceeded the distinct IP limit
         if (count($ips) >= $max_ips) {
+            logger()->driver('throttle')->warning('ThrottleByDistinctIp: Too many distinct IPs accessing ' . $request->path(), [
+                'current_ips' => array_keys($ips),
+                'new_ip' => $ip,
+            ]);
             abort(429, 'Too many distinct IPs accessing this subscription.');
         }
 
