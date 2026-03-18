@@ -57,18 +57,22 @@ class StripeController extends Controller
         ]);
 
         try {
+            // Convert USD to CNY using configured rate, then to fen (cents).
+            // CNY enables Alipay, WeChat Pay and other CN payment methods on Stripe.
+            $cny_amount = bcmul($amount, config('yap.payment.usd_rmb_rate'), 2);
+            $unit_amount = bcmul($cny_amount, 100, 0);
+
             $session = Session::create([
                 // Let Stripe determine available payment methods based on Dashboard settings,
-                // currency (USD), and customer location. This enables card, Alipay, WeChat Pay,
-                // Link, Apple Pay, Google Pay, and other USD-compatible methods for JP business.
+                // currency (CNY), and customer location.
                 'customer_email' => $user->email,
                 'line_items' => [[
                     'price_data' => [
-                        'currency' => 'usd',
+                        'currency' => 'cny',
                         'product_data' => [
                             'name' => 'Yap Account Recharge',
                         ],
-                        'unit_amount' => bcmul($amount, 100, 0), // Stripe uses cents
+                        'unit_amount' => $unit_amount,
                     ],
                     'quantity' => 1,
                 ]],
