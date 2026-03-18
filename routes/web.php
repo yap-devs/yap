@@ -13,6 +13,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RechargeController;
 use App\Http\Controllers\StatController;
 use App\Http\Controllers\StripeController;
+use App\Http\Middleware\ThrottleByDistinctIp;
 use App\Http\Middleware\ValidateGithubWebhook;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -50,10 +51,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';
 
 Route::get('/clash/{uuid}/yap.yaml', [ClashController::class, 'index'])
-    ->middleware('throttle:clash-config')
+    ->middleware(ThrottleByDistinctIp::class . ':5,60')
     ->name('clash');
 
 Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], function () {

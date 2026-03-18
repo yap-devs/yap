@@ -37,9 +37,5 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('subscription-reset', function (Request $request) {
             return Limit::perMinute(1)->by($request->user()?->id ?: $request->ip());
         });
-
-        RateLimiter::for('clash-config', function (Request $request) {
-            return Limit::perMinute(10)->by($request->ip());
-        });
     }
 }
