@@ -98,7 +98,7 @@ export default function Index({auth, packages, userPackages}) {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                 {packages.map((_package) => (
-                  <tr key={_package.id} className="hover:bg-gray-50 transition duration-200">
+                  <tr key={_package.id} className="hover:bg-yellow-50 transition duration-300 ease-in-out">
                     <td className="px-6 py-4 whitespace-no-wrap">
                       <div className="text-sm leading-5 text-gray-900">{_package.name}</div>
                     </td>
@@ -110,10 +110,15 @@ export default function Index({auth, packages, userPackages}) {
                     </td>
                     <td className="px-6 py-4 whitespace-no-wrap">
                       <div className="text-sm leading-5 text-gray-900">
-                        <span className="line-through text-gray-400 mr-1">{formatPrice(_package.original_price)}</span>
-                        <span className="text-green-600 font-bold">{formatPrice(_package.price)}</span>
-                        <span className="ml-1 text-xs text-red-500 font-medium">
-                          {calcPercentageOff(_package.original_price, _package.price)}
+                        <span className="line-through text-gray-500 mr-1">{formatPrice(_package.original_price)}</span>
+                        <span className="text-green-600 font-bold text-lg">{formatPrice(_package.price)}</span>
+                        <span className="relative inline-block">
+                          <span
+                            className="absolute top-0 right-0 transform -rotate-12 bg-red-500 text-white font-bold py-0.5 px-1.5 rounded shadow-lg shake text-xs"
+                            style={{whiteSpace: 'nowrap'}}
+                          >
+                            {calcPercentageOff(_package.original_price, _package.price)}
+                          </span>
                         </span>
                       </div>
                     </td>

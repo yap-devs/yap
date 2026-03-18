@@ -33,8 +33,12 @@ export default function Authenticated({user, header, children}) {
                 <NavLink href={route('stat')} active={route().current('stat')}>
                   Statistics
                 </NavLink>
-                <NavLink href={route('customer.service')} active={route().current('customer.service')}>
-                  Support
+                <NavLink
+                  href={route('customer.service')}
+                  active={route().current('customer.service')}
+                  className="transition-all duration-200 ease-in-out transform animate-pulse bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-transparent bg-clip-text"
+                >
+                  <span>Customer Service</span>
                 </NavLink>
               </div>
             </div>
@@ -118,7 +122,7 @@ export default function Authenticated({user, header, children}) {
               Statistics
             </ResponsiveNavLink>
             <ResponsiveNavLink href={route('customer.service')} active={route().current('customer.service')}>
-              Support
+              <span className="animate-pulse bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-transparent bg-clip-text">Customer Service</span>
             </ResponsiveNavLink>
           </div>
 
