@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
         Model::unguard();
 
         RateLimiter::for('financial', function (Request $request) {
-            return Limit::perMinute(2)->by($request->user()?->id ?: $request->ip())->response(function (Request $request) {
+            return Limit::perMinute(4)->by($request->user()?->id ?: $request->ip())->response(function (Request $request) {
                 logger()->driver('throttle')->warning('RateLimiter [financial]: ' . $request->path(), [
                     'user_id' => $request->user()?->id,
                     'ip' => $request->ip(),
