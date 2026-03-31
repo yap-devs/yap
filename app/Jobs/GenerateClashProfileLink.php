@@ -33,10 +33,10 @@ class GenerateClashProfileLink implements ShouldQueue
      */
     public function handle()
     {
-        $this->vmess_servers = VmessServer::where('enabled', true)->get();
+        $this->vmess_servers = VmessServer::where('enabled', true)->with('relays')->get();
 
         $result = [];
-        $users = User::withTrashed()->get();
+        $users = User::withTrashed()->with('packages')->get();
         foreach ($users as $user) {
             $result[] = $this->preProcessUser($user);
         }
@@ -57,7 +57,10 @@ class GenerateClashProfileLink implements ShouldQueue
             // user deleted
             $user->deleted_at
             // or user is not valid and no active packages
-            || (!$user->is_valid && $user->packages()->where('status', UserPackage::STATUS_ACTIVE)->doesntExist())
+            || (
+                !$user->is_valid
+                && $user->packages->where('status', UserPackage::STATUS_ACTIVE)->isEmpty()
+            )
         ) {
             if (!$clash->confExists()) {
                 return [$user, []];
