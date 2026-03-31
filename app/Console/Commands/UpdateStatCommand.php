@@ -39,7 +39,7 @@ class UpdateStatCommand extends Command
     {
         $users = User::all();
         $vmess_servers = VmessServer::where('enabled', true)->get();
-        $all_stats = $this->getAllStats();
+        $all_stats = $this->getAllStats($vmess_servers);
 
         /** @var User $user */
         foreach ($users as $user) {
@@ -48,8 +48,17 @@ class UpdateStatCommand extends Command
             $is_valid_initial = $user->is_valid;
             $is_low_priority_initial = $user->is_low_priority;
 
+            // Track which internal_servers have been counted to avoid double-counting
+            // when multiple vmess_servers share the same internal_server
+            $counted_internal_servers = [];
+
             /** @var VmessServer $vmess_server */
             foreach ($vmess_servers as $vmess_server) {
+                if (isset($counted_internal_servers[$vmess_server->internal_server])) {
+                    continue;
+                }
+                $counted_internal_servers[$vmess_server->internal_server] = true;
+
                 $stats = Arr::get($all_stats, $vmess_server->id, []);
 
                 if (!$stats || !isset($stats['user'][$user->email])) {
@@ -162,13 +171,24 @@ class UpdateStatCommand extends Command
         return 0;
     }
 
-    private function getAllStats()
+    private function getAllStats($vmess_servers)
     {
-        $vmess_servers = VmessServer::where('enabled', true)->get();
         $stats = [];
+
+        // Deduplicate by internal_server to avoid SSHing into the same server twice.
+        // Multiple vmess_servers may share the same internal_server (different entry points).
+        // The first getStats(reset: true) would drain the counters, leaving nothing for the second call.
+        // handle() also skips duplicate internal_servers when accumulating traffic, so we only
+        // need to store stats under the first vmess_server_id for each internal_server.
+        $fetched_internal_servers = [];
 
         /** @var VmessServer $vmess_server */
         foreach ($vmess_servers as $vmess_server) {
+            if (isset($fetched_internal_servers[$vmess_server->internal_server])) {
+                continue;
+            }
+            $fetched_internal_servers[$vmess_server->internal_server] = true;
+
             try {
                 $v2ray = new V2rayService($vmess_server->internal_server);
                 $stats[$vmess_server->id] = $v2ray->getStats(reset: true);

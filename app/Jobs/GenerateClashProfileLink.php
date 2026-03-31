@@ -85,7 +85,9 @@ class GenerateClashProfileLink implements ShouldQueue
 
     private function processV2Ray(array $result)
     {
-        // ['internal_server' => $users]
+        // ['internal_server' => $users] - deduplicate users by uuid per internal_server
+        // Multiple vmess_servers may share the same internal_server (different entry points),
+        // so we must avoid adding the same user multiple times.
         $server_user_map = [];
         foreach ($result as $item) {
             /** @var User $user */
@@ -96,12 +98,15 @@ class GenerateClashProfileLink implements ShouldQueue
             }
 
             foreach ($servers as $server) {
-                $server_user_map[$server->internal_server][] = [
+                $server_user_map[$server->internal_server][$user->uuid] = [
                     'id' => $user->uuid,
                     'email' => $user->email,
                 ];
             }
         }
+
+        // Convert associative arrays back to indexed arrays
+        $server_user_map = array_map('array_values', $server_user_map);
 
         foreach ($server_user_map as $internal_server => $users) {
             try {
