@@ -3,16 +3,22 @@
 #######################################################################
 # Cloudflare DNS Sync
 #
-# Resolve IPs from a source domain and sync them as DNS records
-# on a target domain via the Cloudflare API.
+# Resolve IPs from a source and sync them as DNS records on a target
+# domain via the Cloudflare API.
 #
-# Dependencies: dig, curl, jq
+# IP sources (first positional arg):
+#   domain name    Resolve via dig (A + AAAA)
+#   -              Read IPs from stdin (pipe)
+#
+# Dependencies: dig, curl, jq, grep (extended regex)
 #
 # Authentication (one of the following):
-#   Option 1 - API Token:     CF_API_TOKEN
+#   Option 1 - API Token:      CF_Token
 #   Option 2 - Global API Key: CF_Key + CF_Email
 #
-# Usage: ./cf-dns-sync.sh <source-domain> <target-domain> [options]
+# Usage:
+#   ./cf-dns-sync.sh <source-domain> <target-domain> [options]
+#   curl ... | jq ... | ./cf-dns-sync.sh - <target-domain> [options]
 #######################################################################
 
 set -e
@@ -26,7 +32,7 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Defaults
-TTL=1         # 1 = auto
+TTL=60        # 60s = minimum allowed by Cloudflare
 PROXIED=false
 DRY_RUN=false
 
@@ -49,12 +55,12 @@ check_deps() {
     if [ -n "$CF_Key" ] && [ -n "$CF_Email" ]; then
         AUTH_METHOD="key"
         print_info "Auth: Global API Key (${CF_Email})"
-    elif [ -n "$CF_API_TOKEN" ]; then
+    elif [ -n "$CF_Token" ]; then
         AUTH_METHOD="token"
         print_info "Auth: API Token"
     else
         print_err "Cloudflare credentials not set"
-        print_err "Option 1 - API Token:      export CF_API_TOKEN=\"your-token\""
+        print_err "Option 1 - API Token:      export CF_Token=\"your-token\""
         print_err "Option 2 - Global API Key:  export CF_Key=\"your-key\" CF_Email=\"your-email\""
         exit 1
     fi
@@ -73,7 +79,7 @@ cf_api() {
     )
 
     if [ "$AUTH_METHOD" == "token" ]; then
-        args+=(-H "Authorization: Bearer $CF_API_TOKEN")
+        args+=(-H "Authorization: Bearer $CF_Token")
     else
         args+=(-H "X-Auth-Key: $CF_Key" -H "X-Auth-Email: $CF_Email")
     fi
@@ -127,7 +133,36 @@ get_zone_id() {
     return 1
 }
 
-# Resolve all IPs from a domain
+# Extract all unique IPv4 and IPv6 addresses from arbitrary text
+# Outputs JSON: {"A":["1.2.3.4",...],"AAAA":["::1",...]}
+extract_ips_from_text() {
+    local text="$1"
+    local ipv4_list=()
+    local ipv6_list=()
+
+    # Extract IPv4
+    while IFS= read -r ip; do
+        [ -n "$ip" ] && ipv4_list+=("$ip")
+    done < <(echo "$text" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | sort -u)
+
+    # Extract IPv6 (simplified: sequences of hex groups separated by colons)
+    while IFS= read -r ip; do
+        [ -n "$ip" ] && ipv6_list+=("$ip")
+    done < <(echo "$text" | grep -oE '([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' | sort -u)
+
+    # Build JSON
+    local json='{"A":[],"AAAA":[]}'
+    for ip in "${ipv4_list[@]}"; do
+        json=$(echo "$json" | jq --arg ip "$ip" '.A += [$ip]')
+    done
+    for ip in "${ipv6_list[@]}"; do
+        json=$(echo "$json" | jq --arg ip "$ip" '.AAAA += [$ip]')
+    done
+
+    echo "$json"
+}
+
+# Resolve all IPs from a domain via dig
 resolve_ips() {
     local domain=$1
     local ipv4_list=()
@@ -280,31 +315,43 @@ sync_records() {
 show_help() {
     echo "Cloudflare DNS Sync"
     echo ""
-    echo "Resolve IPs from a source domain and sync them to a target domain"
+    echo "Collect IPs from a source and sync them to a target domain"
     echo "via the Cloudflare DNS API."
     echo ""
-    echo "Usage: $0 <source-domain> <target-domain> [options]"
+    echo "Usage:"
+    echo "  $0 <source-domain> <target-domain> [options]"
+    echo "  <command> | $0 - <target-domain> [options]"
+    echo ""
+    echo "Source (first argument):"
+    echo "  domain.com         Resolve IPs via dig (A + AAAA records)"
+    echo "  -                  Read from stdin, auto-extract all IPs"
     echo ""
     echo "Options:"
-    echo "  --ttl N            TTL in seconds (default: 1 = auto)"
+    echo "  --ttl N            TTL in seconds (default: 60)"
     echo "  --proxied          Enable Cloudflare proxy (default: off)"
     echo "  --dry-run          Show what would be done without making changes"
     echo "  -h, --help         Show this help"
     echo ""
     echo "Environment (one of the following):"
-    echo "  CF_API_TOKEN       Cloudflare API Token (DNS edit permission)"
+    echo "  CF_Token       Cloudflare API Token (DNS edit permission)"
     echo "  CF_Key         Cloudflare Global API Key"
     echo "  CF_Email       Cloudflare account email (used with CF_Key)"
     echo ""
     echo "Examples:"
-    echo "  export CF_API_TOKEN=\"your-token\""
+    echo "  # From domain (dig)"
     echo "  $0 source.example.com target.example.com"
+    echo "  $0 source.example.com target.example.com --proxied --dry-run"
     echo ""
-    echo "  export CF_Key=\"your-global-key\" CF_Email=\"you@example.com\""
-    echo "  $0 source.example.com target.example.com"
-    echo "  $0 source.example.com target.example.com --proxied"
-    echo "  $0 source.example.com target.example.com --dry-run"
-    echo "  $0 source.example.com sub.target.com --ttl 300"
+    echo "  # From API via pipe (extract IPs from any JSON/text)"
+    echo "  curl -s 'https://api.example.com/servers' -H 'auth: token' \\"
+    echo "    | jq -r '.data[].inIp' \\"
+    echo "    | $0 - target.example.com"
+    echo ""
+    echo "  # From a file"
+    echo "  cat ip-list.txt | $0 - target.example.com"
+    echo ""
+    echo "  # Inline IPs"
+    echo "  echo -e '1.2.3.4\n5.6.7.8' | $0 - target.example.com"
 }
 
 main() {
@@ -331,9 +378,15 @@ main() {
                 exit 0
                 ;;
             -*)
-                print_err "Unknown option: $1"
-                show_help
-                exit 1
+                # Allow bare "-" as stdin source (first positional arg)
+                if [ "$1" == "-" ] && [ -z "$source_domain" ]; then
+                    source_domain="-"
+                else
+                    print_err "Unknown option: $1"
+                    show_help
+                    exit 1
+                fi
+                shift
                 ;;
             *)
                 if [ -z "$source_domain" ]; then
@@ -350,7 +403,7 @@ main() {
     done
 
     if [ -z "$source_domain" ] || [ -z "$target_domain" ]; then
-        print_err "Both source and target domains are required"
+        print_err "Both source and target are required"
         echo ""
         show_help
         exit 1
@@ -358,13 +411,26 @@ main() {
 
     check_deps
 
-    # Step 1: Resolve IPs from source domain
+    # Step 1: Get IPs from source
     echo ""
-    echo -e "${CYAN}=== Step 1: Resolve IPs from source domain ===${NC}"
-    print_info "Resolving: ${source_domain}"
+    echo -e "${CYAN}=== Step 1: Collect IPs from source ===${NC}"
 
     local resolved
-    resolved=$(resolve_ips "$source_domain")
+    if [ "$source_domain" == "-" ]; then
+        # Read from stdin
+        print_info "Reading IPs from stdin..."
+        local stdin_text
+        stdin_text=$(cat)
+        if [ -z "$stdin_text" ]; then
+            print_err "No input received from stdin"
+            exit 1
+        fi
+        resolved=$(extract_ips_from_text "$stdin_text")
+    else
+        # Resolve from domain
+        print_info "Resolving: ${source_domain}"
+        resolved=$(resolve_ips "$source_domain")
+    fi
 
     local ipv4_count
     ipv4_count=$(echo "$resolved" | jq '.A | length')
@@ -438,11 +504,11 @@ main() {
     # Summary
     echo ""
     echo -e "${CYAN}============================================${NC}"
-    echo -e "  Source:  ${source_domain}"
+    echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
     echo -e "  Target:  ${target_domain}"
     echo -e "  IPv4:    ${ipv4_count} record(s)"
     echo -e "  IPv6:    ${ipv6_count} record(s)"
-    echo -e "  TTL:     $([ "$TTL" -eq 1 ] && echo "Auto" || echo "${TTL}s")"
+    echo -e "  TTL:     ${TTL}s"
     echo -e "  Proxied: ${PROXIED}"
     if [ "$DRY_RUN" == "true" ]; then
         echo -e "  Mode:    ${YELLOW}DRY-RUN${NC}"
