@@ -77,4 +77,9 @@ class ReportOverviewWidget extends StatsOverviewWidget
     {
         return number_format($gigabytes, 2).' GB';
     }
+
+    protected function getDescription(): ?string
+    {
+        return 'Live operational KPIs with trend context from the '.$this->getTrendWindowLabel().'.';
+    }
 }

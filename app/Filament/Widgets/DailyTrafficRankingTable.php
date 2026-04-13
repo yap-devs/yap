@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
+use Carbon\CarbonImmutable;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
@@ -29,17 +30,28 @@ class DailyTrafficRankingTable extends TableWidget
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
             ->striped()
+            ->recordClasses(fn (array $record): array => [
+                'bg-blue-50/60 dark:bg-blue-950/20' => ($record['day'] ?? null) === CarbonImmutable::today()->format('Y-m-d'),
+            ])
             ->columns([
+                TextColumn::make('rank')
+                    ->label('#')
+                    ->rowIndex(),
                 TextColumn::make('day')
                     ->label('Day')
                     ->badge()
+                    ->color(fn (mixed $state): string => $state === CarbonImmutable::today()->format('Y-m-d') ? 'info' : 'gray')
+                    ->formatStateUsing(fn (mixed $state): string => $state === CarbonImmutable::today()->format('Y-m-d') ? 'Today' : 'Yesterday')
                     ->sortable(),
                 TextColumn::make('user_name')
                     ->label('User')
+                    ->description(fn (array $record): string => 'User #'.$record['user_id'])
                     ->searchable(),
                 TextColumn::make('daily_traffic_bytes')
                     ->label('Traffic')
                     ->alignEnd()
+                    ->badge()
+                    ->color(fn (mixed $state): string => $this->getTrafficTone((float) $state))
                     ->sortable()
                     ->formatStateUsing(fn (mixed $state): string => $this->formatGigabytes((float) $state)),
             ]);
@@ -48,5 +60,16 @@ class DailyTrafficRankingTable extends TableWidget
     private function formatGigabytes(float $bytes): string
     {
         return number_format($bytes / 1024 / 1024 / 1024, 2).' GB';
+    }
+
+    private function getTrafficTone(float $bytes): string
+    {
+        $gigabytes = $bytes / 1024 / 1024 / 1024;
+
+        return match (true) {
+            $gigabytes >= 10 => 'danger',
+            $gigabytes >= 3 => 'warning',
+            default => 'success',
+        };
     }
 }

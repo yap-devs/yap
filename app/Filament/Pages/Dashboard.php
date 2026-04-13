@@ -8,6 +8,7 @@ use App\Filament\Widgets\GatewayTopUpShareChart;
 use App\Filament\Widgets\LastSevenDayUsageChart;
 use App\Filament\Widgets\MonthlyTopUpAndUsageChart;
 use App\Filament\Widgets\MonthlyTrafficReportChart;
+use App\Filament\Widgets\OperationsPulseWidget;
 use App\Filament\Widgets\PackageUtilizationHealthChart;
 use App\Filament\Widgets\ReportOverviewWidget;
 use App\Filament\Widgets\TotalTrafficLeaderboardTable;
@@ -54,6 +55,7 @@ class Dashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
+            OperationsPulseWidget::class,
             ReportOverviewWidget::class,
             MonthlyTopUpAndUsageChart::class,
             GatewayTopUpShareChart::class,
