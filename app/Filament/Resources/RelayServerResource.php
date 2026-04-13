@@ -2,13 +2,21 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\RelayServerResource\Pages;
-use App\Filament\Resources\RelayServerResource\RelationManagers;
+use App\Filament\Resources\RelayServerResource\Pages\CreateRelayServer;
+use App\Filament\Resources\RelayServerResource\Pages\EditRelayServer;
+use App\Filament\Resources\RelayServerResource\Pages\ListRelayServers;
 use App\Models\RelayServer;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreBulkAction;
+use Filament\Forms\Components\TextInput;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -17,26 +25,26 @@ class RelayServerResource extends Resource
 {
     protected static ?string $model = RelayServer::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('vmess_server_id')
+        return $schema
+            ->components([
+                TextInput::make('vmess_server_id')
                     ->required()
                     ->numeric(),
-                Forms\Components\TextInput::make('name')
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('server')
+                TextInput::make('server')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('port')
+                TextInput::make('port')
                     ->required()
                     ->numeric()
                     ->default(0),
-                Forms\Components\TextInput::make('enabled')
+                TextInput::make('enabled')
                     ->required()
                     ->numeric()
                     ->default(1),
@@ -47,37 +55,37 @@ class RelayServerResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('vmessServer.name'),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('vmessServer.name'),
+                TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('server')
+                TextColumn::make('server')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('port')->numeric(thousandsSeparator: false),
-                Tables\Columns\ToggleColumn::make('enabled'),
-                Tables\Columns\TextColumn::make('created_at')
+                TextColumn::make('port')->numeric(thousandsSeparator: false),
+                ToggleColumn::make('enabled'),
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('deleted_at')
+                TextColumn::make('deleted_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\TrashedFilter::make(),
+                TrashedFilter::make(),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                    ForceDeleteBulkAction::make(),
+                    RestoreBulkAction::make(),
                 ]),
             ]);
     }
@@ -92,9 +100,9 @@ class RelayServerResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListRelayServers::route('/'),
-            'create' => Pages\CreateRelayServer::route('/create'),
-            'edit' => Pages\EditRelayServer::route('/{record}/edit'),
+            'index' => ListRelayServers::route('/'),
+            'create' => CreateRelayServer::route('/create'),
+            'edit' => EditRelayServer::route('/{record}/edit'),
         ];
     }
 

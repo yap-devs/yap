@@ -67,13 +67,16 @@ class User extends Authenticatable implements FilamentUser
     {
         return Attribute::make(
             get: function (mixed $value, array $attributes) {
+                $balance = (float) ($attributes['balance'] ?? 0);
+                $github_created_at = $attributes['github_created_at'] ?? null;
+
                 // if you have balance, of course you can use the service
-                return $attributes['balance'] > 0
+                return $balance > 0
                     // or if you have any active packages, you can also use the service
                     || $this->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()
-                    // or you have a github account created N years ago, N - 3 > abs(balance)
-                    // e.g. balance = -1, github_created_at = 2019-01-01, now = 2024-01-01, then 2024 - 2019 - 3 = 2 > 1, so it's also valid
-                    || Carbon::parse($attributes['github_created_at'])->diffInYears(now()) - 3 > abs($attributes['balance']);
+                    // or you have a github account created N years ago, N - 9 > abs(balance)
+                    // e.g. balance = -1, github_created_at = 2019-01-01, now = 2024-01-01, then 2024 - 2019 - 9 = 2 > 1, so it's also valid
+                    || ($github_created_at !== null && Carbon::parse($github_created_at)->diffInYears(now()) - 9 > abs($balance));
             },
         );
     }
@@ -82,7 +85,7 @@ class User extends Authenticatable implements FilamentUser
     {
         return Attribute::make(
             get: function (mixed $value, array $attributes) {
-                return $attributes['balance'] < 0;
+                return (float) ($attributes['balance'] ?? 0) <= 0;
             },
         );
     }

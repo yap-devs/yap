@@ -2,13 +2,22 @@
 
 namespace App\Filament\Resources;
 
-use App\Filament\Resources\VmessServerResource\Pages;
-use App\Filament\Resources\VmessServerResource\RelationManagers;
+use App\Filament\Resources\VmessServerResource\Pages\CreateVmessServer;
+use App\Filament\Resources\VmessServerResource\Pages\EditVmessServer;
+use App\Filament\Resources\VmessServerResource\Pages\ListVmessServers;
 use App\Models\VmessServer;
-use Filament\Forms;
-use Filament\Forms\Form;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreBulkAction;
+use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
-use Filament\Tables;
+use Filament\Schemas\Schema;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\ToggleColumn;
+use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -17,31 +26,31 @@ class VmessServerResource extends Resource
 {
     protected static ?string $model = VmessServer::class;
 
-    protected static ?string $navigationIcon = 'heroicon-o-rectangle-stack';
+    protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-rectangle-stack';
 
-    public static function form(Form $form): Form
+    public static function form(Schema $schema): Schema
     {
-        return $form
-            ->schema([
-                Forms\Components\TextInput::make('name')
+        return $schema
+            ->components([
+                TextInput::make('name')
                     ->required()
                     ->maxLength(255),
-                Forms\Components\TextInput::make('server')
+                TextInput::make('server')
                     ->maxLength(255),
-                Forms\Components\TextInput::make('port')
+                TextInput::make('port')
                     ->required()
                     ->numeric(),
-                Forms\Components\TextInput::make('rate')
+                TextInput::make('rate')
                     ->required()
                     ->numeric()
                     ->default(1.0),
-                Forms\Components\TextInput::make('internal_server')
+                TextInput::make('internal_server')
                     ->required()
                     ->maxLength(255)
                     ->default(''),
-                Forms\Components\Toggle::make('enabled')
+                Toggle::make('enabled')
                     ->required(),
-                Forms\Components\Toggle::make('for_low_priority')
+                Toggle::make('for_low_priority')
                     ->required(),
             ]);
     }
@@ -50,45 +59,45 @@ class VmessServerResource extends Resource
     {
         return $table
             ->columns([
-                Tables\Columns\TextColumn::make('relays_count')->counts('relays'),
-                Tables\Columns\TextColumn::make('name')
+                TextColumn::make('relays_count')->counts('relays'),
+                TextColumn::make('name')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('server')
+                TextColumn::make('server')
                     ->searchable(),
-                Tables\Columns\TextColumn::make('port')
+                TextColumn::make('port')
                     ->numeric(thousandsSeparator: false)
                     ->sortable(),
-                Tables\Columns\TextColumn::make('rate')
+                TextColumn::make('rate')
                     ->numeric()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('internal_server')
+                TextColumn::make('internal_server')
                     ->searchable(),
-                Tables\Columns\ToggleColumn::make('enabled'),
-                Tables\Columns\ToggleColumn::make('for_low_priority'),
-                Tables\Columns\TextColumn::make('created_at')
+                ToggleColumn::make('enabled'),
+                ToggleColumn::make('for_low_priority'),
+                TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('updated_at')
+                TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                Tables\Columns\TextColumn::make('deleted_at')
+                TextColumn::make('deleted_at')
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
-                Tables\Filters\TrashedFilter::make(),
+                TrashedFilter::make(),
             ])
-            ->actions([
-                Tables\Actions\EditAction::make(),
+            ->recordActions([
+                EditAction::make(),
             ])
-            ->bulkActions([
-                Tables\Actions\BulkActionGroup::make([
-                    Tables\Actions\DeleteBulkAction::make(),
-                    Tables\Actions\ForceDeleteBulkAction::make(),
-                    Tables\Actions\RestoreBulkAction::make(),
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                    ForceDeleteBulkAction::make(),
+                    RestoreBulkAction::make(),
                 ]),
             ]);
     }
@@ -103,9 +112,9 @@ class VmessServerResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => Pages\ListVmessServers::route('/'),
-            'create' => Pages\CreateVmessServer::route('/create'),
-            'edit' => Pages\EditVmessServer::route('/{record}/edit'),
+            'index' => ListVmessServers::route('/'),
+            'create' => CreateVmessServer::route('/create'),
+            'edit' => EditVmessServer::route('/{record}/edit'),
         ];
     }
 
