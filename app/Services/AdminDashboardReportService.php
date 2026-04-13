@@ -131,7 +131,11 @@ class AdminDashboardReportService
 
         foreach ($rows as $row) {
             $gateway = $this->mapGatewayLabel((string) $row->gateway);
-            $breakdown[$gateway] = round((float) $breakdown->get($gateway, 0) + (float) $row->total_top_up, 2);
+            $this->putCollectionFloat(
+                $breakdown,
+                $gateway,
+                round((float) $breakdown->get($gateway, 0) + (float) $row->total_top_up, 2),
+            );
         }
 
         return $breakdown;
@@ -155,7 +159,11 @@ class AdminDashboardReportService
 
         foreach ($rows as $row) {
             $category = $this->mapUsageCategory($row->description);
-            $breakdown[$category] = round((float) $breakdown->get($category, 0) + (float) $row->total_usage, 2);
+            $this->putCollectionFloat(
+                $breakdown,
+                $category,
+                round((float) $breakdown->get($category, 0) + (float) $row->total_usage, 2),
+            );
         }
 
         return $breakdown;
@@ -179,7 +187,7 @@ class AdminDashboardReportService
 
         foreach ($users as $user) {
             if ($user->active_package_count > 0) {
-                $breakdown['Package-backed']++;
+                $this->incrementCollectionCounter($breakdown, 'Package-backed');
 
                 continue;
             }
@@ -187,24 +195,24 @@ class AdminDashboardReportService
             $balance = (float) $user->balance;
 
             if ($balance < 0) {
-                $breakdown['Negative balance']++;
+                $this->incrementCollectionCounter($breakdown, 'Negative balance');
 
                 continue;
             }
 
             if ($balance < 1) {
-                $breakdown['Low balance']++;
+                $this->incrementCollectionCounter($breakdown, 'Low balance');
 
                 continue;
             }
 
             if ($balance < 5) {
-                $breakdown['Warm balance']++;
+                $this->incrementCollectionCounter($breakdown, 'Warm balance');
 
                 continue;
             }
 
-            $breakdown['Healthy balance']++;
+            $this->incrementCollectionCounter($breakdown, 'Healthy balance');
         }
 
         return $breakdown;
@@ -228,24 +236,24 @@ class AdminDashboardReportService
             $remaining_ratio = min(max((float) $user_package->remaining_traffic / $traffic_limit, 0), 1);
 
             if ($remaining_ratio < 0.1) {
-                $breakdown['Critical <10%']++;
+                $this->incrementCollectionCounter($breakdown, 'Critical <10%');
 
                 continue;
             }
 
             if ($remaining_ratio < 0.3) {
-                $breakdown['Low 10-30%']++;
+                $this->incrementCollectionCounter($breakdown, 'Low 10-30%');
 
                 continue;
             }
 
             if ($remaining_ratio < 0.7) {
-                $breakdown['Stable 30-70%']++;
+                $this->incrementCollectionCounter($breakdown, 'Stable 30-70%');
 
                 continue;
             }
 
-            $breakdown['Fresh >70%']++;
+            $this->incrementCollectionCounter($breakdown, 'Fresh >70%');
         }
 
         return $breakdown;
@@ -339,6 +347,16 @@ class AdminDashboardReportService
     private function bytesToGigabytes(float $bytes): float
     {
         return round($bytes / self::BYTES_PER_GB, 2);
+    }
+
+    private function incrementCollectionCounter(Collection $collection, string $key): void
+    {
+        $collection->put($key, (int) $collection->get($key, 0) + 1);
+    }
+
+    private function putCollectionFloat(Collection $collection, string $key, float $value): void
+    {
+        $collection->put($key, $value);
     }
 
     private function mapGatewayLabel(string $gateway): string
