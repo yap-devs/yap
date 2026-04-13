@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -9,6 +10,8 @@ use Filament\Widgets\TableWidget;
 
 class TotalTrafficLeaderboardTable extends TableWidget
 {
+    use InteractsWithDashboardControls;
+
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
@@ -22,7 +25,7 @@ class TotalTrafficLeaderboardTable extends TableWidget
             ->heading('User Total Traffic Report')
             ->description('Lifetime traffic leaderboard for all reportable users.')
             ->query(app(AdminDashboardReportService::class)->getTotalTrafficLeaderboardQuery())
-            ->poll('30s')
+            ->poll(fn (): ?string => $this->getPollingInterval())
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
             ->striped()

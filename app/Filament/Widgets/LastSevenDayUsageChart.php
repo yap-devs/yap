@@ -2,12 +2,15 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Carbon\CarbonImmutable;
 use Filament\Widgets\ChartWidget;
 
-class LastSevenDayCostChart extends ChartWidget
+class LastSevenDayUsageChart extends ChartWidget
 {
+    use InteractsWithDashboardControls;
+
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
@@ -15,17 +18,15 @@ class LastSevenDayCostChart extends ChartWidget
         'xl' => 4,
     ];
 
-    protected ?string $pollingInterval = '15s';
+    protected ?string $heading = 'Last 7-Day Usage Report';
 
-    protected ?string $heading = 'Last 7-Day Cost Report';
-
-    protected ?string $description = 'Daily deductions over the latest rolling week.';
+    protected ?string $description = 'Daily actual spend deducted from user balances over the latest rolling week.';
 
     protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {
-        $series = app(AdminDashboardReportService::class)->getLastSevenDayCostSeries();
+        $series = app(AdminDashboardReportService::class)->getLastSevenDayUsageSeries();
 
         return [
             'labels' => $series->keys()->map(
@@ -33,7 +34,7 @@ class LastSevenDayCostChart extends ChartWidget
             )->all(),
             'datasets' => [
                 [
-                    'label' => 'Cost (USD)',
+                    'label' => 'Usage (USD)',
                     'data' => $series->values()->all(),
                     'backgroundColor' => [
                         'rgba(251, 113, 133, 0.95)',

@@ -2,11 +2,14 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Widgets\ChartWidget;
 
-class MonthlyFinanceReportChart extends ChartWidget
+class MonthlyTopUpAndUsageChart extends ChartWidget
 {
+    use InteractsWithDashboardControls;
+
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
@@ -14,49 +17,34 @@ class MonthlyFinanceReportChart extends ChartWidget
         'xl' => 5,
     ];
 
-    protected ?string $pollingInterval = '15s';
+    protected ?string $heading = 'Monthly Top-Up / Usage Report';
 
-    protected ?string $heading = 'Monthly Income / Cost Report';
-
-    protected ?string $description = 'Revenue, cost, and net margin rendered in one finance view.';
+    protected ?string $description = 'Top-ups received versus actual balance deductions consumed by users.';
 
     protected ?string $maxHeight = '320px';
 
     protected function getData(): array
     {
         $report_service = app(AdminDashboardReportService::class);
-        $income = $report_service->getMonthlyIncomeSeries();
-        $cost = $report_service->getMonthlyCostSeries();
-        $net = $income->map(
-            fn (float $value, string $month): float => round($value - (float) $cost->get($month, 0), 2),
-        );
+        $top_up = $report_service->getMonthlyTopUpSeries();
+        $usage = $report_service->getMonthlyUsageSeries();
 
         return [
-            'labels' => $income->keys()->all(),
+            'labels' => $top_up->keys()->all(),
             'datasets' => [
                 [
-                    'label' => 'Income (USD)',
-                    'data' => $income->values()->all(),
+                    'label' => 'Top-Ups (USD)',
+                    'data' => $top_up->values()->all(),
                     'backgroundColor' => 'rgba(34, 197, 94, 0.7)',
                     'borderColor' => 'rgba(34, 197, 94, 1)',
                     'borderRadius' => 8,
                 ],
                 [
-                    'label' => 'Cost (USD)',
-                    'data' => $cost->values()->all(),
+                    'label' => 'Usage (USD)',
+                    'data' => $usage->values()->all(),
                     'backgroundColor' => 'rgba(244, 63, 94, 0.7)',
                     'borderColor' => 'rgba(244, 63, 94, 1)',
                     'borderRadius' => 8,
-                ],
-                [
-                    'type' => 'line',
-                    'label' => 'Net (USD)',
-                    'data' => $net->values()->all(),
-                    'borderColor' => 'rgba(245, 158, 11, 1)',
-                    'backgroundColor' => 'rgba(245, 158, 11, 0.2)',
-                    'pointBackgroundColor' => 'rgba(245, 158, 11, 1)',
-                    'tension' => 0.35,
-                    'yAxisID' => 'y',
                 ],
             ],
         ];

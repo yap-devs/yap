@@ -20,18 +20,18 @@ class AdminDashboardReportService
     public function getOverviewStats(): array
     {
         $monthly_traffic = $this->getMonthlyTrafficSeries();
-        $monthly_income = $this->getMonthlyIncomeSeries();
-        $monthly_cost = $this->getMonthlyCostSeries();
-        $daily_cost = $this->getLastSevenDayCostSeries();
+        $monthly_top_up = $this->getMonthlyTopUpSeries();
+        $monthly_usage = $this->getMonthlyUsageSeries();
+        $daily_usage = $this->getLastSevenDayUsageSeries();
         $current_month = CarbonImmutable::now()->format('Y-m');
         $active_package_query = $this->getActiveUserPackagesQuery();
         $remaining_package_traffic = (float) $active_package_query->sum('remaining_traffic');
 
         return [
             'current_month_traffic_gb' => (float) $monthly_traffic->get($current_month, 0),
-            'current_month_income' => (float) $monthly_income->get($current_month, 0),
-            'current_month_cost' => (float) $monthly_cost->get($current_month, 0),
-            'last_7_day_cost' => round((float) $daily_cost->sum(), 2),
+            'current_month_top_up' => (float) $monthly_top_up->get($current_month, 0),
+            'current_month_usage' => (float) $monthly_usage->get($current_month, 0),
+            'last_7_day_usage' => round((float) $daily_usage->sum(), 2),
             'active_package_count' => (clone $active_package_query)->count(),
             'remaining_package_traffic_gb' => $this->bytesToGigabytes($remaining_package_traffic),
             'paid_order_count' => Payment::query()
@@ -39,14 +39,10 @@ class AdminDashboardReportService
                 ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
                 ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth())
                 ->count(),
-            'net_income' => round(
-                (float) $monthly_income->get($current_month, 0) - (float) $monthly_cost->get($current_month, 0),
-                2,
-            ),
             'monthly_traffic_trend' => $monthly_traffic->values()->all(),
-            'monthly_income_trend' => $monthly_income->values()->all(),
-            'monthly_cost_trend' => $monthly_cost->values()->all(),
-            'daily_cost_trend' => $daily_cost->values()->all(),
+            'monthly_top_up_trend' => $monthly_top_up->values()->all(),
+            'monthly_usage_trend' => $monthly_usage->values()->all(),
+            'daily_usage_trend' => $daily_usage->values()->all(),
         ];
     }
 
@@ -67,11 +63,11 @@ class AdminDashboardReportService
         );
     }
 
-    public function getMonthlyIncomeSeries(int $months = 12): Collection
+    public function getMonthlyTopUpSeries(int $months = 12): Collection
     {
         $rows = Payment::query()
             ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
-            ->selectRaw('SUM(amount) as total_income')
+            ->selectRaw('SUM(amount) as total_top_up')
             ->where('status', Payment::STATUS_PAID)
             ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
@@ -81,15 +77,15 @@ class AdminDashboardReportService
 
         return $this->buildMonthlySeries(
             $months,
-            $rows->pluck('total_income', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
+            $rows->pluck('total_top_up', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
         );
     }
 
-    public function getMonthlyCostSeries(int $months = 12): Collection
+    public function getMonthlyUsageSeries(int $months = 12): Collection
     {
         $rows = BalanceDetail::query()
             ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
-            ->selectRaw('ABS(SUM(amount)) as total_cost')
+            ->selectRaw('ABS(SUM(amount)) as total_usage')
             ->where('amount', '<', 0)
             ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
@@ -99,15 +95,15 @@ class AdminDashboardReportService
 
         return $this->buildMonthlySeries(
             $months,
-            $rows->pluck('total_cost', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
+            $rows->pluck('total_usage', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
         );
     }
 
-    public function getLastSevenDayCostSeries(int $days = 7): Collection
+    public function getLastSevenDayUsageSeries(int $days = 7): Collection
     {
         $rows = BalanceDetail::query()
             ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
-            ->selectRaw('ABS(SUM(amount)) as total_cost')
+            ->selectRaw('ABS(SUM(amount)) as total_usage')
             ->where('amount', '<', 0)
             ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
@@ -117,7 +113,7 @@ class AdminDashboardReportService
 
         return $this->buildDailySeries(
             $days,
-            $rows->pluck('total_cost', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
+            $rows->pluck('total_usage', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
         );
     }
 

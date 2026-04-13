@@ -2,19 +2,20 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Widgets\ChartWidget;
 
 class MonthlyTrafficReportChart extends ChartWidget
 {
+    use InteractsWithDashboardControls;
+
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
         'md' => 7,
         'xl' => 7,
     ];
-
-    protected ?string $pollingInterval = '15s';
 
     protected ?string $heading = 'Monthly Traffic Report';
 

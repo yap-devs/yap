@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -9,6 +10,8 @@ use Filament\Widgets\TableWidget;
 
 class DailyTrafficRankingTable extends TableWidget
 {
+    use InteractsWithDashboardControls;
+
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
@@ -22,7 +25,7 @@ class DailyTrafficRankingTable extends TableWidget
             ->heading('Today / Yesterday Traffic')
             ->description('Top traffic consumers from the latest two daily windows.')
             ->query(app(AdminDashboardReportService::class)->getDailyTrafficRankingQuery())
-            ->poll('15s')
+            ->poll(fn (): ?string => $this->getPollingInterval())
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
             ->striped()

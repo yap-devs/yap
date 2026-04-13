@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -9,6 +10,8 @@ use Filament\Widgets\TableWidget;
 
 class ActiveUserPackagesTable extends TableWidget
 {
+    use InteractsWithDashboardControls;
+
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = 'full';
@@ -19,7 +22,7 @@ class ActiveUserPackagesTable extends TableWidget
             ->heading('Active User Packages')
             ->description('Current active subscriptions with remaining traffic and expiration windows.')
             ->query(app(AdminDashboardReportService::class)->getActiveUserPackagesQuery())
-            ->poll('30s')
+            ->poll(fn (): ?string => $this->getPollingInterval())
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50])
             ->striped()
