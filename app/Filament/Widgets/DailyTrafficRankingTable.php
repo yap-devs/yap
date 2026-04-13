@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
+use App\Models\UserStat;
 use App\Services\AdminDashboardReportService;
 use Carbon\CarbonImmutable;
 use Filament\Tables\Columns\TextColumn;
@@ -30,8 +31,8 @@ class DailyTrafficRankingTable extends TableWidget
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
             ->striped()
-            ->recordClasses(fn (array $record): array => [
-                'bg-blue-50/60 dark:bg-blue-950/20' => ($record['day'] ?? null) === CarbonImmutable::today()->format('Y-m-d'),
+            ->recordClasses(fn (UserStat $record): array => [
+                'bg-blue-50/60 dark:bg-blue-950/20' => $record->day === CarbonImmutable::today()->format('Y-m-d'),
             ])
             ->columns([
                 TextColumn::make('rank')
@@ -45,7 +46,7 @@ class DailyTrafficRankingTable extends TableWidget
                     ->sortable(),
                 TextColumn::make('user_name')
                     ->label('User')
-                    ->description(fn (array $record): string => 'User #'.$record['user_id'])
+                    ->description(fn (UserStat $record): string => 'User #'.$record->user_id)
                     ->searchable(),
                 TextColumn::make('daily_traffic_bytes')
                     ->label('Traffic')
