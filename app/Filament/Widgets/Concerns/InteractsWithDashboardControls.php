@@ -9,6 +9,16 @@ trait InteractsWithDashboardControls
 {
     use InteractsWithPageFilters;
 
+    protected function getTrendWindowMonths(): int
+    {
+        return max((int) ($this->pageFilters['trend_window'] ?? 12), 1);
+    }
+
+    protected function getTrendWindowLabel(): string
+    {
+        return 'last '.$this->getTrendWindowMonths().' months';
+    }
+
     protected function getPollingInterval(): ?string
     {
         $interval = $this->pageFilters['polling_interval'] ?? '15s';

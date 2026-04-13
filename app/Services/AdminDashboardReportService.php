@@ -17,26 +17,28 @@ class AdminDashboardReportService
 
     private const BYTES_PER_GB = 1073741824;
 
-    public function getOverviewStats(): array
+    public function getOverviewStats(int $months = 12): array
     {
-        $monthly_traffic = $this->getMonthlyTrafficSeries();
-        $monthly_top_up = $this->getMonthlyTopUpSeries();
-        $monthly_usage = $this->getMonthlyUsageSeries();
+        $monthly_traffic = $this->getMonthlyTrafficSeries($months);
+        $monthly_top_up = $this->getMonthlyTopUpSeries($months);
+        $monthly_usage = $this->getMonthlyUsageSeries($months);
         $daily_usage = $this->getLastSevenDayUsageSeries();
         $current_month = CarbonImmutable::now()->format('Y-m');
         $active_package_query = $this->getActiveUserPackagesQuery();
         $remaining_package_traffic = (float) $active_package_query->sum('remaining_traffic');
+        $access_health = $this->getAccessHealthBreakdown();
 
         return [
             'current_month_traffic_gb' => (float) $monthly_traffic->get($current_month, 0),
             'current_month_top_up' => (float) $monthly_top_up->get($current_month, 0),
             'current_month_usage' => (float) $monthly_usage->get($current_month, 0),
             'last_7_day_usage' => round((float) $daily_usage->sum(), 2),
+            'outstanding_balance' => round((float) $this->getReportableUsersQuery()->where('balance', '>', 0)->sum('balance'), 2),
             'active_package_count' => (clone $active_package_query)->count(),
             'remaining_package_traffic_gb' => $this->bytesToGigabytes($remaining_package_traffic),
-            'paid_order_count' => Payment::query()
-                ->where('status', Payment::STATUS_PAID)
-                ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
+            'package_backed_user_count' => (int) $access_health->get('Package-backed', 0),
+            'access_at_risk_user_count' => (int) $access_health->get('Low balance', 0) + (int) $access_health->get('Negative balance', 0),
+            'paid_order_count' => $this->getReportablePaymentsQuery()
                 ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth())
                 ->count(),
             'monthly_traffic_trend' => $monthly_traffic->values()->all(),
@@ -48,10 +50,9 @@ class AdminDashboardReportService
 
     public function getMonthlyTrafficSeries(int $months = 12): Collection
     {
-        $rows = UserStat::query()
+        $rows = $this->getReportableUserStatsQuery()
             ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
             ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total_traffic_bytes')
-            ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
             ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
             ->orderBy('period')
@@ -65,11 +66,9 @@ class AdminDashboardReportService
 
     public function getMonthlyTopUpSeries(int $months = 12): Collection
     {
-        $rows = Payment::query()
+        $rows = $this->getReportablePaymentsQuery()
             ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
             ->selectRaw('SUM(amount) as total_top_up')
-            ->where('status', Payment::STATUS_PAID)
-            ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
             ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
             ->orderBy('period')
@@ -83,11 +82,9 @@ class AdminDashboardReportService
 
     public function getMonthlyUsageSeries(int $months = 12): Collection
     {
-        $rows = BalanceDetail::query()
+        $rows = $this->getReportableUsageQuery()
             ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
             ->selectRaw('ABS(SUM(amount)) as total_usage')
-            ->where('amount', '<', 0)
-            ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
             ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
             ->orderBy('period')
@@ -101,11 +98,9 @@ class AdminDashboardReportService
 
     public function getLastSevenDayUsageSeries(int $days = 7): Collection
     {
-        $rows = BalanceDetail::query()
+        $rows = $this->getReportableUsageQuery()
             ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
             ->selectRaw('ABS(SUM(amount)) as total_usage')
-            ->where('amount', '<', 0)
-            ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
             ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
             ->orderBy('period')
@@ -117,16 +112,154 @@ class AdminDashboardReportService
         );
     }
 
+    public function getGatewayTopUpBreakdown(int $months = 12): Collection
+    {
+        $rows = $this->getReportablePaymentsQuery()
+            ->selectRaw('gateway')
+            ->selectRaw('SUM(amount) as total_top_up')
+            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+            ->groupBy('gateway')
+            ->get();
+
+        $breakdown = collect([
+            'GitHub Sponsors' => 0.0,
+            'Alipay' => 0.0,
+            'USDT' => 0.0,
+            'Stripe' => 0.0,
+            'Other' => 0.0,
+        ]);
+
+        foreach ($rows as $row) {
+            $gateway = $this->mapGatewayLabel((string) $row->gateway);
+            $breakdown[$gateway] = round((float) $breakdown->get($gateway, 0) + (float) $row->total_top_up, 2);
+        }
+
+        return $breakdown;
+    }
+
+    public function getUsageCompositionBreakdown(int $months = 12): Collection
+    {
+        $rows = $this->getReportableUsageQuery()
+            ->select(['description'])
+            ->selectRaw('ABS(SUM(amount)) as total_usage')
+            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+            ->groupBy('description')
+            ->get();
+
+        $breakdown = collect([
+            'Traffic billing' => 0.0,
+            'Package purchases' => 0.0,
+            'Subscription resets' => 0.0,
+            'Other usage' => 0.0,
+        ]);
+
+        foreach ($rows as $row) {
+            $category = $this->mapUsageCategory($row->description);
+            $breakdown[$category] = round((float) $breakdown->get($category, 0) + (float) $row->total_usage, 2);
+        }
+
+        return $breakdown;
+    }
+
+    public function getAccessHealthBreakdown(): Collection
+    {
+        $users = $this->getReportableUsersQuery()
+            ->withCount([
+                'packages as active_package_count' => fn (Builder $query) => $query->where('status', UserPackage::STATUS_ACTIVE),
+            ])
+            ->get(['id', 'balance']);
+
+        $breakdown = collect([
+            'Package-backed' => 0,
+            'Healthy balance' => 0,
+            'Warm balance' => 0,
+            'Low balance' => 0,
+            'Negative balance' => 0,
+        ]);
+
+        foreach ($users as $user) {
+            if ($user->active_package_count > 0) {
+                $breakdown['Package-backed']++;
+
+                continue;
+            }
+
+            $balance = (float) $user->balance;
+
+            if ($balance < 0) {
+                $breakdown['Negative balance']++;
+
+                continue;
+            }
+
+            if ($balance < 1) {
+                $breakdown['Low balance']++;
+
+                continue;
+            }
+
+            if ($balance < 5) {
+                $breakdown['Warm balance']++;
+
+                continue;
+            }
+
+            $breakdown['Healthy balance']++;
+        }
+
+        return $breakdown;
+    }
+
+    public function getPackageUtilizationBreakdown(): Collection
+    {
+        $user_packages = $this->getActiveUserPackagesQuery()
+            ->with('package:id,traffic_limit')
+            ->get();
+
+        $breakdown = collect([
+            'Critical <10%' => 0,
+            'Low 10-30%' => 0,
+            'Stable 30-70%' => 0,
+            'Fresh >70%' => 0,
+        ]);
+
+        foreach ($user_packages as $user_package) {
+            $traffic_limit = max((float) ($user_package->package?->traffic_limit ?? 0), 1);
+            $remaining_ratio = min(max((float) $user_package->remaining_traffic / $traffic_limit, 0), 1);
+
+            if ($remaining_ratio < 0.1) {
+                $breakdown['Critical <10%']++;
+
+                continue;
+            }
+
+            if ($remaining_ratio < 0.3) {
+                $breakdown['Low 10-30%']++;
+
+                continue;
+            }
+
+            if ($remaining_ratio < 0.7) {
+                $breakdown['Stable 30-70%']++;
+
+                continue;
+            }
+
+            $breakdown['Fresh >70%']++;
+        }
+
+        return $breakdown;
+    }
+
     public function getDailyTrafficRankingQuery(): Builder
     {
-        return UserStat::query()
+        return $this->getReportableUserStatsQuery()
             ->join('users', 'users.id', '=', 'user_stats.user_id')
             ->selectRaw('MIN(user_stats.id) as id')
             ->selectRaw("DATE_FORMAT(user_stats.created_at, '%Y-%m-%d') as day")
             ->selectRaw('user_stats.user_id')
             ->selectRaw('users.name as user_name')
             ->selectRaw('SUM(user_stats.traffic_downlink + user_stats.traffic_uplink) as daily_traffic_bytes')
-            ->where('user_stats.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->where(function (Builder $query) {
                 $query
                     ->whereDate('user_stats.created_at', CarbonImmutable::today())
@@ -139,10 +272,9 @@ class AdminDashboardReportService
 
     public function getTotalTrafficLeaderboardQuery(): Builder
     {
-        return User::query()
+        return $this->getReportableUsersQuery()
             ->select('users.*')
             ->selectRaw('(users.traffic_downlink + users.traffic_uplink) as total_traffic_bytes')
-            ->where('users.id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->orderByDesc('total_traffic_bytes');
     }
 
@@ -153,6 +285,30 @@ class AdminDashboardReportService
             ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
             ->where('status', UserPackage::STATUS_ACTIVE)
             ->orderBy('ended_at');
+    }
+
+    private function getReportablePaymentsQuery(): Builder
+    {
+        return Payment::query()
+            ->where('status', Payment::STATUS_PAID)
+            ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
+    }
+
+    private function getReportableUsageQuery(): Builder
+    {
+        return BalanceDetail::query()
+            ->where('amount', '<', 0)
+            ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
+    }
+
+    private function getReportableUsersQuery(): Builder
+    {
+        return User::query()->where('id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
+    }
+
+    private function getReportableUserStatsQuery(): Builder
+    {
+        return UserStat::query()->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
     }
 
     private function buildMonthlySeries(int $months, Collection $values): Collection
@@ -183,5 +339,26 @@ class AdminDashboardReportService
     private function bytesToGigabytes(float $bytes): float
     {
         return round($bytes / self::BYTES_PER_GB, 2);
+    }
+
+    private function mapGatewayLabel(string $gateway): string
+    {
+        return match ($gateway) {
+            Payment::GATEWAY_GITHUB => 'GitHub Sponsors',
+            Payment::GATEWAY_ALIPAY => 'Alipay',
+            Payment::GATEWAY_USDT => 'USDT',
+            Payment::GATEWAY_STRIPE => 'Stripe',
+            default => 'Other',
+        };
+    }
+
+    private function mapUsageCategory(?string $description): string
+    {
+        return match (true) {
+            $description === 'Traffic deduction', $description === 'Daily deduction' => 'Traffic billing',
+            str_starts_with((string) $description, 'Bought package ') => 'Package purchases',
+            $description === 'Subscription URL reset' => 'Subscription resets',
+            default => 'Other usage',
+        };
     }
 }

@@ -15,8 +15,8 @@ class TotalTrafficLeaderboardTable extends TableWidget
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
-        'md' => 4,
-        'xl' => 4,
+        'md' => 6,
+        'xl' => 6,
     ];
 
     public function table(Table $table): Table

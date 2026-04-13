@@ -46,6 +46,7 @@ class LastSevenDayUsageChart extends ChartWidget
                         'rgba(167, 139, 250, 0.95)',
                     ],
                     'borderRadius' => 10,
+                    'borderSkipped' => false,
                 ],
             ],
         ];

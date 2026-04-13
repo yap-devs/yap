@@ -4,11 +4,15 @@ namespace App\Filament\Pages;
 
 use App\Filament\Widgets\ActiveUserPackagesTable;
 use App\Filament\Widgets\DailyTrafficRankingTable;
+use App\Filament\Widgets\GatewayTopUpShareChart;
 use App\Filament\Widgets\LastSevenDayUsageChart;
 use App\Filament\Widgets\MonthlyTopUpAndUsageChart;
 use App\Filament\Widgets\MonthlyTrafficReportChart;
+use App\Filament\Widgets\PackageUtilizationHealthChart;
 use App\Filament\Widgets\ReportOverviewWidget;
 use App\Filament\Widgets\TotalTrafficLeaderboardTable;
+use App\Filament\Widgets\UsageCompositionChart;
+use App\Filament\Widgets\UserAccessHealthChart;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Dashboard as BaseDashboard;
@@ -22,6 +26,11 @@ class Dashboard extends BaseDashboard
     protected static bool $isDiscovered = false;
 
     protected static ?string $title = 'Operations Dashboard';
+
+    public function getSubheading(): ?string
+    {
+        return 'Top-ups represent cash-in, usage represents money actually consumed by metered billing and product actions.';
+    }
 
     public static function getPollingIntervalOptions(): array
     {
@@ -46,9 +55,13 @@ class Dashboard extends BaseDashboard
     {
         return [
             ReportOverviewWidget::class,
-            MonthlyTrafficReportChart::class,
             MonthlyTopUpAndUsageChart::class,
+            GatewayTopUpShareChart::class,
+            MonthlyTrafficReportChart::class,
+            UsageCompositionChart::class,
             LastSevenDayUsageChart::class,
+            UserAccessHealthChart::class,
+            PackageUtilizationHealthChart::class,
             DailyTrafficRankingTable::class,
             TotalTrafficLeaderboardTable::class,
             ActiveUserPackagesTable::class,
@@ -58,6 +71,17 @@ class Dashboard extends BaseDashboard
     public function filtersForm(Schema $schema): Schema
     {
         return $schema->components([
+            Select::make('trend_window')
+                ->label('Trend Window')
+                ->options([
+                    '6' => 'Last 6 months',
+                    '12' => 'Last 12 months',
+                    '24' => 'Last 24 months',
+                ])
+                ->default('12')
+                ->native(false)
+                ->selectablePlaceholder(false)
+                ->helperText('Monthly trend charts and breakdown charts use this reporting window.'),
             Select::make('polling_interval')
                 ->label('Auto Refresh')
                 ->options(static::getPollingIntervalOptions())
@@ -74,7 +98,7 @@ class Dashboard extends BaseDashboard
             Action::make('refreshDashboard')
                 ->label('Refresh now')
                 ->icon('heroicon-m-arrow-path')
-                ->color('gray')
+                ->color('primary')
                 ->action('refreshDashboard'),
         ];
     }

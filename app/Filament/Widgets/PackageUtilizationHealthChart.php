@@ -6,40 +6,41 @@ use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Widgets\ChartWidget;
 
-class MonthlyTrafficReportChart extends ChartWidget
+class PackageUtilizationHealthChart extends ChartWidget
 {
     use InteractsWithDashboardControls;
 
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
-        'md' => 8,
-        'xl' => 8,
+        'md' => 4,
+        'xl' => 4,
     ];
 
-    protected ?string $heading = 'Monthly Traffic Report';
+    protected ?string $heading = 'Package Utilization Health';
 
-    protected ?string $description = 'Bandwidth demand curve across the selected reporting window.';
+    protected ?string $description = 'Where active packages currently sit in their remaining traffic lifecycle.';
 
-    protected ?string $maxHeight = '320px';
+    protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {
-        $series = app(AdminDashboardReportService::class)->getMonthlyTrafficSeries($this->getTrendWindowMonths());
+        $series = app(AdminDashboardReportService::class)->getPackageUtilizationBreakdown();
 
         return [
             'labels' => $series->keys()->all(),
             'datasets' => [
                 [
-                    'label' => 'Traffic (GB)',
+                    'label' => 'Active packages',
                     'data' => $series->values()->all(),
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.12)',
-                    'borderColor' => 'rgba(59, 130, 246, 1)',
-                    'fill' => true,
-                    'tension' => 0.35,
-                    'pointRadius' => 4,
-                    'pointHoverRadius' => 6,
-                    'borderWidth' => 3,
+                    'backgroundColor' => [
+                        'rgba(244, 63, 94, 0.92)',
+                        'rgba(251, 146, 60, 0.92)',
+                        'rgba(96, 165, 250, 0.92)',
+                        'rgba(34, 197, 94, 0.92)',
+                    ],
+                    'borderRadius' => 10,
+                    'borderSkipped' => false,
                 ],
             ],
         ];
@@ -48,6 +49,7 @@ class MonthlyTrafficReportChart extends ChartWidget
     protected function getOptions(): array
     {
         return [
+            'indexAxis' => 'y',
             'plugins' => [
                 'legend' => [
                     'display' => false,
@@ -55,14 +57,14 @@ class MonthlyTrafficReportChart extends ChartWidget
             ],
             'scales' => [
                 'x' => [
+                    'beginAtZero' => true,
                     'grid' => [
                         'display' => false,
                     ],
                 ],
                 'y' => [
-                    'beginAtZero' => true,
-                    'ticks' => [
-                        'precision' => 0,
+                    'grid' => [
+                        'display' => false,
                     ],
                 ],
             ],
@@ -71,6 +73,6 @@ class MonthlyTrafficReportChart extends ChartWidget
 
     protected function getType(): string
     {
-        return 'line';
+        return 'bar';
     }
 }

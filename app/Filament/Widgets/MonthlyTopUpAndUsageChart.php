@@ -13,21 +13,21 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
-        'md' => 5,
-        'xl' => 5,
+        'md' => 8,
+        'xl' => 8,
     ];
 
     protected ?string $heading = 'Monthly Top-Up / Usage Report';
 
-    protected ?string $description = 'Top-ups received versus actual balance deductions consumed by users.';
+    protected ?string $description = 'Cash-in versus money actually consumed, plotted across the selected trend window.';
 
     protected ?string $maxHeight = '320px';
 
     protected function getData(): array
     {
         $report_service = app(AdminDashboardReportService::class);
-        $top_up = $report_service->getMonthlyTopUpSeries();
-        $usage = $report_service->getMonthlyUsageSeries();
+        $top_up = $report_service->getMonthlyTopUpSeries($this->getTrendWindowMonths());
+        $usage = $report_service->getMonthlyUsageSeries($this->getTrendWindowMonths());
 
         return [
             'labels' => $top_up->keys()->all(),
@@ -38,6 +38,7 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
                     'backgroundColor' => 'rgba(34, 197, 94, 0.7)',
                     'borderColor' => 'rgba(34, 197, 94, 1)',
                     'borderRadius' => 8,
+                    'borderSkipped' => false,
                 ],
                 [
                     'label' => 'Usage (USD)',
@@ -45,6 +46,7 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
                     'backgroundColor' => 'rgba(244, 63, 94, 0.7)',
                     'borderColor' => 'rgba(244, 63, 94, 1)',
                     'borderRadius' => 8,
+                    'borderSkipped' => false,
                 ],
             ],
         ];
@@ -56,6 +58,10 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
             'plugins' => [
                 'legend' => [
                     'position' => 'bottom',
+                ],
+                'tooltip' => [
+                    'mode' => 'index',
+                    'intersect' => false,
                 ],
             ],
             'scales' => [
