@@ -75,7 +75,6 @@ class User extends Authenticatable implements FilamentUser
                     // or if you have any active packages, you can also use the service
                     || $this->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()
                     // or you have a github account created N years ago, N - 9 > abs(balance)
-                    // e.g. balance = -1, github_created_at = 2019-01-01, now = 2024-01-01, then 2024 - 2019 - 9 = 2 > 1, so it's also valid
                     || ($github_created_at !== null && Carbon::parse($github_created_at)->diffInYears(now()) - 9 > abs($balance));
             },
         );
