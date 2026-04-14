@@ -55,11 +55,13 @@ class Dashboard extends BaseDashboard
     {
         return [
             ReportOverviewWidget::class,
+            TodaySnapshotChart::class,
             MonthlyTopUpAndUsageChart::class,
-            GatewayTopUpShareChart::class,
+            LastSevenDayTrafficChart::class,
             MonthlyTrafficReportChart::class,
-            UsageCompositionChart::class,
             LastSevenDayUsageChart::class,
+            GatewayTopUpShareChart::class,
+            UsageCompositionChart::class,
             UserAccessHealthChart::class,
             PackageUtilizationHealthChart::class,
             DailyTrafficRankingTable::class,

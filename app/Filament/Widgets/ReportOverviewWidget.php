@@ -18,52 +18,43 @@ class ReportOverviewWidget extends StatsOverviewWidget
 
     protected ?string $heading = 'Realtime Business Snapshot';
 
-    protected ?string $description = 'Auto-refreshing traffic, top-up, usage, and subscription health indicators.';
-
     protected function getStats(): array
     {
         $report = app(AdminDashboardReportService::class)->getOverviewStats($this->getTrendWindowMonths());
 
         return [
-            Stat::make('Monthly Traffic', $this->formatGigabytes($report['current_month_traffic_gb']))
-                ->description('Month-to-date consumption')
+            // Traffic: today is the headline, month-to-date in description
+            Stat::make('Today Traffic', $this->formatGigabytes($report['today_traffic_gb']))
+                ->description('MTD '.$this->formatGigabytes($report['current_month_traffic_gb']).' | 7d '.$this->formatGigabytes($report['last_7_day_traffic_gb']))
                 ->descriptionIcon('heroicon-m-arrow-trending-up', IconPosition::Before)
-                ->chart($report['monthly_traffic_trend'])
+                ->chart($report['daily_traffic_trend'])
                 ->color('info'),
-            Stat::make('Monthly Top-Ups', $this->formatCurrency($report['current_month_top_up']))
-                ->description('Paid recharge orders this month')
+            // Top-ups: today headline, month-to-date comparison
+            Stat::make('Today Top-Ups', $this->formatCurrency($report['today_top_up']))
+                ->description('MTD '.$this->formatCurrency($report['current_month_top_up']).' ('.number_format($report['paid_order_count']).' orders)')
                 ->descriptionIcon('heroicon-m-banknotes', IconPosition::Before)
                 ->chart($report['monthly_top_up_trend'])
                 ->color('success'),
-            Stat::make('Monthly Usage', $this->formatCurrency($report['current_month_usage']))
-                ->description('Actual user spend deducted from balances')
+            // Usage: today headline, month-to-date comparison
+            Stat::make('Today Usage', $this->formatCurrency($report['today_usage']))
+                ->description('MTD '.$this->formatCurrency($report['current_month_usage']).' | 7d '.$this->formatCurrency($report['last_7_day_usage']))
                 ->descriptionIcon('heroicon-m-arrow-trending-down', IconPosition::Before)
-                ->chart($report['monthly_usage_trend'])
-                ->color('danger'),
-            Stat::make('Outstanding Balance', $this->formatCurrency($report['outstanding_balance']))
-                ->description('Positive balance still held for future usage')
-                ->descriptionIcon('heroicon-m-wallet', IconPosition::Before)
-                ->color('primary'),
-            Stat::make('Last 7-Day Usage', $this->formatCurrency($report['last_7_day_usage']))
-                ->description('Rolling 7-day actual spend')
-                ->descriptionIcon('heroicon-m-clock', IconPosition::Before)
                 ->chart($report['daily_usage_trend'])
-                ->color('warning'),
-            Stat::make('Active Packages', number_format($report['active_package_count']))
-                ->description($this->formatGigabytes($report['remaining_package_traffic_gb']).' remaining')
-                ->descriptionIcon('heroicon-m-cube', IconPosition::Before)
-                ->color('primary'),
-            Stat::make('Package-backed Users', number_format($report['package_backed_user_count']))
-                ->description('Users currently protected by active packages')
-                ->descriptionIcon('heroicon-m-shield-check', IconPosition::Before)
-                ->color('info'),
-            Stat::make('At-risk Users', number_format($report['access_at_risk_user_count']))
-                ->description('Low or negative balance without package coverage')
-                ->descriptionIcon('heroicon-m-exclamation-triangle', IconPosition::Before)
                 ->color('danger'),
-            Stat::make('Top-Up Orders', number_format($report['paid_order_count']))
-                ->description('Completed recharge orders this month')
-                ->descriptionIcon('heroicon-m-check-badge', IconPosition::Before)
+            // Active users today
+            Stat::make('Active Users Today', number_format($report['today_active_users']))
+                ->description(number_format($report['package_backed_user_count']).' package-backed | '.number_format($report['access_at_risk_user_count']).' at risk')
+                ->descriptionIcon('heroicon-m-users', IconPosition::Before)
+                ->color('primary'),
+            // Outstanding balance: point-in-time
+            Stat::make('Outstanding Balance', $this->formatCurrency($report['outstanding_balance']))
+                ->description($this->formatGigabytes($report['remaining_package_traffic_gb']).' package traffic remaining')
+                ->descriptionIcon('heroicon-m-wallet', IconPosition::Before)
+                ->color('warning'),
+            // Active packages: point-in-time
+            Stat::make('Active Packages', number_format($report['active_package_count']))
+                ->description('Today top-up orders: '.number_format($report['today_top_up_orders']))
+                ->descriptionIcon('heroicon-m-cube', IconPosition::Before)
                 ->color('gray'),
         ];
     }
@@ -80,6 +71,6 @@ class ReportOverviewWidget extends StatsOverviewWidget
 
     protected function getDescription(): ?string
     {
-        return 'Live operational KPIs with trend context from the '.$this->getTrendWindowLabel().'.';
+        return 'Today\'s live numbers with month-to-date (MTD) and 7-day context. Trend from the '.$this->getTrendWindowLabel().'.';
     }
 }

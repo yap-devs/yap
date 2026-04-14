@@ -23,16 +23,24 @@ class AdminDashboardReportService
         $monthly_top_up = $this->getMonthlyTopUpSeries($months);
         $monthly_usage = $this->getMonthlyUsageSeries($months);
         $daily_usage = $this->getLastSevenDayUsageSeries();
+        $daily_traffic = $this->getLastSevenDayTrafficSeries();
+        $today_stats = $this->getTodayStats();
         $current_month = CarbonImmutable::now()->format('Y-m');
         $active_package_query = $this->getActiveUserPackagesQuery();
         $remaining_package_traffic = (float) $active_package_query->sum('remaining_traffic');
         $access_health = $this->getAccessHealthBreakdown();
 
         return [
+            'today_traffic_gb' => $today_stats['traffic_gb'],
+            'today_top_up' => $today_stats['top_up'],
+            'today_usage' => $today_stats['usage'],
+            'today_active_users' => $today_stats['active_users'],
+            'today_top_up_orders' => $today_stats['top_up_orders'],
             'current_month_traffic_gb' => (float) $monthly_traffic->get($current_month, 0),
             'current_month_top_up' => (float) $monthly_top_up->get($current_month, 0),
             'current_month_usage' => (float) $monthly_usage->get($current_month, 0),
             'last_7_day_usage' => round((float) $daily_usage->sum(), 2),
+            'last_7_day_traffic_gb' => round((float) $daily_traffic->sum(), 2),
             'outstanding_balance' => round((float) $this->getReportableUsersQuery()->where('balance', '>', 0)->sum('balance'), 2),
             'active_package_count' => (clone $active_package_query)->count(),
             'remaining_package_traffic_gb' => $this->bytesToGigabytes($remaining_package_traffic),
@@ -45,7 +53,60 @@ class AdminDashboardReportService
             'monthly_top_up_trend' => $monthly_top_up->values()->all(),
             'monthly_usage_trend' => $monthly_usage->values()->all(),
             'daily_usage_trend' => $daily_usage->values()->all(),
+            'daily_traffic_trend' => $daily_traffic->values()->all(),
         ];
+    }
+
+    public function getTodayStats(): array
+    {
+        $today_start = CarbonImmutable::now()->startOfDay();
+
+        $traffic_bytes = (float) $this->getReportableUserStatsQuery()
+            ->where('created_at', '>=', $today_start)
+            ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total')
+            ->value('total');
+
+        $top_up = (float) $this->getReportablePaymentsQuery()
+            ->where('created_at', '>=', $today_start)
+            ->sum('amount');
+
+        $usage = (float) $this->getReportableUsageQuery()
+            ->where('created_at', '>=', $today_start)
+            ->selectRaw('ABS(SUM(amount)) as total')
+            ->value('total');
+
+        $active_users = (int) $this->getReportableUserStatsQuery()
+            ->where('created_at', '>=', $today_start)
+            ->distinct('user_id')
+            ->count('user_id');
+
+        $top_up_orders = (int) $this->getReportablePaymentsQuery()
+            ->where('created_at', '>=', $today_start)
+            ->count();
+
+        return [
+            'traffic_gb' => $this->bytesToGigabytes($traffic_bytes),
+            'top_up' => round($top_up, 2),
+            'usage' => round($usage, 2),
+            'active_users' => $active_users,
+            'top_up_orders' => $top_up_orders,
+        ];
+    }
+
+    public function getLastSevenDayTrafficSeries(int $days = 7): Collection
+    {
+        $rows = $this->getReportableUserStatsQuery()
+            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
+            ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total_traffic_bytes')
+            ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
+            ->orderBy('period')
+            ->get();
+
+        return $this->buildDailySeries(
+            $days,
+            $rows->pluck('total_traffic_bytes', 'period')->map(fn (mixed $value): float => $this->bytesToGigabytes((float) $value)),
+        );
     }
 
     public function getMonthlyTrafficSeries(int $months = 12): Collection
