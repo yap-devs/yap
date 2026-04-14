@@ -6,6 +6,7 @@ use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\BepusdtService;
+use App\Services\RechargeOrderLockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -22,7 +23,7 @@ class BepusdtController extends Controller
      * @throws RandomException
      * @throws Throwable
      */
-    public function newOrder(Request $request, BepusdtService $bepusdtService)
+    public function newOrder(Request $request, BepusdtService $bepusdtService, RechargeOrderLockService $rechargeOrderLockService)
     {
         $request->validate([
             'amount' => 'required|numeric|min:2|max:100',  // in USD
@@ -31,28 +32,24 @@ class BepusdtController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->payments()->where('status', Payment::STATUS_CREATED)->exists()) {
-            return redirect()->route('recharge')->withErrors([
-                'message' => 'You have an unpaid payment. Please complete or cancel it before creating a new one.',
-            ]);
-        }
-
         $amount = $request->input('amount');
-        $out_trade_no = 'U'.time().random_int(10000, 99999);
 
-        $info = $bepusdtService->createTransaction($amount, $out_trade_no);
+        return $rechargeOrderLockService->create($user, function () use ($amount, $bepusdtService, $user) {
+            $out_trade_no = 'U'.time().random_int(10000, 99999);
+            $info = $bepusdtService->createTransaction($amount, $out_trade_no);
 
-        $payment = $user->payments()->create([
-            'gateway' => Payment::GATEWAY_USDT,
-            'status' => 'created',
-            'amount' => $amount,
-            'remote_id' => $out_trade_no,
-            'payload' => [
-                Payment::STATUS_CREATED => $info,
-            ],
-        ]);
+            $payment = $user->payments()->create([
+                'gateway' => Payment::GATEWAY_USDT,
+                'status' => Payment::STATUS_CREATED,
+                'amount' => $amount,
+                'remote_id' => $out_trade_no,
+                'payload' => [
+                    Payment::STATUS_CREATED => $info,
+                ],
+            ]);
 
-        return redirect()->route('bepusdt.scan', compact('payment'));
+            return redirect()->route('bepusdt.scan', compact('payment'));
+        });
     }
 
     public function scan(Request $request, Payment $payment)

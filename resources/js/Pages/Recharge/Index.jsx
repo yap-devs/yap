@@ -6,6 +6,7 @@ import Modal from '@/Components/Modal';
 export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPayment}) {
   const {errors} = usePage().props;
   const [confirmingCancel, setConfirmingCancel] = useState(false);
+  const [submittingGateway, setSubmittingGateway] = useState(null);
 
   const gatewayLabels = {
     alipay: 'Alipay',
@@ -42,19 +43,29 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
     window.open(url.href, '_blank');
   }
   const redirectToAlipayScanPage = () => {
+    if (submittingGateway || pendingPayment) return;
+    setSubmittingGateway('alipay');
     router.visit(route('alipay.newOrder'), {
       method: 'post',
-      data: {amount: alipayAmount || 5}
+      data: {amount: alipayAmount || 5},
+      onFinish: () => setSubmittingGateway(null),
     });
   }
   const redirectToUSDTPage = () => {
+    if (submittingGateway || pendingPayment) return;
+    setSubmittingGateway('usdt');
     router.visit(route('bepusdt.newOrder'), {
       method: 'post',
-      data: {amount: usdtAmount || 5}
+      data: {amount: usdtAmount || 5},
+      onFinish: () => setSubmittingGateway(null),
     });
   }
   const redirectToStripePage = () => {
-    router.post(route('stripe.newOrder'), {amount: stripeAmount || 5});
+    if (submittingGateway || pendingPayment) return;
+    setSubmittingGateway('stripe');
+    router.post(route('stripe.newOrder'), {amount: stripeAmount || 5}, {
+      onFinish: () => setSubmittingGateway(null),
+    });
   }
 
   const [githubAmount, setGithubAmount] = useState(5);
@@ -132,8 +143,9 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
   };
 
   const renderPaymentCard = (config) => {
-    const {title, badge, color, amount, setAmount, error, setError, onSubmit, children} = config;
+    const {title, badge, color, amount, setAmount, error, setError, onSubmit, children, gateway} = config;
     const styles = colorStyles[color] || colorStyles.blue;
+    const isSubmitting = submittingGateway === gateway;
 
     const incrementAmount = () => {
       const newAmount = parseInt(amount || 0) + 1;
@@ -156,7 +168,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
       }
     };
 
-    const isDisabled = !amount || parseInt(amount) < 2 || parseInt(amount) > 100;
+    const isDisabled = !amount || parseInt(amount) < 2 || parseInt(amount) > 100 || submittingGateway !== null || !!pendingPayment;
 
     return (
       <div className={`rounded-lg shadow-md overflow-hidden border ${styles.border} hover:shadow-lg transition-shadow duration-200`}>
@@ -226,7 +238,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
             onClick={onSubmit}
             disabled={isDisabled}
           >
-            Recharge Now
+              {isSubmitting ? 'Creating Order...' : 'Recharge Now'}
           </button>
         </div>
       </div>
@@ -396,6 +408,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {renderPaymentCard({
               title: 'Alipay',
+              gateway: 'alipay',
               badge: <span className="text-xs bg-blue-400/30 px-2 py-1 rounded">Fast</span>,
               color: 'blue',
               amount: alipayAmount,
@@ -407,6 +420,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
 
             {renderPaymentCard({
               title: 'USDT',
+              gateway: 'usdt',
               badge: <span className="text-xs bg-green-400/30 px-2 py-1 rounded">Crypto</span>,
               color: 'green',
               amount: usdtAmount,
@@ -423,6 +437,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
 
             {renderPaymentCard({
               title: 'Stripe',
+              gateway: 'stripe',
               badge: (
                 <div className="flex items-center gap-2">
                   {stripeSandbox && (

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\RechargeOrderLockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -26,7 +27,7 @@ class StripeController extends Controller
      * @throws RandomException
      * @throws ApiErrorException
      */
-    public function newOrder(Request $request)
+    public function newOrder(Request $request, RechargeOrderLockService $rechargeOrderLockService)
     {
         $request->validate([
             'amount' => 'required|numeric|min:2|max:100',  // in USD
@@ -35,76 +36,73 @@ class StripeController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->payments()->where('status', Payment::STATUS_CREATED)->exists()) {
-            return redirect()->route('recharge')->withErrors([
-                'message' => 'You have an unpaid payment. Please complete or cancel it before creating a new one.',
-            ]);
-        }
-
-        $out_trade_no = 'S'.time().random_int(100000, 999999);
         $amount = $request->input('amount');
 
-        // Create payment record first so we have the ID for the success URL
-        /** @var Payment $payment */
-        $payment = $user->payments()->create([
-            'gateway' => Payment::GATEWAY_STRIPE,
-            'status' => Payment::STATUS_CREATED,
-            'amount' => $amount,
-            'remote_id' => $out_trade_no,
-            'payload' => [
-                Payment::STATUS_CREATED => [],
-            ],
-        ]);
+        return $rechargeOrderLockService->create($user, function () use ($amount, $user) {
+            $out_trade_no = 'S'.time().random_int(100000, 999999);
 
-        try {
-            // Convert USD to CNY using configured rate, then to fen (cents).
-            // CNY enables Alipay, WeChat Pay and other CN payment methods on Stripe.
-            $cny_amount = bcmul($amount, config('yap.payment.usd_rmb_rate'), 2);
-            $unit_amount = bcmul($cny_amount, 100, 0);
-
-            $session = Session::create([
-                // Let Stripe determine available payment methods based on Dashboard settings,
-                // currency (CNY), and customer location.
-                'customer_email' => $user->email,
-                'line_items' => [[
-                    'price_data' => [
-                        'currency' => 'cny',
-                        'product_data' => [
-                            'name' => 'Yap Account Recharge',
-                        ],
-                        'unit_amount' => $unit_amount,
-                    ],
-                    'quantity' => 1,
-                ]],
-                'mode' => 'payment',
-                'success_url' => route('stripe.success', ['payment' => $payment->id]).'?session_id={CHECKOUT_SESSION_ID}',
-                'cancel_url' => route('recharge'),
-                'metadata' => [
-                    'order_id' => $out_trade_no,
+            // Create payment record first so we have the ID for the success URL
+            /** @var Payment $payment */
+            $payment = $user->payments()->create([
+                'gateway' => Payment::GATEWAY_STRIPE,
+                'status' => Payment::STATUS_CREATED,
+                'amount' => $amount,
+                'remote_id' => $out_trade_no,
+                'payload' => [
+                    Payment::STATUS_CREATED => [],
                 ],
             ]);
-        } catch (ApiErrorException $e) {
-            logger()->critical('Stripe session creation failed: '.$e->getMessage());
-            $payment->delete();
 
-            return redirect()->route('recharge')->withErrors([
-                'message' => 'Failed to create Stripe payment.',
-            ]);
-        }
+            try {
+                // Convert USD to CNY using configured rate, then to fen (cents).
+                // CNY enables Alipay, WeChat Pay and other CN payment methods on Stripe.
+                $cny_amount = bcmul($amount, config('yap.payment.usd_rmb_rate'), 2);
+                $unit_amount = bcmul($cny_amount, 100, 0);
 
-        // Store session details in payment payload
-        $payment->payload = [
-            Payment::STATUS_CREATED => [
-                'session_id' => $session->id,
-                'checkout_url' => $session->url,
-            ],
-        ];
-        $payment->save();
+                $session = Session::create([
+                    // Let Stripe determine available payment methods based on Dashboard settings,
+                    // currency (CNY), and customer location.
+                    'customer_email' => $user->email,
+                    'line_items' => [[
+                        'price_data' => [
+                            'currency' => 'cny',
+                            'product_data' => [
+                                'name' => 'Yap Account Recharge',
+                            ],
+                            'unit_amount' => $unit_amount,
+                        ],
+                        'quantity' => 1,
+                    ]],
+                    'mode' => 'payment',
+                    'success_url' => route('stripe.success', ['payment' => $payment->id]).'?session_id={CHECKOUT_SESSION_ID}',
+                    'cancel_url' => route('recharge'),
+                    'metadata' => [
+                        'order_id' => $out_trade_no,
+                    ],
+                ]);
+            } catch (ApiErrorException $e) {
+                logger()->critical('Stripe session creation failed: '.$e->getMessage());
+                $payment->delete();
 
-        // Return checkout URL for frontend redirect via Inertia location header.
-        // Cannot use redirect()->away() because Inertia XHR cannot follow
-        // cross-origin redirects (CORS blocks it).
-        return Inertia::location($session->url);
+                return redirect()->route('recharge')->withErrors([
+                    'message' => 'Failed to create Stripe payment.',
+                ]);
+            }
+
+            // Store session details in payment payload
+            $payment->payload = [
+                Payment::STATUS_CREATED => [
+                    'session_id' => $session->id,
+                    'checkout_url' => $session->url,
+                ],
+            ];
+            $payment->save();
+
+            // Return checkout URL for frontend redirect via Inertia location header.
+            // Cannot use redirect()->away() because Inertia XHR cannot follow
+            // cross-origin redirects (CORS blocks it).
+            return Inertia::location($session->url);
+        });
     }
 
     public function pay(Request $request, Payment $payment)

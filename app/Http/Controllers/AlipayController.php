@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\RechargeOrderLockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -93,7 +94,7 @@ class AlipayController extends Controller
     /**
      * @throws RandomException
      */
-    public function newOrder(Request $request)
+    public function newOrder(Request $request, RechargeOrderLockService $rechargeOrderLockService)
     {
         $request->validate([
             'amount' => 'required|numeric|min:2|max:100',  // in USD
@@ -102,41 +103,38 @@ class AlipayController extends Controller
         /** @var User $user */
         $user = $request->user();
 
-        if ($user->payments()->where('status', Payment::STATUS_CREATED)->exists()) {
-            return redirect()->route('recharge')->withErrors([
-                'message' => 'You have an unpaid payment. Please complete or cancel it before creating a new one.',
-            ]);
-        }
-
-        $out_trade_no = time().random_int(100000, 999999);
         $amount = $request->input('amount');
 
-        $qr_info = Pay::alipay()->scan([
-            'out_trade_no' => $out_trade_no,
-            'total_amount' => bcmul($amount, config('yap.payment.usd_rmb_rate'), 2),
-            'subject' => config('yap.payment.alipay.subject'),
-        ]);
+        return $rechargeOrderLockService->create($user, function () use ($amount, $user) {
+            $out_trade_no = time().random_int(100000, 999999);
 
-        if ($qr_info['code'] !== '10000') {
-            logger()->critical('Alipay scan failed: '.json_encode($qr_info));
-
-            return redirect()->route('recharge')->withErrors([
-                'message' => 'Failed to create Alipay payment.',
+            $qr_info = Pay::alipay()->scan([
+                'out_trade_no' => $out_trade_no,
+                'total_amount' => bcmul($amount, config('yap.payment.usd_rmb_rate'), 2),
+                'subject' => config('yap.payment.alipay.subject'),
             ]);
-        }
 
-        /** @var Payment $payment */
-        $payment = $user->payments()->create([
-            'gateway' => Payment::GATEWAY_ALIPAY,
-            'status' => 'created',
-            'amount' => $amount,
-            'remote_id' => $out_trade_no,
-            'payload' => [
-                Payment::STATUS_CREATED => $qr_info,
-            ],
-        ]);
+            if ($qr_info['code'] !== '10000') {
+                logger()->critical('Alipay scan failed: '.json_encode($qr_info));
 
-        return redirect()->route('alipay.scan', compact('payment'));
+                return redirect()->route('recharge')->withErrors([
+                    'message' => 'Failed to create Alipay payment.',
+                ]);
+            }
+
+            /** @var Payment $payment */
+            $payment = $user->payments()->create([
+                'gateway' => Payment::GATEWAY_ALIPAY,
+                'status' => Payment::STATUS_CREATED,
+                'amount' => $amount,
+                'remote_id' => $out_trade_no,
+                'payload' => [
+                    Payment::STATUS_CREATED => $qr_info,
+                ],
+            ]);
+
+            return redirect()->route('alipay.scan', compact('payment'));
+        });
     }
 
     public function scan(Request $request, Payment $payment)
