@@ -35,6 +35,8 @@ NC='\033[0m'
 TTL=60        # 60s = minimum allowed by Cloudflare
 PROXIED=false
 DRY_RUN=false
+CHECK_PORT=""  # empty = skip health check
+CHECK_TIMEOUT=3
 
 print_ok()   { echo -e "${GREEN}[OK]${NC} $1"; }
 print_err()  { echo -e "${RED}[ERROR]${NC} $1"; }
@@ -190,6 +192,58 @@ resolve_ips() {
     echo "$json"
 }
 
+# Check if a TCP port is reachable on a given IP
+# Returns 0 if reachable, 1 if not
+check_tcp() {
+    local ip=$1
+    local port=$2
+    timeout "$CHECK_TIMEOUT" bash -c "echo >/dev/tcp/${ip}/${port}" 2>/dev/null
+}
+
+# Filter IPs by TCP port reachability
+# Input: JSON {"A":[...],"AAAA":[...]}
+# Output: same format with unreachable IPs removed
+filter_by_port() {
+    local resolved=$1
+    local port=$2
+    local filtered='{"A":[],"AAAA":[]}'
+
+    local total=0
+    local alive=0
+    local dead=0
+
+    # Check IPv4
+    while IFS= read -r ip; do
+        [ -z "$ip" ] && continue
+        total=$((total + 1))
+        if check_tcp "$ip" "$port"; then
+            filtered=$(echo "$filtered" | jq --arg ip "$ip" '.A += [$ip]')
+            print_ok "${ip}:${port} reachable" >&2
+            alive=$((alive + 1))
+        else
+            print_warn "${ip}:${port} unreachable (filtered out)" >&2
+            dead=$((dead + 1))
+        fi
+    done < <(echo "$resolved" | jq -r '.A[]' 2>/dev/null)
+
+    # Check IPv6
+    while IFS= read -r ip; do
+        [ -z "$ip" ] && continue
+        total=$((total + 1))
+        if check_tcp "$ip" "$port"; then
+            filtered=$(echo "$filtered" | jq --arg ip "$ip" '.AAAA += [$ip]')
+            print_ok "[${ip}]:${port} reachable" >&2
+            alive=$((alive + 1))
+        else
+            print_warn "[${ip}]:${port} unreachable (filtered out)" >&2
+            dead=$((dead + 1))
+        fi
+    done < <(echo "$resolved" | jq -r '.AAAA[]' 2>/dev/null)
+
+    print_info "Health check: ${alive}/${total} alive, ${dead} filtered out" >&2
+    echo "$filtered"
+}
+
 # Get existing DNS records for the target domain
 get_existing_records() {
     local zone_id=$1
@@ -327,6 +381,8 @@ show_help() {
     echo "  -                  Read from stdin, auto-extract all IPs"
     echo ""
     echo "Options:"
+    echo "  --check-port PORT  Filter out IPs where TCP port is unreachable"
+    echo "  --check-timeout N  Health check timeout in seconds (default: 3)"
     echo "  --ttl N            TTL in seconds (default: 60)"
     echo "  --proxied          Enable Cloudflare proxy (default: off)"
     echo "  --dry-run          Show what would be done without making changes"
@@ -352,6 +408,9 @@ show_help() {
     echo ""
     echo "  # Inline IPs"
     echo "  echo -e '1.2.3.4\n5.6.7.8' | $0 - target.example.com"
+    echo ""
+    echo "  # With health check (only sync IPs where port 443 is open)"
+    echo "  $0 source.example.com target.example.com --check-port 443"
 }
 
 main() {
@@ -372,6 +431,14 @@ main() {
             --dry-run)
                 DRY_RUN=true
                 shift
+                ;;
+            --check-port)
+                CHECK_PORT="$2"
+                shift 2
+                ;;
+            --check-timeout)
+                CHECK_TIMEOUT="$2"
+                shift 2
                 ;;
             -h|--help)
                 show_help
@@ -454,6 +521,22 @@ main() {
         echo "$resolved" | jq -r '.AAAA[]' | while read -r ip; do
             echo -e "  ${GREEN}$ip${NC}"
         done
+    fi
+
+    # Health check: filter by TCP port reachability
+    if [ -n "$CHECK_PORT" ]; then
+        echo ""
+        echo -e "${CYAN}=== Health Check: TCP port ${CHECK_PORT} ===${NC}"
+        resolved=$(filter_by_port "$resolved" "$CHECK_PORT")
+
+        # Recount after filtering
+        ipv4_count=$(echo "$resolved" | jq '.A | length')
+        ipv6_count=$(echo "$resolved" | jq '.AAAA | length')
+
+        if [ "$ipv4_count" -eq 0 ] && [ "$ipv6_count" -eq 0 ]; then
+            print_err "No reachable IPs after health check"
+            exit 1
+        fi
     fi
 
     # Step 2: Get Cloudflare Zone ID for target domain
