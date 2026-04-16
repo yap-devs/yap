@@ -64,8 +64,10 @@ class GithubController extends Controller
         $remote_id = $request->input('sponsorship.tier.node_id').'|'.$request->input('sponsorship.tier.created_at');
 
         DB::transaction(function () use ($user, $amount, $remote_id, $request) {
-            // Re-check inside transaction to prevent duplicate processing
-            if (Payment::where('remote_id', $remote_id)->exists()) {
+            // Lock matching rows (if any) to prevent duplicate processing.
+            // Without lockForUpdate, two concurrent webhook deliveries could both
+            // see exists()=false under REPEATABLE READ and double-credit the user.
+            if (Payment::lockForUpdate()->where('remote_id', $remote_id)->exists()) {
                 return;
             }
 
