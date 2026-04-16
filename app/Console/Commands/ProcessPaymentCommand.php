@@ -31,7 +31,7 @@ class ProcessPaymentCommand extends Command
      */
     public function handle()
     {
-        $payments = Payment::all();
+        $payments = Payment::where('status', Payment::STATUS_CREATED)->get();
 
         /** @var Payment $payment */
         foreach ($payments as $payment) {
@@ -60,20 +60,27 @@ class ProcessPaymentCommand extends Command
         ]);
 
         if ($result->get('trade_status') === 'TRADE_SUCCESS') {
-            $payment->status = Payment::STATUS_PAID;
-            $payload = $payment->payload;
-            $payload[Payment::STATUS_PAID] = $result->toArray();
-            $payment->payload = $payload;
-            $payment->save();
+            DB::transaction(function () use ($payment, $result) {
+                $payment = Payment::lockForUpdate()->find($payment->id);
+                if ($payment->status === Payment::STATUS_PAID) {
+                    return;
+                }
 
-            $payment->user->increment('balance', $payment->amount);
+                $payment->status = Payment::STATUS_PAID;
+                $payload = $payment->payload;
+                $payload[Payment::STATUS_PAID] = $result->toArray();
+                $payment->payload = $payload;
+                $payment->save();
 
-            $payment->user->balanceDetails()->create([
-                'amount' => $payment->amount,
-                'description' => 'Alipay payment',
-            ]);
+                $payment->user->increment('balance', $payment->amount);
 
-            GenerateClashProfileLink::dispatch();
+                $payment->user->balanceDetails()->create([
+                    'amount' => $payment->amount,
+                    'description' => 'Alipay payment',
+                ]);
+
+                GenerateClashProfileLink::dispatch();
+            });
 
             return true;
         }

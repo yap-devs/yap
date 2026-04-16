@@ -8,8 +8,10 @@ use App\Models\UserPackage;
 use App\Models\VmessServer;
 use App\Services\V2rayService;
 use Illuminate\Console\Command;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Throwable;
 
 class UpdateStatCommand extends Command
@@ -83,7 +85,37 @@ class UpdateStatCommand extends Command
                 ]);
             }
 
+            $this->billUser($user);
+
+            if (
+                $user->is_valid != $is_valid_initial
+                || $user->is_low_priority != $is_low_priority_initial
+            ) {
+                $this->user_status_changed = true;
+            }
+
+            Cache::forget('today_traffic_' . $user->id);
+        }
+
+        if (now()->hour == 0) {
+            $this->updateBalanceDaily($users);
+        }
+
+        if ($this->user_status_changed) {
+            GenerateClashProfileLink::dispatchSync();
+        }
+    }
+
+    /**
+     * Bill user for traffic: deduct from packages first, then from balance.
+     * Wrapped in a transaction to keep traffic_unpaid, balance, packages,
+     * and BalanceDetail consistent.
+     */
+    private function billUser(User $user): void
+    {
+        DB::transaction(function () use ($user) {
             $this->expirePackage($user);
+
             while (
                 $user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()
                 && $user->traffic_unpaid > 0
@@ -106,34 +138,7 @@ class UpdateStatCommand extends Command
                 $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
                 $user->save();
             }
-
-            if (
-                $user->is_valid != $is_valid_initial
-                || $user->is_low_priority != $is_low_priority_initial
-            ) {
-                $this->user_status_changed = true;
-            }
-        }
-
-        if (now()->hour == 0) {
-            $this->updateBalanceDaily();
-        }
-
-        if ($this->user_status_changed) {
-            GenerateClashProfileLink::dispatchSync();
-        }
-
-        $this->clearCache();
-    }
-
-    private function clearCache()
-    {
-        $users = User::all();
-
-        /** @var User $user */
-        foreach ($users as $user) {
-            Cache::forget('today_traffic_' . $user->id);
-        }
+        });
     }
 
     private function expirePackage(User $user)
@@ -203,10 +208,14 @@ class UpdateStatCommand extends Command
         return $stats;
     }
 
-    private function updateBalanceDaily()
+    /**
+     * Settle remaining unpaid traffic for users who have sub-GB usage
+     * and no active packages. Runs once daily at midnight.
+     *
+     * @param Collection $users
+     */
+    private function updateBalanceDaily($users)
     {
-        $users = User::all();
-
         /** @var User $user */
         foreach ($users as $user) {
             // if already paid in the last 24 hours, skip
@@ -226,14 +235,16 @@ class UpdateStatCommand extends Command
 
             $is_valid = $user->is_valid;
 
-            $user->balance -= config('yap.unit_price');
-            $user->traffic_unpaid = 0;
-            $user->balanceDetails()->create([
-                'amount' => $user->balance - $user->getOriginal('balance'),
-                'description' => 'Daily deduction',
-            ]);
-            $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
-            $user->save();
+            DB::transaction(function () use ($user) {
+                $user->balance -= config('yap.unit_price');
+                $user->traffic_unpaid = 0;
+                $user->balanceDetails()->create([
+                    'amount' => $user->balance - $user->getOriginal('balance'),
+                    'description' => 'Daily deduction',
+                ]);
+                $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
+                $user->save();
+            });
 
             if ($user->is_valid != $is_valid) {
                 $this->user_status_changed = true;
