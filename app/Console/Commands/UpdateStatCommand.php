@@ -39,7 +39,9 @@ class UpdateStatCommand extends Command
      */
     public function handle()
     {
-        $users = User::all();
+        $users = User::with(['packages' => function ($query) {
+            $query->where('status', UserPackage::STATUS_ACTIVE);
+        }])->get();
         $vmess_servers = VmessServer::where('enabled', true)->get();
         $all_stats = $this->getAllStats($vmess_servers);
 
@@ -47,7 +49,7 @@ class UpdateStatCommand extends Command
         foreach ($users as $user) {
             $total_uplink = 0;
             $total_downlink = 0;
-            $is_valid_initial = $user->is_valid;
+            $is_valid_initial = $this->checkIsValid($user);
             $is_low_priority_initial = $user->is_low_priority;
 
             // Track which internal_servers have been counted to avoid double-counting
@@ -63,7 +65,7 @@ class UpdateStatCommand extends Command
 
                 $stats = Arr::get($all_stats, $vmess_server->id, []);
 
-                if (!$stats || !isset($stats['user'][$user->email])) {
+                if (! $stats || ! isset($stats['user'][$user->email])) {
                     continue;
                 }
 
@@ -76,9 +78,15 @@ class UpdateStatCommand extends Command
             }
 
             if (($total_uplink > 0) || ($total_downlink > 0)) {
-                $user->increment('traffic_uplink', $total_uplink);
-                $user->increment('traffic_downlink', $total_downlink);
-                $user->increment('traffic_unpaid', $total_uplink + $total_downlink);
+                // Use direct attribute mutation instead of increment() to keep
+                // the in-memory model in sync with what we write to DB. increment()
+                // issues a raw UPDATE that does not update the model attributes,
+                // which would cause billUser() to operate on stale data.
+                $user->traffic_uplink += $total_uplink;
+                $user->traffic_downlink += $total_downlink;
+                $user->traffic_unpaid += $total_uplink + $total_downlink;
+                $user->save();
+
                 $user->stats()->create([
                     'traffic_uplink' => $total_uplink,
                     'traffic_downlink' => $total_downlink,
@@ -87,14 +95,19 @@ class UpdateStatCommand extends Command
 
             $this->billUser($user);
 
+            // Reload the eager-loaded packages after billing may have changed statuses
+            $user->load(['packages' => function ($query) {
+                $query->where('status', UserPackage::STATUS_ACTIVE);
+            }]);
+
             if (
-                $user->is_valid != $is_valid_initial
+                $this->checkIsValid($user) != $is_valid_initial
                 || $user->is_low_priority != $is_low_priority_initial
             ) {
                 $this->user_status_changed = true;
             }
 
-            Cache::forget('today_traffic_' . $user->id);
+            Cache::forget('today_traffic_'.$user->id);
         }
 
         if (now()->hour == 0) {
@@ -107,37 +120,62 @@ class UpdateStatCommand extends Command
     }
 
     /**
+     * Check if user is valid using the eager-loaded packages relation
+     * instead of the is_valid accessor which triggers a DB query each time.
+     */
+    private function checkIsValid(User $user): bool
+    {
+        $balance = (float) $user->balance;
+        $github_created_at = $user->github_created_at;
+
+        return $balance > 0
+            || $user->packages->isNotEmpty()
+            || ($github_created_at !== null && $github_created_at->diffInYears(now()) - 9 > abs($balance));
+    }
+
+    /**
      * Bill user for traffic: deduct from packages first, then from balance.
-     * Wrapped in a transaction to keep traffic_unpaid, balance, packages,
-     * and BalanceDetail consistent.
+     * Wrapped in a transaction with a row lock to prevent concurrent payment
+     * webhooks from losing balance credits.
      */
     private function billUser(User $user): void
     {
         DB::transaction(function () use ($user) {
-            $this->expirePackage($user);
+            // Re-fetch with lock to get the latest balance (a payment webhook
+            // may have credited balance since we loaded the user) and to prevent
+            // concurrent modifications from overwriting each other.
+            /** @var User $locked_user */
+            $locked_user = User::lockForUpdate()->find($user->id);
+
+            $this->expirePackage($locked_user);
 
             while (
-                $user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()
-                && $user->traffic_unpaid > 0
+                $locked_user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()
+                && $locked_user->traffic_unpaid > 0
             ) {
-                $user->traffic_unpaid = $this->processPackage($user, $user->traffic_unpaid);
-                $user->save();
+                $locked_user->traffic_unpaid = $this->processPackage($locked_user, $locked_user->traffic_unpaid);
+                $locked_user->save();
             }
 
-            while ($user->traffic_unpaid > 1024 * 1024 * 1024) {
-                $user->balance -= config('yap.unit_price');
-                $user->traffic_unpaid -= 1024 * 1024 * 1024;
+            while ($locked_user->traffic_unpaid > 1024 * 1024 * 1024) {
+                $locked_user->balance -= config('yap.unit_price');
+                $locked_user->traffic_unpaid -= 1024 * 1024 * 1024;
             }
 
-            if ($user->isDirty(['balance', 'traffic_unpaid'])) {
-                $user->balanceDetails()->create([
-                    'amount' => $user->balance - $user->getOriginal('balance'),
+            if ($locked_user->isDirty(['balance', 'traffic_unpaid'])) {
+                $locked_user->balanceDetails()->create([
+                    'amount' => $locked_user->balance - $locked_user->getOriginal('balance'),
                     'description' => 'Traffic deduction',
                 ]);
 
-                $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
-                $user->save();
+                $this->log("User $locked_user->email balance updated from {$locked_user->getOriginal('balance')} to $locked_user->balance");
+                $locked_user->save();
             }
+
+            // Sync the outer model so subsequent reads (is_valid, is_low_priority)
+            // reflect the changes made inside the transaction.
+            $user->fill($locked_user->getAttributes());
+            $user->syncOriginal();
         });
     }
 
@@ -157,7 +195,7 @@ class UpdateStatCommand extends Command
             ->orderBy('ended_at')
             ->first();
 
-        if (!$user_package) {
+        if (! $user_package) {
             return $traffic;
         }
 
@@ -212,41 +250,58 @@ class UpdateStatCommand extends Command
      * Settle remaining unpaid traffic for users who have sub-GB usage
      * and no active packages. Runs once daily at midnight.
      *
-     * @param Collection $users
+     * @param  Collection  $users
      */
     private function updateBalanceDaily($users)
     {
         /** @var User $user */
         foreach ($users as $user) {
-            // if already paid in the last 24 hours, skip
-            if ($user->last_settled_at && $user->last_settled_at->diffInHours(now()) < 23.5) {
-                continue;
-            }
-
-            // if never used, skip
+            // if never used, skip (in-memory value is current after billUser synced it)
             if ($user->traffic_unpaid == 0) {
                 continue;
             }
 
-            // if have active package, skip
-            if ($user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()) {
+            // if have active package, skip (uses eager-loaded relation, no extra query)
+            $user->load(['packages' => function ($query) {
+                $query->where('status', UserPackage::STATUS_ACTIVE);
+            }]);
+            if ($user->packages->isNotEmpty()) {
                 continue;
             }
 
-            $is_valid = $user->is_valid;
+            $is_valid = $this->checkIsValid($user);
 
             DB::transaction(function () use ($user) {
-                $user->balance -= config('yap.unit_price');
-                $user->traffic_unpaid = 0;
-                $user->balanceDetails()->create([
-                    'amount' => $user->balance - $user->getOriginal('balance'),
+                // Re-fetch with lock to get latest balance and prevent concurrent
+                // payment webhooks from losing their credits.
+                /** @var User $locked_user */
+                $locked_user = User::lockForUpdate()->find($user->id);
+
+                // if already settled recently, skip
+                if ($locked_user->last_settled_at && $locked_user->last_settled_at->diffInHours(now()) < 23.5) {
+                    return;
+                }
+
+                // Re-check traffic_unpaid from DB in case billUser() already settled it
+                if ($locked_user->traffic_unpaid == 0) {
+                    return;
+                }
+
+                $locked_user->balance -= config('yap.unit_price');
+                $locked_user->traffic_unpaid = 0;
+                $locked_user->balanceDetails()->create([
+                    'amount' => $locked_user->balance - $locked_user->getOriginal('balance'),
                     'description' => 'Daily deduction',
                 ]);
-                $this->log("User $user->email balance updated from {$user->getOriginal('balance')} to $user->balance");
-                $user->save();
+                $this->log("User $locked_user->email balance updated from {$locked_user->getOriginal('balance')} to $locked_user->balance");
+                $locked_user->save();
+
+                // Sync outer model
+                $user->fill($locked_user->getAttributes());
+                $user->syncOriginal();
             });
 
-            if ($user->is_valid != $is_valid) {
+            if ($this->checkIsValid($user) != $is_valid) {
                 $this->user_status_changed = true;
             }
         }
@@ -254,7 +309,7 @@ class UpdateStatCommand extends Command
 
     private function log($message, $level = 'info')
     {
-        $message = '[UpdateStatCommand] ' . $message;
+        $message = '[UpdateStatCommand] '.$message;
         logger()->driver('job')->log($level, $message);
     }
 }

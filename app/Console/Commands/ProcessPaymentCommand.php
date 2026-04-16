@@ -62,7 +62,7 @@ class ProcessPaymentCommand extends Command
         if ($result->get('trade_status') === 'TRADE_SUCCESS') {
             DB::transaction(function () use ($payment, $result) {
                 $payment = Payment::lockForUpdate()->find($payment->id);
-                if ($payment->status === Payment::STATUS_PAID) {
+                if ($payment->status !== Payment::STATUS_CREATED) {
                     return;
                 }
 
@@ -138,7 +138,7 @@ class ProcessPaymentCommand extends Command
             if ($session->payment_status === 'paid') {
                 DB::transaction(function () use ($payment, $session) {
                     $payment = Payment::lockForUpdate()->find($payment->id);
-                    if ($payment->status === Payment::STATUS_PAID) {
+                    if ($payment->status !== Payment::STATUS_CREATED) {
                         return;
                     }
 
