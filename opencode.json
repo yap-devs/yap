@@ -3,7 +3,16 @@
   "mcp": {
     "laravel-boost": {
       "type": "local",
-      "command": ["php.exe", "artisan", "boost:mcp"],
+      "command": [
+        "php.exe",
+        "artisan",
+        "boost:mcp"
+      ],
+      "enabled": true
+    },
+    "sentry": {
+      "type": "remote",
+      "url": "https://mcp.sentry.dev/mcp",
       "enabled": true
     }
   }
