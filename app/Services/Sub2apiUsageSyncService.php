@@ -26,46 +26,69 @@ class Sub2apiUsageSyncService
             return;
         }
 
-        foreach ($items as $item) {
-            DB::transaction(function () use ($item, $user) {
+        $new_items = $this->filterNewItems($items);
+        if ($new_items === []) {
+            $user->forceFill(['sub2api_last_synced_at' => now()])->save();
+
+            return;
+        }
+
+        DB::transaction(function () use ($new_items, $user) {
+            /** @var User $locked_user */
+            $locked_user = User::lockForUpdate()->find($user->id);
+
+            $imported_items = [];
+            foreach ($new_items as $item) {
                 if (Sub2apiUsageRecord::where('remote_usage_id', $item['id'])->exists()) {
-                    return;
+                    continue;
                 }
 
-                /** @var User $locked_user */
-                $locked_user = User::lockForUpdate()->find($user->id);
-
-                if (Sub2apiUsageRecord::where('remote_usage_id', $item['id'])->exists()) {
-                    return;
-                }
-
-                $amount = $this->roundUpMoney((float) ($item['actual_cost'] ?? 0));
                 $locked_user->sub2apiUsageRecords()->create([
                     'remote_usage_id' => $item['id'],
                     'remote_request_id' => $item['request_id'] ?? null,
                     'remote_api_key_id' => $item['api_key_id'] ?? $locked_user->sub2api_key_id,
                     'model' => $item['model'] ?? null,
-                    'amount' => $amount,
+                    'amount' => (float) ($item['actual_cost'] ?? 0),
                     'usage_created_at' => $item['created_at'] ?? null,
                     'payload' => json_encode($item, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
                 ]);
 
-                if ($amount > 0) {
-                    $locked_user->decrement('balance', $amount);
+                $imported_items[] = $item;
+            }
+
+            if ($imported_items !== []) {
+                $total_amount = $this->roundUpMoney(
+                    array_sum(array_map(fn (array $item) => (float) ($item['actual_cost'] ?? 0), $imported_items))
+                );
+
+                if ($total_amount > 0) {
+                    $locked_user->decrement('balance', $total_amount);
                     $locked_user->balanceDetails()->create([
-                        'amount' => -$amount,
-                        'description' => $this->buildDescription($item, $amount),
+                        'amount' => -$total_amount,
+                        'description' => $this->buildBatchDescription($imported_items, $total_amount),
                     ]);
                 }
+            }
 
-                $locked_user->sub2api_last_usage_id = max((int) ($locked_user->sub2api_last_usage_id ?? 0), (int) $item['id']);
-                $locked_user->sub2api_last_synced_at = now();
-                $locked_user->save();
+            $max_id = max(array_map(fn (array $item) => (int) $item['id'], $new_items));
+            $locked_user->sub2api_last_usage_id = max((int) ($locked_user->sub2api_last_usage_id ?? 0), $max_id);
+            $locked_user->sub2api_last_synced_at = now();
+            $locked_user->save();
 
-                $user->fill($locked_user->getAttributes());
-                $user->syncOriginal();
-            });
-        }
+            $user->fill($locked_user->getAttributes());
+            $user->syncOriginal();
+        });
+    }
+
+    private function filterNewItems(array $items): array
+    {
+        $remote_ids = array_column($items, 'id');
+        $existing_ids = Sub2apiUsageRecord::whereIn('remote_usage_id', $remote_ids)
+            ->pluck('remote_usage_id')
+            ->map(fn ($id) => (int) $id)
+            ->all();
+
+        return array_values(array_filter($items, fn (array $item) => ! in_array((int) $item['id'], $existing_ids, true)));
     }
 
     private function roundUpMoney(float $amount): float
@@ -73,18 +96,33 @@ class Sub2apiUsageSyncService
         return ceil($amount * 100) / 100;
     }
 
-    private function buildDescription(array $item, float $amount): string
+    private function buildBatchDescription(array $items, float $total_amount): string
     {
-        $model = $item['model'] ?? 'unknown';
-        $input = number_format((int) ($item['input_tokens'] ?? 0));
-        $output = number_format((int) ($item['output_tokens'] ?? 0));
-        $cache = (int) ($item['cache_read_tokens'] ?? 0);
+        $count = count($items);
+        $total_input = 0;
+        $total_output = 0;
+        $total_cache = 0;
+        $models = [];
 
-        $desc = "AI $model | in:$input out:$output";
-        if ($cache > 0) {
-            $desc .= ' cache:'.number_format($cache);
+        foreach ($items as $item) {
+            $total_input += (int) ($item['input_tokens'] ?? 0);
+            $total_output += (int) ($item['output_tokens'] ?? 0);
+            $total_cache += (int) ($item['cache_read_tokens'] ?? 0);
+            $model = $item['model'] ?? 'unknown';
+            $models[$model] = ($models[$model] ?? 0) + 1;
         }
 
-        return $desc;
+        $model_summary = implode(', ', array_map(
+            fn (string $model, int $n) => $n > 1 ? "$model x$n" : $model,
+            array_keys($models),
+            array_values($models)
+        ));
+
+        $desc = "AI $model_summary | {$count}req in:".number_format($total_input).' out:'.number_format($total_output);
+        if ($total_cache > 0) {
+            $desc .= ' cache:'.number_format($total_cache);
+        }
+
+        return mb_substr($desc, 0, 255);
     }
 }

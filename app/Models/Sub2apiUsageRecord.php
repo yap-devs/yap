@@ -25,7 +25,7 @@ class Sub2apiUsageRecord extends Model
     protected function casts(): array
     {
         return [
-            'amount' => 'decimal:2',
+            'amount' => 'decimal:8',
             'usage_created_at' => 'datetime',
         ];
     }

@@ -15,7 +15,7 @@ return new class extends Migration
             $table->string('remote_request_id')->nullable()->comment('Sub2API request ID');
             $table->unsignedBigInteger('remote_api_key_id')->comment('Sub2API API key ID');
             $table->string('model')->nullable()->comment('Requested model');
-            $table->decimal('amount')->comment('Actual usage cost');
+            $table->decimal('amount', 12, 8)->comment('Actual usage cost');
             $table->timestamp('usage_created_at')->nullable()->comment('Sub2API usage created at');
             $table->longText('payload')->comment('Raw Sub2API usage payload');
             $table->timestamps();
