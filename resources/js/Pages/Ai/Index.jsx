@@ -10,13 +10,8 @@ export default function Index({auth, aiKey, baseUrl, createThreshold, keepActive
 
   function createKey(event) {
     event.preventDefault();
-    router.post(route('ai.key.store'), {}, {
-      onSuccess: (page) => {
-        if (!page.props.flash?.error) {
-          setShowingCreateModal(false);
-        }
-      },
-    });
+    router.post(route('ai.key.store'));
+    setShowingCreateModal(false);
   }
 
   return (
