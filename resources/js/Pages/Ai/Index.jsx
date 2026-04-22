@@ -29,9 +29,9 @@ export default function Index({auth, aiKey, baseUrl, createThreshold, keepActive
               {flash.success}
             </div>
           )}
-          {errors.error && (
+          {(flash.error || errors.error) && (
             <div className="p-4 sm:p-6 bg-red-600 bg-opacity-10 text-red-600 rounded-lg">
-              {errors.error}
+              {flash.error || errors.error}
             </div>
           )}
 

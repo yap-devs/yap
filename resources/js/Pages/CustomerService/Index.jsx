@@ -11,7 +11,7 @@ export default function Index({auth, resetSubscriptionPrice}) {
     setConfirmingResetSubscriptionUrl(false);
   };
 
-  const {errors} = usePage().props;
+  const {errors, flash} = usePage().props;
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -29,19 +29,19 @@ export default function Index({auth, resetSubscriptionPrice}) {
     <div className="py-12">
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
         {
-          errors.success && (
+          flash.success && (
             <div className="p-4 sm:p-8 bg-green-600 bg-opacity-10 text-green-600 rounded-lg">
               <div className="flex items-center">
-                <span className="ml-2">{errors.success}</span>
+                <span className="ml-2">{flash.success}</span>
               </div>
             </div>
           )
         }
         {
-          errors.error && (
+          (flash.error || errors.error) && (
             <div className="p-4 sm:p-8 bg-red-600 bg-opacity-10 text-red-600 rounded-lg">
               <div className="flex items-center">
-                <span className="ml-2">{errors.error}</span>
+                <span className="ml-2">{flash.error || errors.error}</span>
               </div>
             </div>
           )

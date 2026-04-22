@@ -49,9 +49,7 @@ class AiController extends Controller
         } catch (ValidationException $e) {
             throw $e;
         } catch (RuntimeException) {
-            return redirect()->route('ai.index')->withErrors([
-                'error' => 'Failed to create AI key. Please try again later.',
-            ]);
+            return redirect()->route('ai.index')->with('error', 'Failed to create AI key. Please try again later.');
         }
 
         return redirect()->route('ai.index')->with('success', 'AI key created successfully.');

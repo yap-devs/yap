@@ -26,9 +26,7 @@ class CustomerServiceController extends Controller
 
         if (! config('services.sub2api.enabled') && $user->sub2api_key_id) {
             return redirect()->route('customer.service')
-                ->withErrors([
-                    'error' => 'Subscription UUID reset is unavailable while AI issuance is disabled for accounts with an active AI key.',
-                ]);
+                ->with('error', 'Subscription UUID reset is unavailable while AI issuance is disabled for accounts with an active AI key.');
         }
 
         return DB::transaction(function () use ($user) {
@@ -42,16 +40,12 @@ class CustomerServiceController extends Controller
 
             if (Cache::has($pending_key)) {
                 return redirect()->route('customer.service')
-                    ->withErrors([
-                        'error' => 'A subscription reset is already in progress. Please wait a few minutes and try again.',
-                    ]);
+                    ->with('error', 'A subscription reset is already in progress. Please wait a few minutes and try again.');
             }
 
             if ($user->balance < $price) {
                 return redirect()->route('customer.service')
-                    ->withErrors([
-                        'error' => 'Insufficient balance to reset subscription.',
-                    ]);
+                    ->with('error', 'Insufficient balance to reset subscription.');
             }
 
             $user->decrement('balance', $price);
@@ -64,9 +58,7 @@ class CustomerServiceController extends Controller
             UpdateUserUuid::dispatch($user, $old_key_id, $old_uuid, $new_uuid)->afterCommit();
 
             return redirect()->route('customer.service')
-                ->withErrors([
-                    'success' => 'Subscription reset successfully, please wait for a few minutes for the changes to take effect.',
-                ]);
+                ->with('success', 'Subscription reset successfully, please wait for a few minutes for the changes to take effect.');
         });
     }
 }

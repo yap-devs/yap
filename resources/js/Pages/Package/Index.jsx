@@ -11,7 +11,7 @@ import {useState} from 'react';
 export default function Index({auth, packages, userPackages}) {
   const [confirmingBuy, setConfirmingBuy] = useState(false);
 
-  const {errors} = usePage().props;
+  const {errors, flash} = usePage().props;
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -34,23 +34,23 @@ export default function Index({auth, packages, userPackages}) {
       <Head title="Traffic Packages"/>
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          {errors.error && (
+          {(flash.error || errors.error) && (
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg">
               <div className="flex items-center">
                 <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
-                <span>{errors.error}</span>
+                <span>{flash.error || errors.error}</span>
               </div>
             </div>
           )}
-          {errors.success && (
+          {flash.success && (
             <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-lg">
               <div className="flex items-center">
                 <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
                 </svg>
-                <span>{errors.success}</span>
+                <span>{flash.success}</span>
               </div>
             </div>
           )}
