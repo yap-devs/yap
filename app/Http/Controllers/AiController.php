@@ -25,7 +25,7 @@ class AiController extends Controller
         $aiKey = $this->sub2api_key_service->getDisplayKey($user);
         $createThreshold = config('services.sub2api.min_balance_to_create_key');
         $keepActiveThreshold = config('services.sub2api.min_balance_to_keep_active');
-        $baseUrl = rtrim((string) config('services.sub2api.base_url'), '/');
+        $baseUrl = $aiKey ? rtrim((string) config('services.sub2api.base_url'), '/') : null;
 
         return Inertia::render('Ai/Index', compact(
             'aiKey',

@@ -40,7 +40,7 @@ export default function Index({auth, aiKey, baseUrl, createThreshold, keepActive
               <div>
                 <h3 className="text-lg font-semibold text-gray-900">Current AI key</h3>
                 <p className="mt-2 text-sm text-gray-600">
-                  Your AI key is hosted by Sub2API and billed from your existing YAP balance.
+                  Use this key with your existing YAP balance. Keep it private and rotate it if you believe it has been exposed.
                 </p>
                 <div className="mt-4 rounded-lg bg-gray-900 px-4 py-3 font-mono text-sm text-green-300 break-all">
                   {aiKey ?? 'No AI key created yet'}
@@ -63,8 +63,14 @@ export default function Index({auth, aiKey, baseUrl, createThreshold, keepActive
               </div>
 
               <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-                Resetting your subscription UUID will also rotate this AI key. Endpoint base URL: <span className="font-mono">{baseUrl}</span>
+                Resetting your subscription UUID will also rotate this AI key.
               </div>
+
+              {aiKey && baseUrl && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                  API endpoint base URL: <span className="font-mono">{baseUrl}</span>
+                </div>
+              )}
 
               {!aiKey && (
                 <PrimaryButton onClick={() => setShowingCreateModal(true)}>
