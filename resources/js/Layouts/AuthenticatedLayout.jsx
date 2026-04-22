@@ -165,12 +165,12 @@ export default function Authenticated({user, header, children}) {
         {(flash?.success || flash?.error) && (
           <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 pt-6">
             {flash?.success && (
-              <div className="mb-4 p-4 bg-green-600 bg-opacity-10 text-green-600 rounded-lg">
+              <div className="mb-4 p-4 bg-green-600/10 text-green-600 rounded-lg">
                 {flash.success}
               </div>
             )}
             {flash?.error && (
-              <div className="mb-4 p-4 bg-red-600 bg-opacity-10 text-red-600 rounded-lg">
+              <div className="mb-4 p-4 bg-red-600/10 text-red-600 rounded-lg">
                 {flash.error}
               </div>
             )}
