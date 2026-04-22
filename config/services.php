@@ -42,6 +42,7 @@ return [
     ],
 
     'sub2api' => [
+        'enabled' => (bool) env('SUB2API_ENABLED', false),
         'base_url' => env('SUB2API_BASE_URL'),
         'admin_email' => env('SUB2API_ADMIN_EMAIL'),
         'admin_password' => env('SUB2API_ADMIN_PASSWORD'),

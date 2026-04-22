@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Sub2apiKeyService;
+use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -16,6 +17,8 @@ class AiController extends Controller
 
     public function index(Request $request)
     {
+        abort_if(! config('services.sub2api.enabled'), 404);
+
         /** @var User $user */
         $user = $request->user();
 
@@ -34,6 +37,10 @@ class AiController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        if (! config('services.sub2api.enabled')) {
+            throw new HttpResponseException(redirect()->route('dashboard'));
+        }
+
         /** @var User $user */
         $user = $request->user();
 

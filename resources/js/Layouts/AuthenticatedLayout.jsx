@@ -3,10 +3,11 @@ import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
-import {Link} from '@inertiajs/react';
+import {Link, usePage} from '@inertiajs/react';
 
 export default function Authenticated({user, header, children}) {
   const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
+  const {features} = usePage().props;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -33,9 +34,11 @@ export default function Authenticated({user, header, children}) {
                 <NavLink href={route('stat')} active={route().current('stat')}>
                   Statistics
                 </NavLink>
-                <NavLink href={route('ai.index')} active={route().current('ai.index')}>
-                  AI Key
-                </NavLink>
+                {features.ai_enabled && (
+                  <NavLink href={route('ai.index')} active={route().current('ai.index')}>
+                    AI Key
+                  </NavLink>
+                )}
                 <NavLink
                   href={route('customer.service')}
                   active={route().current('customer.service')}
@@ -124,9 +127,11 @@ export default function Authenticated({user, header, children}) {
             <ResponsiveNavLink href={route('stat')} active={route().current('stat')}>
               Statistics
             </ResponsiveNavLink>
-            <ResponsiveNavLink href={route('ai.index')} active={route().current('ai.index')}>
-              AI Key
-            </ResponsiveNavLink>
+            {features.ai_enabled && (
+              <ResponsiveNavLink href={route('ai.index')} active={route().current('ai.index')}>
+                AI Key
+              </ResponsiveNavLink>
+            )}
             <ResponsiveNavLink href={route('customer.service')} active={route().current('customer.service')}>
               <span className="animate-pulse bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-transparent bg-clip-text">Customer Service</span>
             </ResponsiveNavLink>

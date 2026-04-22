@@ -24,6 +24,13 @@ class CustomerServiceController extends Controller
         /** @var User $user */
         $user = $request->user();
 
+        if (! config('services.sub2api.enabled') && $user->sub2api_key_id) {
+            return redirect()->route('customer.service')
+                ->withErrors([
+                    'error' => 'Subscription UUID reset is unavailable while AI issuance is disabled for accounts with an active AI key.',
+                ]);
+        }
+
         return DB::transaction(function () use ($user) {
             // Lock the user row to prevent concurrent balance modifications
             $user = User::lockForUpdate()->find($user->id);

@@ -30,7 +30,8 @@ class Sub2apiKeyService
 
     public function canCreate(User $user): bool
     {
-        return (float) $user->balance > $this->sub2api_service->getCreateThreshold();
+        return $this->sub2api_service->isEnabled()
+            && (float) $user->balance > $this->sub2api_service->getCreateThreshold();
     }
 
     public function createForUser(User $user): void
@@ -44,7 +45,9 @@ class Sub2apiKeyService
 
             if (! $this->canCreate($locked_user)) {
                 throw ValidationException::withMessages([
-                    'error' => 'Your balance must be above the AI key creation threshold.',
+                    'error' => $this->sub2api_service->isEnabled()
+                        ? 'Your balance must be above the AI key creation threshold.'
+                        : 'AI key creation is currently disabled.',
                 ]);
             }
         });
@@ -62,7 +65,9 @@ class Sub2apiKeyService
 
                 if (! $this->canCreate($locked_user)) {
                     throw ValidationException::withMessages([
-                        'error' => 'Your balance must be above the AI key creation threshold.',
+                        'error' => $this->sub2api_service->isEnabled()
+                            ? 'Your balance must be above the AI key creation threshold.'
+                            : 'AI key creation is currently disabled.',
                     ]);
                 }
 

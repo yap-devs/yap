@@ -12,6 +12,11 @@ class Sub2apiService
 {
     private const CACHE_ACCESS_TOKEN_KEY = 'sub2api_access_token';
 
+    public function isEnabled(): bool
+    {
+        return (bool) config('services.sub2api.enabled');
+    }
+
     public function getCreateThreshold(): float
     {
         return (float) config('services.sub2api.min_balance_to_create_key');

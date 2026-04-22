@@ -34,6 +34,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'features' => [
+                'ai_enabled' => (bool) config('services.sub2api.enabled'),
+            ],
             'flash' => [
                 'success' => fn () => $request->session()->get('success'),
             ],
