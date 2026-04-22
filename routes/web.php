@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AiController;
 use App\Http\Controllers\AlipayController;
 use App\Http\Controllers\BalanceDetailController;
 use App\Http\Controllers\BepusdtController;
@@ -51,10 +52,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 
-require __DIR__ . '/auth.php';
+require __DIR__.'/auth.php';
 
 Route::get('/clash/{uuid}/yap.yaml', [ClashController::class, 'index'])
-    ->middleware(ThrottleByDistinctIp::class . ':4,120')  // Allow max 4 distinct IPs per 120 seconds for the same subscription
+    ->middleware(ThrottleByDistinctIp::class.':4,120')  // Allow max 4 distinct IPs per 120 seconds for the same subscription
     ->name('clash');
 
 Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], function () {
@@ -96,6 +97,13 @@ Route::group(['prefix' => 'payment', 'middleware' => ['auth']], function () {
 
 Route::group(['prefix' => 'balance/detail', 'middleware' => ['auth']], function () {
     Route::get('/', [BalanceDetailController::class, 'index'])->name('balance.detail');
+});
+
+Route::group(['prefix' => 'ai', 'middleware' => ['auth']], function () {
+    Route::get('/', [AiController::class, 'index'])->name('ai.index');
+    Route::post('/key', [AiController::class, 'store'])
+        ->middleware('throttle:financial')
+        ->name('ai.key.store');
 });
 
 Route::group(['prefix' => 'customer/service', 'middleware' => ['auth']], function () {

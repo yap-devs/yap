@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\UpdateUserUuid;
 use App\Models\User;
 use Illuminate\Console\Command;
+use Illuminate\Support\Str;
 
 class UpdateUserUuidCommand extends Command
 {
@@ -30,9 +31,9 @@ class UpdateUserUuidCommand extends Command
         $user_id = $this->argument('user');
         $user = User::findOrFail($user_id);
 
-        UpdateUserUuid::dispatchSync($user);
+        UpdateUserUuid::dispatchSync($user, $user->sub2api_key_id, $user->uuid, (string) Str::uuid());
 
-        $user = $user->first();
-        $this->info('User UUID updated successfully: [' . $user->uuid . '] ' . $user->email);
+        $user->refresh();
+        $this->info('User UUID updated successfully: ['.$user->uuid.'] '.$user->email);
     }
 }

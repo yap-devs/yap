@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use App\Observers\UserObserver;
+use App\SerializeDate;
 use Carbon\Carbon;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
@@ -17,7 +18,7 @@ use Illuminate\Notifications\Notifiable;
 #[ObservedBy(UserObserver::class)]
 class User extends Authenticatable implements FilamentUser
 {
-    use HasFactory, Notifiable, SoftDeletes;
+    use HasFactory, Notifiable, SerializeDate, SoftDeletes;
 
     /**
      * The attributes that are mass assignable.
@@ -44,6 +45,9 @@ class User extends Authenticatable implements FilamentUser
         'password',
         'remember_token',
         'github_token',
+        'sub2api_key_id',
+        'sub2api_last_usage_id',
+        'sub2api_last_synced_at',
     ];
 
     protected $appends = ['is_valid', 'is_low_priority'];
@@ -60,6 +64,8 @@ class User extends Authenticatable implements FilamentUser
             'last_settled_at' => 'datetime',
             'github_created_at' => 'datetime',
             'password' => 'hashed',
+            'balance' => 'decimal:2',
+            'sub2api_last_synced_at' => 'datetime',
         ];
     }
 
@@ -107,6 +113,11 @@ class User extends Authenticatable implements FilamentUser
     public function packages()
     {
         return $this->hasMany(UserPackage::class);
+    }
+
+    public function sub2apiUsageRecords()
+    {
+        return $this->hasMany(Sub2apiUsageRecord::class);
     }
 
     public function canAccessPanel(Panel $panel): bool

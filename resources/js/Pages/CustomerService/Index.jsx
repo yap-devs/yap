@@ -86,6 +86,9 @@ export default function Index({auth, resetSubscriptionPrice}) {
               <p className="text-sm text-gray-700 mt-2">
                 If you need to reset your subscription URL, please click the button below.
               </p>
+              <p className="text-sm text-gray-700 mt-1">
+                Resetting the subscription UUID will also rotate your AI key.
+              </p>
               <p className="text-sm text-gray-700 font-bold">
                 Note: This will cost you ${resetSubscriptionPrice} per reset.
               </p>
