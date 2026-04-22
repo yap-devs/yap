@@ -11,6 +11,8 @@ class AiOverviewWidget extends StatsOverviewWidget
 {
     protected static bool $isLazy = false;
 
+    protected ?string $pollingInterval = '30s';
+
     protected int|string|array $columnSpan = 'full';
 
     protected function getStats(): array

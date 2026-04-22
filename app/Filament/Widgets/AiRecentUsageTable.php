@@ -12,6 +12,8 @@ class AiRecentUsageTable extends TableWidget
 {
     protected static bool $isLazy = false;
 
+    protected ?string $pollingInterval = '30s';
+
     protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table

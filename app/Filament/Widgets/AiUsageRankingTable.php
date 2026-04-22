@@ -12,6 +12,8 @@ class AiUsageRankingTable extends TableWidget
 {
     protected static bool $isLazy = false;
 
+    protected ?string $pollingInterval = '30s';
+
     protected int|string|array $columnSpan = [
         'md' => 6,
         'xl' => 6,
