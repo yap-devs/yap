@@ -21,15 +21,11 @@ class Sub2apiUsageSyncService
 
         $items = $this->sub2api_service->listUsage($key_id, (int) ($user->sub2api_last_usage_id ?? 0));
         if ($items === []) {
-            $user->forceFill(['sub2api_last_synced_at' => now()])->save();
-
             return;
         }
 
         $new_items = $this->filterNewItems($items);
         if ($new_items === []) {
-            $user->forceFill(['sub2api_last_synced_at' => now()])->save();
-
             return;
         }
 
