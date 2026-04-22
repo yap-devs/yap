@@ -98,6 +98,16 @@ class UserResource extends Resource
                 TextColumn::make('last_settled_at')
                     ->dateTime()
                     ->sortable(),
+                TextColumn::make('sub2api_key_status')
+                    ->label('AI Key')
+                    ->badge()
+                    ->color(fn (?string $state): string => match ($state) {
+                        'active' => 'success',
+                        'inactive' => 'danger',
+                        default => 'gray',
+                    })
+                    ->formatStateUsing(fn (?string $state): string => $state ?? 'none')
+                    ->sortable(),
                 TextColumn::make('created_at')
                     ->dateTime()
                     ->sortable()

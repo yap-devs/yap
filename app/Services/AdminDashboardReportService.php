@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\BalanceDetail;
 use App\Models\Payment;
+use App\Models\Sub2apiUsageRecord;
 use App\Models\User;
 use App\Models\UserPackage;
 use App\Models\UserStat;
@@ -215,6 +216,7 @@ class AdminDashboardReportService
             'Traffic billing' => 0.0,
             'Package purchases' => 0.0,
             'Subscription resets' => 0.0,
+            'AI usage' => 0.0,
             'Other usage' => 0.0,
         ]);
 
@@ -356,6 +358,72 @@ class AdminDashboardReportService
             ->orderBy('ended_at');
     }
 
+    public function getAiOverviewStats(int $months = 12): array
+    {
+        $today_start = CarbonImmutable::now()->startOfDay();
+        $month_start = CarbonImmutable::now()->startOfMonth();
+        $seven_days_ago = CarbonImmutable::now()->startOfDay()->subDays(6);
+
+        $base_query = $this->getReportableAiUsageQuery();
+
+        $today_cost = round((float) (clone $base_query)->where('created_at', '>=', $today_start)->sum('amount'), 2);
+        $today_requests = (int) (clone $base_query)->where('created_at', '>=', $today_start)->count();
+        $month_cost = round((float) (clone $base_query)->where('created_at', '>=', $month_start)->sum('amount'), 2);
+        $seven_day_cost = round((float) (clone $base_query)->where('created_at', '>=', $seven_days_ago)->sum('amount'), 2);
+        $active_keys = (int) $this->getReportableUsersQuery()->whereNotNull('sub2api_key_id')->where('sub2api_key_status', 'active')->count();
+        $total_keys = (int) $this->getReportableUsersQuery()->whereNotNull('sub2api_key_id')->count();
+
+        $daily_cost_trend = $this->getAiDailyCostSeries()->values()->all();
+
+        return [
+            'today_cost' => $today_cost,
+            'today_requests' => $today_requests,
+            'month_cost' => $month_cost,
+            'seven_day_cost' => $seven_day_cost,
+            'active_keys' => $active_keys,
+            'total_keys' => $total_keys,
+            'daily_cost_trend' => $daily_cost_trend,
+        ];
+    }
+
+    public function getAiDailyCostSeries(int $days = 7): Collection
+    {
+        $rows = $this->getReportableAiUsageQuery()
+            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
+            ->selectRaw('SUM(amount) as total_cost')
+            ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
+            ->orderBy('period')
+            ->get();
+
+        return $this->buildDailySeries(
+            $days,
+            $rows->pluck('total_cost', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
+        );
+    }
+
+    public function getAiUsageRankingQuery(): Builder
+    {
+        return Sub2apiUsageRecord::query()
+            ->join('users', 'users.id', '=', 'sub2api_usage_records.user_id')
+            ->where('sub2api_usage_records.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
+            ->selectRaw('MIN(sub2api_usage_records.id) as id')
+            ->selectRaw('sub2api_usage_records.user_id')
+            ->selectRaw('users.name as user_name')
+            ->selectRaw('users.email as user_email')
+            ->selectRaw('COUNT(*) as request_count')
+            ->selectRaw('SUM(sub2api_usage_records.amount) as total_cost')
+            ->where('sub2api_usage_records.created_at', '>=', CarbonImmutable::now()->startOfDay())
+            ->groupBy('sub2api_usage_records.user_id', 'users.name', 'users.email')
+            ->orderByDesc('total_cost');
+    }
+
+    private function getReportableAiUsageQuery(): Builder
+    {
+        return Sub2apiUsageRecord::query()
+            ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
+    }
+
     private function getReportablePaymentsQuery(): Builder
     {
         return Payment::query()
@@ -437,6 +505,7 @@ class AdminDashboardReportService
             $description === 'Traffic deduction', $description === 'Daily deduction' => 'Traffic billing',
             str_starts_with((string) $description, 'Bought package ') => 'Package purchases',
             $description === 'Subscription URL reset' => 'Subscription resets',
+            str_starts_with((string) $description, 'AI ') => 'AI usage',
             default => 'Other usage',
         };
     }

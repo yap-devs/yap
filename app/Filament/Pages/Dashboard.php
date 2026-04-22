@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Widgets\ActiveUserPackagesTable;
+use App\Filament\Widgets\AiUsageRankingTable;
 use App\Filament\Widgets\DailyTrafficRankingTable;
 use App\Filament\Widgets\GatewayTopUpShareChart;
 use App\Filament\Widgets\LastSevenDayTrafficChart;
@@ -67,6 +68,7 @@ class Dashboard extends BaseDashboard
             UserAccessHealthChart::class,
             PackageUtilizationHealthChart::class,
             DailyTrafficRankingTable::class,
+            AiUsageRankingTable::class,
             TotalTrafficLeaderboardTable::class,
             ActiveUserPackagesTable::class,
         ];
