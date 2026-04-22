@@ -54,8 +54,23 @@ export default function Index({auth, aiKey, baseUrl, createThreshold, keepActive
               </div>
 
               {aiKey && baseUrl && (
-                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-                  API endpoint base URL: <span className="font-mono">{baseUrl}</span>
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900 space-y-3">
+                  <p className="font-medium">API Endpoint</p>
+                  <p className="text-xs text-blue-700">Choose the base URL that matches your client:</p>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">Responses API</span>
+                      <code className="font-mono text-xs break-all">{baseUrl}</code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="shrink-0 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">Chat Completions</span>
+                      <code className="font-mono text-xs break-all">{baseUrl}/v1</code>
+                    </div>
+                  </div>
+                  <p className="text-xs text-blue-600">
+                    Use <strong>Responses API</strong> for tools like Claude Code / OpenCode that use the Responses wire format.
+                    Use <strong>Chat Completions</strong> for tools like Cursor / OpenAI SDK that expect the <code>/v1</code> prefix.
+                  </p>
                 </div>
               )}
 
