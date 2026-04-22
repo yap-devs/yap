@@ -34,9 +34,10 @@ class Sub2apiService
 
     public function generateKeyName(User $user): string
     {
+        $env = app()->environment();
         $email_name = strstr($user->email, '@', true) ?: $user->email;
 
-        return 'YAP-'.$email_name.'-'.substr(str_replace('-', '', $user->uuid), 0, 8);
+        return 'YAP-'.$env.'-'.$email_name.'-'.substr(str_replace('-', '', $user->uuid), 0, 8);
     }
 
     public function createKey(User $user): array

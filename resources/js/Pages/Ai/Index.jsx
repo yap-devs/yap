@@ -5,8 +5,44 @@ import PrimaryButton from '@/Components/PrimaryButton.jsx';
 import SecondaryButton from '@/Components/SecondaryButton.jsx';
 import {Head, router} from '@inertiajs/react';
 
+function CopyableField({label, value, copiedField, onCopy, dark = false}) {
+  const isCopied = copiedField === value;
+
+  return (
+    <div
+      className={`flex items-center justify-between gap-2 rounded-lg px-4 py-3 cursor-pointer transition-colors ${
+        dark
+          ? 'bg-gray-900 hover:bg-gray-800'
+          : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+      }`}
+      onClick={() => onCopy(value)}
+      title="Click to copy"
+    >
+      <div className="flex items-center gap-2 min-w-0">
+        {label && (
+          <span className="shrink-0 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">{label}</span>
+        )}
+        <code className={`font-mono text-sm break-all ${dark ? 'text-green-300' : 'text-gray-900'}`}>
+          {value}
+        </code>
+      </div>
+      <span className={`shrink-0 text-xs ${dark ? 'text-gray-400' : 'text-gray-500'}`}>
+        {isCopied ? 'Copied!' : 'Click to copy'}
+      </span>
+    </div>
+  );
+}
+
 export default function Index({auth, aiKey, baseUrl, createThreshold, keepActiveThreshold}) {
   const [showingCreateModal, setShowingCreateModal] = useState(false);
+  const [copiedField, setCopiedField] = useState(null);
+
+  function copyToClipboard(text) {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopiedField(text);
+      setTimeout(() => setCopiedField(null), 2000);
+    });
+  }
 
   function createKey(event) {
     event.preventDefault();
@@ -29,9 +65,15 @@ export default function Index({auth, aiKey, baseUrl, createThreshold, keepActive
                 <p className="mt-2 text-sm text-gray-600">
                   Use this key with your existing YAP balance. Keep it private and rotate it if you believe it has been exposed.
                 </p>
-                <div className="mt-4 rounded-lg bg-gray-900 px-4 py-3 font-mono text-sm text-green-300 break-all">
-                  {aiKey ?? 'No AI key created yet'}
-                </div>
+                {aiKey ? (
+                  <div className="mt-4">
+                    <CopyableField value={aiKey} copiedField={copiedField} onCopy={copyToClipboard} dark/>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-lg bg-gray-900 px-4 py-3 font-mono text-sm text-gray-500">
+                    No AI key created yet
+                  </div>
+                )}
               </div>
 
               <div className="grid gap-4 md:grid-cols-3">
@@ -58,18 +100,12 @@ export default function Index({auth, aiKey, baseUrl, createThreshold, keepActive
                   <p className="font-medium">API Endpoint</p>
                   <p className="text-xs text-blue-700">Choose the base URL that matches your client:</p>
                   <div className="space-y-2">
-                    <div className="flex items-center gap-2">
-                      <span className="shrink-0 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">Responses API</span>
-                      <code className="font-mono text-xs break-all">{baseUrl}</code>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="shrink-0 rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800">Chat Completions</span>
-                      <code className="font-mono text-xs break-all">{baseUrl}/v1</code>
-                    </div>
+                    <CopyableField label="Responses API" value={baseUrl} copiedField={copiedField} onCopy={copyToClipboard}/>
+                    <CopyableField label="Chat Completions" value={`${baseUrl}/v1`} copiedField={copiedField} onCopy={copyToClipboard}/>
                   </div>
                   <p className="text-xs text-blue-600">
-                    Use <strong>Responses API</strong> for tools like Claude Code / OpenCode that use the Responses wire format.
-                    Use <strong>Chat Completions</strong> for tools like Cursor / OpenAI SDK that expect the <code>/v1</code> prefix.
+                    Use <strong>Responses API</strong> for Codex CLI.
+                    Use <strong>Chat Completions</strong> for OpenCode, Cursor, and other OpenAI-compatible clients.
                   </p>
                 </div>
               )}
