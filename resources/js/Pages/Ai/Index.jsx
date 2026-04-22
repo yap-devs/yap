@@ -3,11 +3,10 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import Modal from '@/Components/Modal.jsx';
 import PrimaryButton from '@/Components/PrimaryButton.jsx';
 import SecondaryButton from '@/Components/SecondaryButton.jsx';
-import {Head, router, usePage} from '@inertiajs/react';
+import {Head, router} from '@inertiajs/react';
 
 export default function Index({auth, aiKey, baseUrl, createThreshold, keepActiveThreshold}) {
   const [showingCreateModal, setShowingCreateModal] = useState(false);
-  const {flash} = usePage().props;
 
   function createKey(event) {
     event.preventDefault();
@@ -28,17 +27,6 @@ export default function Index({auth, aiKey, baseUrl, createThreshold, keepActive
       <Head title="AI Key"/>
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-          {flash.success && (
-            <div className="p-4 sm:p-6 bg-green-600 bg-opacity-10 text-green-600 rounded-lg">
-              {flash.success}
-            </div>
-          )}
-          {flash.error && (
-            <div className="p-4 sm:p-6 bg-red-600 bg-opacity-10 text-red-600 rounded-lg">
-              {flash.error}
-            </div>
-          )}
-
           <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
             <div className="p-6 text-gray-900 space-y-6">
               <div>

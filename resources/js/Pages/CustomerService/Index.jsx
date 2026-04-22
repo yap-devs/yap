@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import {Head, router, usePage} from '@inertiajs/react';
+import {Head, router} from '@inertiajs/react';
 import Modal from "@/Components/Modal.jsx";
 import SecondaryButton from "@/Components/SecondaryButton.jsx";
 import PrimaryButton from "@/Components/PrimaryButton.jsx";
@@ -10,8 +10,6 @@ export default function Index({auth, resetSubscriptionPrice}) {
   const closeModal = () => {
     setConfirmingResetSubscriptionUrl(false);
   };
-
-  const {flash} = usePage().props;
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -28,25 +26,6 @@ export default function Index({auth, resetSubscriptionPrice}) {
     <Head title="Customer Service"/>
     <div className="py-12">
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        {
-          flash.success && (
-            <div className="p-4 sm:p-8 bg-green-600 bg-opacity-10 text-green-600 rounded-lg">
-              <div className="flex items-center">
-                <span className="ml-2">{flash.success}</span>
-              </div>
-            </div>
-          )
-        }
-        {
-          flash.error && (
-            <div className="p-4 sm:p-8 bg-red-600 bg-opacity-10 text-red-600 rounded-lg">
-              <div className="flex items-center">
-                <span className="ml-2">{flash.error}</span>
-              </div>
-            </div>
-          )
-        }
-
         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
           <div className="p-6 text-gray-900">
             {/* Telegram section */}

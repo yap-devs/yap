@@ -7,7 +7,7 @@ import {Link, usePage} from '@inertiajs/react';
 
 export default function Authenticated({user, header, children}) {
   const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
-  const {features} = usePage().props;
+  const {features, flash} = usePage().props;
 
   return (
     <div className="min-h-screen bg-gray-100">
@@ -161,7 +161,23 @@ export default function Authenticated({user, header, children}) {
         </header>
       )}
 
-      <main>{children}</main>
+      <main>
+        {(flash?.success || flash?.error) && (
+          <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 pt-6">
+            {flash?.success && (
+              <div className="mb-4 p-4 bg-green-600 bg-opacity-10 text-green-600 rounded-lg">
+                {flash.success}
+              </div>
+            )}
+            {flash?.error && (
+              <div className="mb-4 p-4 bg-red-600 bg-opacity-10 text-red-600 rounded-lg">
+                {flash.error}
+              </div>
+            )}
+          </div>
+        )}
+        {children}
+      </main>
     </div>
   );
 }

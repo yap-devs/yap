@@ -1,5 +1,5 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import {Head, router, usePage} from '@inertiajs/react';
+import {Head, router} from '@inertiajs/react';
 import SecondaryButton from "@/Components/SecondaryButton.jsx";
 import {formatBytes} from "@/Utils/formatBytes.js";
 import {formatPrice} from "@/Utils/formatPrice.js";
@@ -10,8 +10,6 @@ import {useState} from 'react';
 
 export default function Index({auth, packages, userPackages}) {
   const [confirmingBuy, setConfirmingBuy] = useState(false);
-
-  const {flash} = usePage().props;
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -34,27 +32,6 @@ export default function Index({auth, packages, userPackages}) {
       <Head title="Traffic Packages"/>
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          {flash.error && (
-            <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg">
-              <div className="flex items-center">
-                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-                <span>{flash.error}</span>
-              </div>
-            </div>
-          )}
-          {flash.success && (
-            <div className="mb-6 p-4 bg-green-50 border-l-4 border-green-500 text-green-700 rounded-lg">
-              <div className="flex items-center">
-                <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"/>
-                </svg>
-                <span>{flash.success}</span>
-              </div>
-            </div>
-          )}
-
           {/* Explanation banner */}
           <div className="mb-6 bg-blue-50 rounded-lg p-4 border border-blue-100">
             <p className="text-sm text-blue-800">
