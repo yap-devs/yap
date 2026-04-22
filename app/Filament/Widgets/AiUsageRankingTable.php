@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Models\Sub2apiUsageRecord;
 use App\Services\AdminDashboardReportService;
 use Filament\Tables\Columns\TextColumn;
@@ -11,8 +10,6 @@ use Filament\Widgets\TableWidget;
 
 class AiUsageRankingTable extends TableWidget
 {
-    use InteractsWithDashboardControls;
-
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
@@ -26,7 +23,6 @@ class AiUsageRankingTable extends TableWidget
             ->heading('Today AI Usage Ranking')
             ->description('Top AI spenders today by total cost.')
             ->query(app(AdminDashboardReportService::class)->getAiUsageRankingQuery())
-            ->poll(fn (): ?string => $this->getPollingInterval())
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
             ->striped()

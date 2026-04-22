@@ -216,7 +216,6 @@ class AdminDashboardReportService
             'Traffic billing' => 0.0,
             'Package purchases' => 0.0,
             'Subscription resets' => 0.0,
-            'AI usage' => 0.0,
             'Other usage' => 0.0,
         ]);
 
@@ -418,6 +417,72 @@ class AdminDashboardReportService
             ->orderByDesc('total_cost');
     }
 
+    public function getAiMonthlyCostSeries(int $months = 12): Collection
+    {
+        $rows = $this->getReportableAiUsageQuery()
+            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
+            ->selectRaw('SUM(amount) as total_cost')
+            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+            ->orderBy('period')
+            ->get();
+
+        return $this->buildMonthlySeries(
+            $months,
+            $rows->pluck('total_cost', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
+        );
+    }
+
+    public function getAiModelBreakdown(int $months = 12): Collection
+    {
+        return $this->getReportableAiUsageQuery()
+            ->selectRaw('COALESCE(model, \'unknown\') as model_name')
+            ->selectRaw('COUNT(*) as request_count')
+            ->selectRaw('SUM(amount) as total_cost')
+            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+            ->groupByRaw('COALESCE(model, \'unknown\')')
+            ->orderByDesc('total_cost')
+            ->get()
+            ->map(fn (object $row): array => [
+                'model' => $row->model_name,
+                'requests' => (int) $row->request_count,
+                'cost' => round((float) $row->total_cost, 2),
+            ]);
+    }
+
+    public function getAiDailyRequestSeries(int $days = 7): Collection
+    {
+        $rows = $this->getReportableAiUsageQuery()
+            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
+            ->selectRaw('COUNT(*) as total_requests')
+            ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
+            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
+            ->orderBy('period')
+            ->get();
+
+        return $this->buildDailySeries(
+            $days,
+            $rows->pluck('total_requests', 'period')->map(fn (mixed $value): float => (float) $value),
+        );
+    }
+
+    public function getAiRecentUsageQuery(): Builder
+    {
+        return Sub2apiUsageRecord::query()
+            ->join('users', 'users.id', '=', 'sub2api_usage_records.user_id')
+            ->where('sub2api_usage_records.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
+            ->select([
+                'sub2api_usage_records.id',
+                'sub2api_usage_records.user_id',
+                'users.name as user_name',
+                'users.email as user_email',
+                'sub2api_usage_records.model',
+                'sub2api_usage_records.amount',
+                'sub2api_usage_records.usage_created_at',
+            ])
+            ->orderByDesc('sub2api_usage_records.id');
+    }
+
     private function getReportableAiUsageQuery(): Builder
     {
         return Sub2apiUsageRecord::query()
@@ -505,7 +570,6 @@ class AdminDashboardReportService
             $description === 'Traffic deduction', $description === 'Daily deduction' => 'Traffic billing',
             str_starts_with((string) $description, 'Bought package ') => 'Package purchases',
             $description === 'Subscription URL reset' => 'Subscription resets',
-            str_starts_with((string) $description, 'AI ') => 'AI usage',
             default => 'Other usage',
         };
     }

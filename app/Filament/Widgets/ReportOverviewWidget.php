@@ -20,9 +20,7 @@ class ReportOverviewWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
-        $service = app(AdminDashboardReportService::class);
-        $report = $service->getOverviewStats($this->getTrendWindowMonths());
-        $ai = $service->getAiOverviewStats($this->getTrendWindowMonths());
+        $report = app(AdminDashboardReportService::class)->getOverviewStats($this->getTrendWindowMonths());
 
         return [
             // Traffic: today is the headline, month-to-date in description
@@ -43,12 +41,6 @@ class ReportOverviewWidget extends StatsOverviewWidget
                 ->descriptionIcon('heroicon-m-arrow-trending-down', IconPosition::Before)
                 ->chart($report['daily_usage_trend'])
                 ->color('danger'),
-            // AI usage
-            Stat::make('Today AI Cost', $this->formatCurrency($ai['today_cost']))
-                ->description('MTD '.$this->formatCurrency($ai['month_cost']).' | 7d '.$this->formatCurrency($ai['seven_day_cost']).' | '.$ai['today_requests'].' req')
-                ->descriptionIcon('heroicon-m-cpu-chip', IconPosition::Before)
-                ->chart($ai['daily_cost_trend'])
-                ->color('info'),
             // Active users today
             Stat::make('Active Users Today', number_format($report['today_active_users']))
                 ->description(number_format($report['package_backed_user_count']).' package-backed | '.number_format($report['access_at_risk_user_count']).' at risk')
@@ -63,11 +55,6 @@ class ReportOverviewWidget extends StatsOverviewWidget
             Stat::make('Active Packages', number_format($report['active_package_count']))
                 ->description('Today top-up orders: '.number_format($report['today_top_up_orders']))
                 ->descriptionIcon('heroicon-m-cube', IconPosition::Before)
-                ->color('gray'),
-            // AI keys
-            Stat::make('AI Keys', $ai['active_keys'].' active / '.$ai['total_keys'].' total')
-                ->description($ai['active_keys'].' active, '.($ai['total_keys'] - $ai['active_keys']).' inactive')
-                ->descriptionIcon('heroicon-m-key', IconPosition::Before)
                 ->color('gray'),
         ];
     }
