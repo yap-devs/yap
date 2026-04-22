@@ -7,12 +7,16 @@ import {Head, router, usePage} from '@inertiajs/react';
 
 export default function Index({auth, aiKey, baseUrl, createThreshold, keepActiveThreshold}) {
   const [showingCreateModal, setShowingCreateModal] = useState(false);
-  const {errors, flash} = usePage().props;
+  const {flash} = usePage().props;
 
   function createKey(event) {
     event.preventDefault();
     router.post(route('ai.key.store'), {}, {
-      onSuccess: () => setShowingCreateModal(false),
+      onSuccess: (page) => {
+        if (!page.props.flash?.error) {
+          setShowingCreateModal(false);
+        }
+      },
     });
   }
 
@@ -29,9 +33,9 @@ export default function Index({auth, aiKey, baseUrl, createThreshold, keepActive
               {flash.success}
             </div>
           )}
-          {(flash.error || errors.error) && (
+          {flash.error && (
             <div className="p-4 sm:p-6 bg-red-600 bg-opacity-10 text-red-600 rounded-lg">
-              {flash.error || errors.error}
+              {flash.error}
             </div>
           )}
 

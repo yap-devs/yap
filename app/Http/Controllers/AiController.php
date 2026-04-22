@@ -4,10 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Sub2apiKeyService;
+use DomainException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use RuntimeException;
 
@@ -46,8 +46,8 @@ class AiController extends Controller
 
         try {
             $this->sub2api_key_service->createForUser($user);
-        } catch (ValidationException $e) {
-            throw $e;
+        } catch (DomainException $e) {
+            return redirect()->route('ai.index')->with('error', $e->getMessage());
         } catch (RuntimeException) {
             return redirect()->route('ai.index')->with('error', 'Failed to create AI key. Please try again later.');
         }

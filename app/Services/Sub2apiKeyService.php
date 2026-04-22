@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\User;
+use DomainException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Validation\ValidationException;
 use Throwable;
 
 class Sub2apiKeyService
@@ -44,11 +44,7 @@ class Sub2apiKeyService
             }
 
             if (! $this->canCreate($locked_user)) {
-                throw ValidationException::withMessages([
-                    'error' => $this->sub2api_service->isEnabled()
-                        ? 'Your balance must be above the AI key creation threshold.'
-                        : 'AI key creation is currently disabled.',
-                ]);
+                throw new DomainException($this->getCreateErrorMessage());
             }
         });
 
@@ -64,11 +60,7 @@ class Sub2apiKeyService
                 }
 
                 if (! $this->canCreate($locked_user)) {
-                    throw ValidationException::withMessages([
-                        'error' => $this->sub2api_service->isEnabled()
-                            ? 'Your balance must be above the AI key creation threshold.'
-                            : 'AI key creation is currently disabled.',
-                    ]);
+                    throw new DomainException($this->getCreateErrorMessage());
                 }
 
                 $locked_user->sub2api_key_id = $created_key['id'];
@@ -166,5 +158,12 @@ class Sub2apiKeyService
         } catch (Throwable $e) {
             Log::channel('job')->warning('[Sub2apiKeyService] Failed to cleanup remote key '.$key_id.': '.$e->getMessage());
         }
+    }
+
+    private function getCreateErrorMessage(): string
+    {
+        return $this->sub2api_service->isEnabled()
+            ? 'Your balance must be above the AI key creation threshold.'
+            : 'AI key creation is currently disabled.';
     }
 }
