@@ -97,7 +97,7 @@ class Sub2apiService
         return $new_items;
     }
 
-    private function request(string $method, string $uri, array $payload = [], array $query = [], bool $retry = true): array
+    public function request(string $method, string $uri, array $payload = [], array $query = [], bool $retry = true): array
     {
         $options = ['query' => $query];
         if ($payload !== [] && in_array(strtoupper($method), ['POST', 'PUT', 'PATCH'])) {

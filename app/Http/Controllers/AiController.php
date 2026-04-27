@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Services\Sub2apiKeyService;
+use App\Services\Sub2apiPricingService;
 use DomainException;
 use Illuminate\Http\Exceptions\HttpResponseException;
 use Illuminate\Http\RedirectResponse;
@@ -13,7 +14,10 @@ use RuntimeException;
 
 class AiController extends Controller
 {
-    public function __construct(private readonly Sub2apiKeyService $sub2api_key_service) {}
+    public function __construct(
+        private readonly Sub2apiKeyService $sub2api_key_service,
+        private readonly Sub2apiPricingService $sub2api_pricing_service,
+    ) {}
 
     public function index(Request $request)
     {
@@ -26,12 +30,14 @@ class AiController extends Controller
         $createThreshold = config('services.sub2api.min_balance_to_create_key');
         $keepActiveThreshold = config('services.sub2api.min_balance_to_keep_active');
         $baseUrl = $aiKey ? rtrim((string) config('services.sub2api.base_url'), '/') : null;
+        $pricingGuide = $aiKey ? $this->sub2api_pricing_service->getPricingGuide() : null;
 
         return Inertia::render('Ai/Index', compact(
             'aiKey',
             'baseUrl',
             'createThreshold',
-            'keepActiveThreshold'
+            'keepActiveThreshold',
+            'pricingGuide'
         ));
     }
 

@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\User;
 use App\Services\Sub2apiKeyService;
+use App\Services\Sub2apiPricingService;
 use App\Services\Sub2apiUsageSyncService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -15,8 +16,11 @@ class SyncSub2apiUsageCommand extends Command
 
     protected $description = 'Sync Sub2API usage and key status';
 
-    public function handle(Sub2apiUsageSyncService $usage_sync_service, Sub2apiKeyService $sub2api_key_service): int
-    {
+    public function handle(
+        Sub2apiUsageSyncService $usage_sync_service,
+        Sub2apiKeyService $sub2api_key_service,
+        Sub2apiPricingService $sub2api_pricing_service,
+    ): int {
         User::query()
             ->whereNotNull('sub2api_key_id')
             ->chunkById(100, function ($users) use ($sub2api_key_service, $usage_sync_service) {
@@ -29,6 +33,8 @@ class SyncSub2apiUsageCommand extends Command
                     }
                 }
             });
+
+        $sub2api_pricing_service->refreshPricingGuideIfMissing();
 
         return self::SUCCESS;
     }
