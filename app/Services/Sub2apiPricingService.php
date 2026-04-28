@@ -12,6 +12,8 @@ class Sub2apiPricingService
 
     private const MAX_MODELS = 100;
 
+    private const REFRESH_LOCK_SECONDS = 600;
+
     public function __construct(private readonly Sub2apiService $sub2api_service) {}
 
     public function getPricingGuide(): array
@@ -66,6 +68,30 @@ class Sub2apiPricingService
         }
 
         return $this->refreshPricingGuide($group_id);
+    }
+
+    public function reserveRefreshIfMissing(): bool
+    {
+        if (! $this->sub2api_service->isEnabled()) {
+            return false;
+        }
+
+        $group_id = (int) config('services.sub2api.default_group_id');
+        if ($group_id <= 0 || is_array(Cache::get($this->cacheKey($group_id)))) {
+            return false;
+        }
+
+        return Cache::add($this->refreshLockKey($group_id), true, now()->addSeconds(self::REFRESH_LOCK_SECONDS));
+    }
+
+    public function releaseRefreshReservation(?int $group_id = null): void
+    {
+        $group_id = $group_id ?: (int) config('services.sub2api.default_group_id');
+        if ($group_id <= 0) {
+            return;
+        }
+
+        Cache::forget($this->refreshLockKey($group_id));
     }
 
     private function fetchPricingGuide(int $group_id): array
@@ -169,5 +195,10 @@ class Sub2apiPricingService
     private function cacheKey(int $group_id): string
     {
         return 'sub2api_pricing:group:'.$group_id;
+    }
+
+    private function refreshLockKey(int $group_id): string
+    {
+        return 'sub2api_pricing_refreshing:group:'.$group_id;
     }
 }

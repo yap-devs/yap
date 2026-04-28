@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\RefreshSub2apiPricing;
 use App\Models\User;
 use App\Services\Sub2apiKeyService;
 use App\Services\Sub2apiPricingService;
@@ -31,6 +32,10 @@ class AiController extends Controller
         $keepActiveThreshold = config('services.sub2api.min_balance_to_keep_active');
         $baseUrl = $aiKey ? rtrim((string) config('services.sub2api.base_url'), '/') : null;
         $pricingGuide = $aiKey ? $this->sub2api_pricing_service->getPricingGuide() : null;
+
+        if ($aiKey && ! ($pricingGuide['available'] ?? false) && $this->sub2api_pricing_service->reserveRefreshIfMissing()) {
+            RefreshSub2apiPricing::dispatch();
+        }
 
         return Inertia::render('Ai/Index', compact(
             'aiKey',

@@ -1,6 +1,9 @@
 <?php
 
+use App\Jobs\RefreshSub2apiPricing;
+use App\Models\User;
 use App\Services\Sub2apiPricingService;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 
@@ -77,4 +80,41 @@ test('it fetches and caches ai model pricing with the group multiplier', functio
         ->and($warm_guide)->toBe($guide);
 
     Http::assertSentCount(4);
+});
+
+test('it reserves one async pricing refresh while cache is missing', function () {
+    config()->set('services.sub2api.enabled', true);
+    config()->set('services.sub2api.default_group_id', 2);
+
+    Cache::forget('sub2api_pricing:group:2');
+    Cache::forget('sub2api_pricing_refreshing:group:2');
+
+    $service = app(Sub2apiPricingService::class);
+
+    expect($service->reserveRefreshIfMissing())->toBeTrue()
+        ->and($service->reserveRefreshIfMissing())->toBeFalse();
+
+    $service->releaseRefreshReservation();
+
+    expect($service->reserveRefreshIfMissing())->toBeTrue();
+});
+
+test('ai page queues pricing refresh when cache is missing', function () {
+    config()->set('services.sub2api.enabled', true);
+    config()->set('services.sub2api.base_url', 'https://ai.test');
+    config()->set('services.sub2api.default_group_id', 2);
+    config()->set('services.sub2api.key_prefix', 'sk-yap-');
+
+    Cache::forget('sub2api_pricing:group:2');
+    Cache::forget('sub2api_pricing_refreshing:group:2');
+    Bus::fake();
+
+    $user = User::factory()->create([
+        'sub2api_key_id' => 123,
+        'sub2api_key_status' => 'active',
+    ]);
+
+    $this->actingAs($user)->get(route('ai.index'))->assertOk();
+
+    Bus::assertDispatched(RefreshSub2apiPricing::class);
 });
