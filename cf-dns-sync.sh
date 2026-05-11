@@ -3,14 +3,15 @@
 #######################################################################
 # Cloudflare DNS Sync
 #
-# Resolve IPs from a source and sync them as DNS records on a target
-# domain via the Cloudflare API.
+# Resolve IPs from a source or AWS Lightsail and sync them as DNS records
+# on a target domain via the Cloudflare API.
 #
 # IP sources (first positional arg):
 #   domain name    Resolve via dig (A + AAAA)
 #   -              Read IPs from stdin (pipe)
+#   --lightsail-ids Read and rotate AWS Lightsail IPv4 addresses
 #
-# Dependencies: dig, curl, jq, grep (extended regex)
+# Dependencies: dig, curl, jq, grep (extended regex), aws (Lightsail mode)
 #
 # Authentication (one of the following):
 #   Option 1 - API Token:      CF_Token
@@ -22,6 +23,9 @@
 #######################################################################
 
 set -e
+
+# Disable AWS CLI pager when Lightsail mode is used
+export AWS_PAGER=""
 
 # Colors
 RED='\033[0;31m'
@@ -35,8 +39,18 @@ NC='\033[0m'
 TTL=60        # 60s = minimum allowed by Cloudflare
 PROXIED=false
 DRY_RUN=false
+SKIP_DNS_SYNC=false
 CHECK_PORT=""  # empty = skip health check
 CHECK_TIMEOUT=3
+SOURCE_MODE="source"
+LIGHTSAIL_IDS=""
+PROBE_PORT=22
+PROBE_SSH_HOSTS=""
+PROBE_MIN_OK=1
+PROBE_TIMEOUT=5
+SSH_CONNECT_TIMEOUT=8
+LIGHTSAIL_MAX_ATTEMPTS=10
+CREATED_STATIC_IPS=()
 
 print_ok()   { echo -e "${GREEN}[OK]${NC} $1"; }
 print_err()  { echo -e "${RED}[ERROR]${NC} $1"; }
@@ -46,25 +60,57 @@ print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 CF_API="https://api.cloudflare.com/client/v4"
 
 check_deps() {
-    for cmd in dig curl jq; do
+    local required=(curl jq)
+    if [ "$SOURCE_MODE" != "lightsail" ]; then
+        required+=(dig)
+    fi
+
+    for cmd in "${required[@]}"; do
         if ! command -v "$cmd" &>/dev/null; then
             print_err "Missing dependency: $cmd"
             exit 1
         fi
     done
 
-    # Determine auth method (prefer Global API Key when both are set)
-    if [ -n "$CF_Key" ] && [ -n "$CF_Email" ]; then
-        AUTH_METHOD="key"
-        print_info "Auth: Global API Key (${CF_Email})"
-    elif [ -n "$CF_Token" ]; then
-        AUTH_METHOD="token"
-        print_info "Auth: API Token"
-    else
-        print_err "Cloudflare credentials not set"
-        print_err "Option 1 - API Token:      export CF_Token=\"your-token\""
-        print_err "Option 2 - Global API Key:  export CF_Key=\"your-key\" CF_Email=\"your-email\""
-        exit 1
+    if [ "$SOURCE_MODE" == "lightsail" ]; then
+        if ! command -v aws &>/dev/null; then
+            print_err "Missing dependency: aws"
+            exit 1
+        fi
+
+        if ! command -v ssh &>/dev/null; then
+            print_err "Missing dependency: ssh"
+            exit 1
+        fi
+
+        if ! aws sts get-caller-identity &>/dev/null; then
+            print_err "AWS credentials not configured"
+            exit 1
+        fi
+
+        if [ -z "$PROBE_SSH_HOSTS" ]; then
+            print_err "Chinese probe SSH hosts are required for Lightsail mode"
+            print_err "Use: --probe-ssh-hosts aliyun-sh[,other-host]"
+            exit 1
+        fi
+
+        print_info "Auth: AWS CLI"
+    fi
+
+    if [ "$SKIP_DNS_SYNC" != "true" ]; then
+        # Determine auth method (prefer Global API Key when both are set)
+        if [ -n "$CF_Key" ] && [ -n "$CF_Email" ]; then
+            AUTH_METHOD="key"
+            print_info "Auth: Global API Key (${CF_Email})"
+        elif [ -n "$CF_Token" ]; then
+            AUTH_METHOD="token"
+            print_info "Auth: API Token"
+        else
+            print_err "Cloudflare credentials not set"
+            print_err "Option 1 - API Token:      export CF_Token=\"your-token\""
+            print_err "Option 2 - Global API Key:  export CF_Key=\"your-key\" CF_Email=\"your-email\""
+            exit 1
+        fi
     fi
 }
 
@@ -244,6 +290,293 @@ filter_by_port() {
     echo "$filtered"
 }
 
+normalize_csv() {
+    local value=$1
+
+    echo "$value" | tr ',' '\n' | sed 's/^[[:space:]]*//;s/[[:space:]]*$//' | grep -v '^$'
+}
+
+json_add_ipv4_unique() {
+    local json=$1
+    local ip=$2
+
+    echo "$json" | jq --arg ip "$ip" '.A += [$ip] | .A |= unique'
+}
+
+probe_tcp_from_ssh() {
+    local host=$1
+    local ip=$2
+    local port=$3
+
+    ssh -o BatchMode=yes -o ConnectTimeout="$SSH_CONNECT_TIMEOUT" "$host" \
+        "timeout '$PROBE_TIMEOUT' bash -lc 'echo >/dev/tcp/$ip/$port'" >/dev/null 2>&1
+}
+
+# Check if Chinese SSH probe nodes can reach a TCP port.
+# Returns 0 when enough probes pass, 1 when probes work but the IP fails,
+# and 2 when no probe host can be reached.
+probe_tcp_from_china() {
+    local ip=$1
+    local port=$2
+    local ok_count=0
+    local reachable_probes=0
+    local host
+
+    while IFS= read -r host; do
+        [ -z "$host" ] && continue
+
+        if ssh -o BatchMode=yes -o ConnectTimeout="$SSH_CONNECT_TIMEOUT" "$host" "printf ok" >/dev/null 2>&1; then
+            reachable_probes=$((reachable_probes + 1))
+        else
+            print_warn "Probe SSH host unreachable: ${host}" >&2
+            continue
+        fi
+
+        if probe_tcp_from_ssh "$host" "$ip" "$port"; then
+            ok_count=$((ok_count + 1))
+            print_ok "Probe ${host}: ${ip}:${port} reachable" >&2
+        else
+            print_warn "Probe ${host}: ${ip}:${port} unreachable" >&2
+        fi
+    done < <(normalize_csv "$PROBE_SSH_HOSTS")
+
+    if [ "$reachable_probes" -eq 0 ]; then
+        print_err "No Chinese SSH probe host is reachable" >&2
+        return 2
+    fi
+
+    if [ "$ok_count" -ge "$PROBE_MIN_OK" ]; then
+        print_ok "China TCP check: ${ok_count}/${reachable_probes} probe(s) passed" >&2
+        return 0
+    fi
+
+    print_warn "China TCP check: ${ok_count}/${reachable_probes} probe(s) passed" >&2
+    return 1
+}
+
+get_lightsail_regions() {
+    aws lightsail get-regions --region us-east-1 --include-availability-zones --query 'regions[].name' --output text 2>/dev/null
+}
+
+get_attached_static_ip_name() {
+    local region=$1
+    local instance_name=$2
+
+    aws lightsail get-static-ips --region "$region" \
+        --query "staticIps[?attachedTo=='${instance_name}'].name | [0]" \
+        --output text 2>/dev/null | grep -v '^None$' || true
+}
+
+get_static_ip_address() {
+    local region=$1
+    local static_ip_name=$2
+
+    aws lightsail get-static-ip --region "$region" --static-ip-name "$static_ip_name" \
+        --query 'staticIp.ipAddress' --output text 2>/dev/null
+}
+
+release_static_ip() {
+    local region=$1
+    local static_ip_name=$2
+
+    [ -z "$static_ip_name" ] && return 0
+
+    if [ "$DRY_RUN" == "true" ]; then
+        print_warn "[DRY-RUN] Would detach and release static IP: ${static_ip_name} (${region})" >&2
+        return 0
+    fi
+
+    print_info "Releasing static IP: ${static_ip_name} (${region})" >&2
+    aws lightsail detach-static-ip --region "$region" --static-ip-name "$static_ip_name" &>/dev/null || true
+    aws lightsail release-static-ip --region "$region" --static-ip-name "$static_ip_name" &>/dev/null || true
+}
+
+allocate_and_attach_static_ip() {
+    local region=$1
+    local instance_name=$2
+    local attempt=$3
+    local safe_name
+    safe_name=$(echo "$instance_name" | tr -c 'A-Za-z0-9-' '-')
+    safe_name="${safe_name:0:40}"
+    local static_ip_name="cf-dns-sync-${safe_name}-$(date +%s)-${attempt}"
+
+    if [ "$DRY_RUN" == "true" ]; then
+        print_warn "[DRY-RUN] Would allocate and attach static IP: ${static_ip_name} -> ${instance_name} (${region})" >&2
+        echo ""
+        return 0
+    fi
+
+    print_info "Allocating static IP: ${static_ip_name} (${region})" >&2
+    aws lightsail allocate-static-ip --region "$region" --static-ip-name "$static_ip_name" --output json >/dev/null
+    CREATED_STATIC_IPS+=("${region}:${static_ip_name}")
+
+    print_info "Attaching static IP to ${instance_name}" >&2
+    aws lightsail attach-static-ip --region "$region" --static-ip-name "$static_ip_name" --instance-name "$instance_name" --output json >/dev/null
+    sleep 3
+
+    get_static_ip_address "$region" "$static_ip_name"
+}
+
+ensure_lightsail_instance_reachable() {
+    local region=$1
+    local instance_name=$2
+    local current_ip=$3
+
+    print_info "Checking Lightsail instance ${instance_name} (${region}) IPv4 ${current_ip}" >&2
+    if [ -n "$current_ip" ] && [ "$current_ip" != "None" ]; then
+        local check_result=0
+        if probe_tcp_from_china "$current_ip" "$PROBE_PORT"; then
+            check_result=0
+        else
+            check_result=$?
+        fi
+
+        if [ "$check_result" -eq 0 ]; then
+            echo "$current_ip"
+            return 0
+        fi
+
+        if [ "$check_result" -eq 2 ]; then
+            print_err "China probe check failed; aborting before rotating ${instance_name}" >&2
+            return 1
+        fi
+    fi
+
+    if [ "$DRY_RUN" == "true" ]; then
+        print_warn "[DRY-RUN] Would rotate ${instance_name} until Chinese probe check passes" >&2
+        echo "$current_ip"
+        return 0
+    fi
+
+    local attempt
+    for (( attempt=1; attempt<=LIGHTSAIL_MAX_ATTEMPTS; attempt++ )); do
+        print_info "Rotating ${instance_name} static IP, attempt ${attempt}/${LIGHTSAIL_MAX_ATTEMPTS}" >&2
+
+        local old_static_ip
+        old_static_ip=$(get_attached_static_ip_name "$region" "$instance_name")
+        if [ -n "$old_static_ip" ]; then
+            release_static_ip "$region" "$old_static_ip"
+        fi
+
+        local new_ip
+        new_ip=$(allocate_and_attach_static_ip "$region" "$instance_name" "$attempt")
+
+        if [ -n "$new_ip" ] && [ "$new_ip" != "None" ]; then
+            local check_result=0
+            if probe_tcp_from_china "$new_ip" "$PROBE_PORT"; then
+                check_result=0
+            else
+                check_result=$?
+            fi
+
+            if [ "$check_result" -eq 0 ]; then
+                print_ok "Selected IPv4 for ${instance_name}: ${new_ip}" >&2
+                echo "$new_ip"
+                return 0
+            fi
+
+            if [ "$check_result" -eq 2 ]; then
+                print_err "China probe check failed; aborting before more rotations for ${instance_name}" >&2
+                return 1
+            fi
+        fi
+    done
+
+    print_err "No China-reachable IPv4 found for ${instance_name} after ${LIGHTSAIL_MAX_ATTEMPTS} attempts" >&2
+    return 1
+}
+
+cleanup_unattached_static_ips() {
+    local region=$1
+    local item
+
+    for item in "${CREATED_STATIC_IPS[@]}"; do
+        local item_region="${item%%:*}"
+        local static_ip_name="${item#*:}"
+
+        [ "$item_region" != "$region" ] && continue
+
+        local is_attached
+        is_attached=$(aws lightsail get-static-ip --region "$region" --static-ip-name "$static_ip_name" \
+            --query 'staticIp.isAttached' --output text 2>/dev/null || true)
+
+        [ "$is_attached" != "False" ] && continue
+
+        if [ "$DRY_RUN" == "true" ]; then
+            print_warn "[DRY-RUN] Would release unattached static IP: ${static_ip_name} (${region})" >&2
+        else
+            print_info "Releasing unattached static IP created by this run: ${static_ip_name} (${region})" >&2
+            aws lightsail release-static-ip --region "$region" --static-ip-name "$static_ip_name" &>/dev/null || true
+        fi
+    done
+}
+
+collect_lightsail_ips() {
+    local ids_csv=$1
+    local resolved='{"A":[],"AAAA":[]}'
+    local ids=()
+    local regions_touched=()
+    local found=0
+
+    while IFS= read -r id; do
+        ids+=("$id")
+    done < <(normalize_csv "$ids_csv")
+
+    if [ "${#ids[@]}" -eq 0 ]; then
+        print_err "No Lightsail instance IDs provided" >&2
+        exit 1
+    fi
+
+    local region
+    for region in $(get_lightsail_regions); do
+        local instances
+        instances=$(aws lightsail get-instances --region "$region" --output json 2>/dev/null || echo '{"instances":[]}')
+        local rows
+        rows=$(echo "$instances" | jq -r '.instances[] | [.name, (.publicIpAddress // ""), (.arn // ""), (.supportCode // ""), (.state.name // "")] | @tsv')
+
+        while IFS=$'\t' read -r name public_ip arn support_code state; do
+            [ -z "$name" ] && continue
+
+            local wanted=false
+            local id
+            for id in "${ids[@]}"; do
+                if [ "$id" == "$name" ] || [ "$id" == "$arn" ] || [ "$id" == "$support_code" ]; then
+                    wanted=true
+                    break
+                fi
+            done
+
+            [ "$wanted" != "true" ] && continue
+
+            found=$((found + 1))
+            regions_touched+=("$region")
+
+            if [ "$state" != "running" ]; then
+                print_warn "Instance ${name} is ${state}; Chinese probe TCP check may fail" >&2
+            fi
+
+            local selected_ip
+            selected_ip=$(ensure_lightsail_instance_reachable "$region" "$name" "$public_ip") || exit 1
+            if [ -n "$selected_ip" ] && [ "$selected_ip" != "None" ]; then
+                resolved=$(json_add_ipv4_unique "$resolved" "$selected_ip")
+            fi
+        done <<< "$rows"
+    done
+
+    if [ "$found" -eq 0 ]; then
+        print_err "No matching Lightsail instances found for: ${ids_csv}" >&2
+        exit 1
+    fi
+
+    local cleaned_regions
+    cleaned_regions=$(printf '%s\n' "${regions_touched[@]}" | sort -u)
+    while IFS= read -r region; do
+        [ -n "$region" ] && cleanup_unattached_static_ips "$region"
+    done <<< "$cleaned_regions"
+
+    echo "$resolved"
+}
+
 # Get existing DNS records for the target domain
 get_existing_records() {
     local zone_id=$1
@@ -375,23 +708,33 @@ show_help() {
     echo "Usage:"
     echo "  $0 <source-domain> <target-domain> [options]"
     echo "  <command> | $0 - <target-domain> [options]"
+    echo "  $0 --lightsail-ids ID[,ID...] <target-domain> [options]"
     echo ""
     echo "Source (first argument):"
     echo "  domain.com         Resolve IPs via dig (A + AAAA records)"
     echo "  -                  Read from stdin, auto-extract all IPs"
+    echo "  --lightsail-ids    Match AWS Lightsail instances by name, ARN, or support code"
     echo ""
     echo "Options:"
     echo "  --check-port PORT  Filter out IPs where TCP port is unreachable"
     echo "  --check-timeout N  Health check timeout in seconds (default: 3)"
+    echo "  --probe-ssh-hosts H  Chinese SSH probe hosts, comma-separated"
+    echo "  --probe-port PORT    Lightsail TCP port to test from probes (default: 22)"
+    echo "  --probe-min-ok N     Minimum successful probe hosts (default: 1)"
+    echo "  --probe-timeout N    Remote TCP check timeout in seconds (default: 5)"
+    echo "  --ssh-timeout N      SSH connect timeout in seconds (default: 8)"
+    echo "  --max-attempts N   Max Lightsail static IP rotation attempts (default: 10)"
     echo "  --ttl N            TTL in seconds (default: 60)"
     echo "  --proxied          Enable Cloudflare proxy (default: off)"
     echo "  --dry-run          Show what would be done without making changes"
+    echo "  --skip-dns-sync    Collect/rotate IPs but do not update Cloudflare DNS"
     echo "  -h, --help         Show this help"
     echo ""
     echo "Environment (one of the following):"
     echo "  CF_Token       Cloudflare API Token (DNS edit permission)"
     echo "  CF_Key         Cloudflare Global API Key"
     echo "  CF_Email       Cloudflare account email (used with CF_Key)"
+    echo "  AWS credentials must be configured for --lightsail-ids mode"
     echo ""
     echo "Examples:"
     echo "  # From domain (dig)"
@@ -411,6 +754,9 @@ show_help() {
     echo ""
     echo "  # With health check (only sync IPs where port 443 is open)"
     echo "  $0 source.example.com target.example.com --check-port 443"
+    echo ""
+    echo "  # From AWS Lightsail, rotate static IPs until Chinese SSH probe TCP passes"
+    echo "  $0 --lightsail-ids ls-a,ls-b target.example.com --probe-ssh-hosts aliyun-sh --probe-port 22"
 }
 
 main() {
@@ -432,12 +778,45 @@ main() {
                 DRY_RUN=true
                 shift
                 ;;
+            --skip-dns-sync)
+                SKIP_DNS_SYNC=true
+                shift
+                ;;
             --check-port)
                 CHECK_PORT="$2"
                 shift 2
                 ;;
             --check-timeout)
                 CHECK_TIMEOUT="$2"
+                shift 2
+                ;;
+            --lightsail-ids)
+                SOURCE_MODE="lightsail"
+                LIGHTSAIL_IDS="$2"
+                shift 2
+                ;;
+            --probe-ssh-hosts)
+                PROBE_SSH_HOSTS="$2"
+                shift 2
+                ;;
+            --probe-port)
+                PROBE_PORT="$2"
+                shift 2
+                ;;
+            --probe-min-ok)
+                PROBE_MIN_OK="$2"
+                shift 2
+                ;;
+            --probe-timeout)
+                PROBE_TIMEOUT="$2"
+                shift 2
+                ;;
+            --ssh-timeout)
+                SSH_CONNECT_TIMEOUT="$2"
+                shift 2
+                ;;
+            --max-attempts)
+                LIGHTSAIL_MAX_ATTEMPTS="$2"
                 shift 2
                 ;;
             -h|--help)
@@ -456,7 +835,9 @@ main() {
                 shift
                 ;;
             *)
-                if [ -z "$source_domain" ]; then
+                if [ "$SOURCE_MODE" == "lightsail" ] && [ -z "$target_domain" ]; then
+                    target_domain="$1"
+                elif [ -z "$source_domain" ]; then
                     source_domain="$1"
                 elif [ -z "$target_domain" ]; then
                     target_domain="$1"
@@ -469,7 +850,19 @@ main() {
         esac
     done
 
-    if [ -z "$source_domain" ] || [ -z "$target_domain" ]; then
+    if [ "$SOURCE_MODE" == "lightsail" ] && [ -z "$target_domain" ] && [ -n "$source_domain" ]; then
+        target_domain="$source_domain"
+        source_domain=""
+    fi
+
+    if [ "$SOURCE_MODE" == "lightsail" ]; then
+        if [ -z "$LIGHTSAIL_IDS" ] || [ -z "$target_domain" ]; then
+            print_err "Lightsail IDs and target are required"
+            echo ""
+            show_help
+            exit 1
+        fi
+    elif [ -z "$source_domain" ] || [ -z "$target_domain" ]; then
         print_err "Both source and target are required"
         echo ""
         show_help
@@ -483,7 +876,10 @@ main() {
     echo -e "${CYAN}=== Step 1: Collect IPs from source ===${NC}"
 
     local resolved
-    if [ "$source_domain" == "-" ]; then
+    if [ "$SOURCE_MODE" == "lightsail" ]; then
+        print_info "Collecting AWS Lightsail IPv4 addresses for: ${LIGHTSAIL_IDS}"
+        resolved=$(collect_lightsail_ips "$LIGHTSAIL_IDS")
+    elif [ "$source_domain" == "-" ]; then
         # Read from stdin
         print_info "Reading IPs from stdin..."
         local stdin_text
@@ -505,7 +901,11 @@ main() {
     ipv6_count=$(echo "$resolved" | jq '.AAAA | length')
 
     if [ "$ipv4_count" -eq 0 ] && [ "$ipv6_count" -eq 0 ]; then
-        print_err "No IPs resolved from ${source_domain}"
+        if [ "$SOURCE_MODE" == "lightsail" ]; then
+            print_err "No IPv4 addresses collected from Lightsail"
+        else
+            print_err "No IPs resolved from ${source_domain}"
+        fi
         exit 1
     fi
 
@@ -537,6 +937,19 @@ main() {
             print_err "No reachable IPs after health check"
             exit 1
         fi
+    fi
+
+    if [ "$SKIP_DNS_SYNC" == "true" ]; then
+        print_warn "Skipping Cloudflare DNS sync by request"
+        echo ""
+        echo -e "${CYAN}============================================${NC}"
+        echo -e "  Source:  AWS Lightsail (${LIGHTSAIL_IDS})"
+        echo -e "  Target:  ${target_domain}"
+        echo -e "  IPv4:    ${ipv4_count} record(s)"
+        echo -e "  IPv6:    ${ipv6_count} record(s)"
+        echo -e "  Mode:    ${YELLOW}DNS SKIPPED${NC}"
+        echo -e "${CYAN}============================================${NC}"
+        exit 0
     fi
 
     # Step 2: Get Cloudflare Zone ID for target domain
@@ -587,7 +1000,11 @@ main() {
     # Summary
     echo ""
     echo -e "${CYAN}============================================${NC}"
-    echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
+    if [ "$SOURCE_MODE" == "lightsail" ]; then
+        echo -e "  Source:  AWS Lightsail (${LIGHTSAIL_IDS})"
+    else
+        echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
+    fi
     echo -e "  Target:  ${target_domain}"
     echo -e "  IPv4:    ${ipv4_count} record(s)"
     echo -e "  IPv6:    ${ipv6_count} record(s)"
