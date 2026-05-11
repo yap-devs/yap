@@ -9,7 +9,8 @@
 # IP sources (first positional arg):
 #   domain name    Resolve via dig (A + AAAA)
 #   -              Read IPs from stdin (pipe)
-#   --lightsail-ids Read and rotate AWS Lightsail IPv4 addresses
+#   --lightsail-ids Read and rotate AWS Lightsail IPv4 addresses by instance ID/name
+#   --lightsail-tags Read and rotate AWS Lightsail IPv4 addresses by tags
 #
 # Dependencies: dig, curl, jq, grep (extended regex), aws (Lightsail mode)
 #
@@ -44,6 +45,7 @@ CHECK_PORT=""  # empty = skip health check
 CHECK_TIMEOUT=3
 SOURCE_MODE="source"
 LIGHTSAIL_IDS=""
+LIGHTSAIL_TAGS=""
 PROBE_PORT=22
 PROBE_SSH_HOSTS=""
 PROBE_MIN_OK=1
@@ -73,15 +75,12 @@ check_deps() {
     done
 
     if [ "$SOURCE_MODE" == "lightsail" ]; then
-        if ! command -v aws &>/dev/null; then
-            print_err "Missing dependency: aws"
-            exit 1
-        fi
-
-        if ! command -v ssh &>/dev/null; then
-            print_err "Missing dependency: ssh"
-            exit 1
-        fi
+        for cmd in aws ssh base64; do
+            if ! command -v "$cmd" &>/dev/null; then
+                print_err "Missing dependency: $cmd"
+                exit 1
+            fi
+        done
 
         if ! aws sts get-caller-identity &>/dev/null; then
             print_err "AWS credentials not configured"
@@ -303,6 +302,34 @@ json_add_ipv4_unique() {
     echo "$json" | jq --arg ip "$ip" '.A += [$ip] | .A |= unique'
 }
 
+instance_matches_tags() {
+    local tags_json=$1
+    local filters_csv=$2
+    local filter
+
+    [ -z "$filters_csv" ] && return 0
+
+    while IFS= read -r filter; do
+        [ -z "$filter" ] && continue
+
+        local key="${filter%%=*}"
+        local value="${filter#*=}"
+
+        if [ -z "$key" ] || [ "$key" == "$filter" ]; then
+            print_err "Invalid Lightsail tag filter: ${filter} (expected key=value)" >&2
+            return 2
+        fi
+
+        local matched
+        matched=$(echo "$tags_json" | jq --arg key "$key" --arg value "$value" \
+            'any(.[]?; .key == $key and ((.value // "") == $value))')
+
+        [ "$matched" != "true" ] && return 1
+    done < <(normalize_csv "$filters_csv")
+
+    return 0
+}
+
 probe_tcp_from_ssh() {
     local host=$1
     local ip=$2
@@ -513,6 +540,7 @@ cleanup_unattached_static_ips() {
 
 collect_lightsail_ips() {
     local ids_csv=$1
+    local tags_csv=$2
     local resolved='{"A":[],"AAAA":[]}'
     local ids=()
     local regions_touched=()
@@ -522,8 +550,8 @@ collect_lightsail_ips() {
         ids+=("$id")
     done < <(normalize_csv "$ids_csv")
 
-    if [ "${#ids[@]}" -eq 0 ]; then
-        print_err "No Lightsail instance IDs provided" >&2
+    if [ "${#ids[@]}" -eq 0 ] && [ -z "$tags_csv" ]; then
+        print_err "No Lightsail instance IDs or tags provided" >&2
         exit 1
     fi
 
@@ -532,21 +560,38 @@ collect_lightsail_ips() {
         local instances
         instances=$(aws lightsail get-instances --region "$region" --output json 2>/dev/null || echo '{"instances":[]}')
         local rows
-        rows=$(echo "$instances" | jq -r '.instances[] | [.name, (.publicIpAddress // ""), (.arn // ""), (.supportCode // ""), (.state.name // "")] | @tsv')
+        rows=$(echo "$instances" | jq -r '.instances[] | [.name, (.publicIpAddress // ""), (.arn // ""), (.supportCode // ""), (.state.name // ""), ((.tags // []) | @base64)] | @tsv')
 
-        while IFS=$'\t' read -r name public_ip arn support_code state; do
+        while IFS=$'\t' read -r name public_ip arn support_code state tags_base64; do
             [ -z "$name" ] && continue
 
-            local wanted=false
+            local id_wanted=false
             local id
-            for id in "${ids[@]}"; do
-                if [ "$id" == "$name" ] || [ "$id" == "$arn" ] || [ "$id" == "$support_code" ]; then
-                    wanted=true
-                    break
-                fi
-            done
+            if [ "${#ids[@]}" -eq 0 ]; then
+                id_wanted=true
+            else
+                for id in "${ids[@]}"; do
+                    if [ "$id" == "$name" ] || [ "$id" == "$arn" ] || [ "$id" == "$support_code" ]; then
+                        id_wanted=true
+                        break
+                    fi
+                done
+            fi
 
-            [ "$wanted" != "true" ] && continue
+            [ "$id_wanted" != "true" ] && continue
+
+            local tags_json
+            tags_json=$(printf '%s' "$tags_base64" | base64 -d 2>/dev/null || echo '[]')
+
+            local tag_result=0
+            if instance_matches_tags "$tags_json" "$tags_csv"; then
+                tag_result=0
+            else
+                tag_result=$?
+            fi
+
+            [ "$tag_result" -eq 2 ] && exit 1
+            [ "$tag_result" -ne 0 ] && continue
 
             found=$((found + 1))
             regions_touched+=("$region")
@@ -564,7 +609,7 @@ collect_lightsail_ips() {
     done
 
     if [ "$found" -eq 0 ]; then
-        print_err "No matching Lightsail instances found for: ${ids_csv}" >&2
+        print_err "No matching Lightsail instances found for IDs '${ids_csv}' and tags '${tags_csv}'" >&2
         exit 1
     fi
 
@@ -709,11 +754,13 @@ show_help() {
     echo "  $0 <source-domain> <target-domain> [options]"
     echo "  <command> | $0 - <target-domain> [options]"
     echo "  $0 --lightsail-ids ID[,ID...] <target-domain> [options]"
+    echo "  $0 --lightsail-tags KEY=VALUE[,KEY=VALUE...] <target-domain> [options]"
     echo ""
     echo "Source (first argument):"
     echo "  domain.com         Resolve IPs via dig (A + AAAA records)"
     echo "  -                  Read from stdin, auto-extract all IPs"
     echo "  --lightsail-ids    Match AWS Lightsail instances by name, ARN, or support code"
+    echo "  --lightsail-tags   Match AWS Lightsail instances by tags; all tags must match"
     echo ""
     echo "Options:"
     echo "  --check-port PORT  Filter out IPs where TCP port is unreachable"
@@ -734,7 +781,7 @@ show_help() {
     echo "  CF_Token       Cloudflare API Token (DNS edit permission)"
     echo "  CF_Key         Cloudflare Global API Key"
     echo "  CF_Email       Cloudflare account email (used with CF_Key)"
-    echo "  AWS credentials must be configured for --lightsail-ids mode"
+    echo "  AWS credentials must be configured for Lightsail mode"
     echo ""
     echo "Examples:"
     echo "  # From domain (dig)"
@@ -757,6 +804,7 @@ show_help() {
     echo ""
     echo "  # From AWS Lightsail, rotate static IPs until Chinese SSH probe TCP passes"
     echo "  $0 --lightsail-ids ls-a,ls-b target.example.com --probe-ssh-hosts aliyun-sh --probe-port 22"
+    echo "  $0 --lightsail-tags role=proxy,env=prod target.example.com --probe-ssh-hosts aliyun-sh"
 }
 
 main() {
@@ -793,6 +841,11 @@ main() {
             --lightsail-ids)
                 SOURCE_MODE="lightsail"
                 LIGHTSAIL_IDS="$2"
+                shift 2
+                ;;
+            --lightsail-tags)
+                SOURCE_MODE="lightsail"
+                LIGHTSAIL_TAGS="$2"
                 shift 2
                 ;;
             --probe-ssh-hosts)
@@ -856,8 +909,8 @@ main() {
     fi
 
     if [ "$SOURCE_MODE" == "lightsail" ]; then
-        if [ -z "$LIGHTSAIL_IDS" ] || [ -z "$target_domain" ]; then
-            print_err "Lightsail IDs and target are required"
+        if { [ -z "$LIGHTSAIL_IDS" ] && [ -z "$LIGHTSAIL_TAGS" ]; } || [ -z "$target_domain" ]; then
+            print_err "Lightsail IDs or tags, and target are required"
             echo ""
             show_help
             exit 1
@@ -877,8 +930,12 @@ main() {
 
     local resolved
     if [ "$SOURCE_MODE" == "lightsail" ]; then
-        print_info "Collecting AWS Lightsail IPv4 addresses for: ${LIGHTSAIL_IDS}"
-        resolved=$(collect_lightsail_ips "$LIGHTSAIL_IDS")
+        if [ -n "$LIGHTSAIL_TAGS" ]; then
+            print_info "Collecting AWS Lightsail IPv4 addresses for IDs '${LIGHTSAIL_IDS}' and tags '${LIGHTSAIL_TAGS}'"
+        else
+            print_info "Collecting AWS Lightsail IPv4 addresses for IDs '${LIGHTSAIL_IDS}'"
+        fi
+        resolved=$(collect_lightsail_ips "$LIGHTSAIL_IDS" "$LIGHTSAIL_TAGS")
     elif [ "$source_domain" == "-" ]; then
         # Read from stdin
         print_info "Reading IPs from stdin..."
@@ -943,7 +1000,7 @@ main() {
         print_warn "Skipping Cloudflare DNS sync by request"
         echo ""
         echo -e "${CYAN}============================================${NC}"
-        echo -e "  Source:  AWS Lightsail (${LIGHTSAIL_IDS})"
+        echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
         echo -e "  Target:  ${target_domain}"
         echo -e "  IPv4:    ${ipv4_count} record(s)"
         echo -e "  IPv6:    ${ipv6_count} record(s)"
@@ -1001,7 +1058,7 @@ main() {
     echo ""
     echo -e "${CYAN}============================================${NC}"
     if [ "$SOURCE_MODE" == "lightsail" ]; then
-        echo -e "  Source:  AWS Lightsail (${LIGHTSAIL_IDS})"
+        echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
     else
         echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
     fi
