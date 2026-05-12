@@ -53,6 +53,7 @@ PROBE_TIMEOUT=5
 SSH_CONNECT_TIMEOUT=8
 LIGHTSAIL_MAX_ATTEMPTS=10
 CREATED_STATIC_IPS=()
+FORCE_ROTATE_IP=false
 LOG_TS_FORMAT='%Y-%m-%d %H:%M:%S%z'
 
 log_line() {
@@ -461,7 +462,9 @@ ensure_lightsail_instance_reachable() {
     local current_ip=$3
 
     print_info "Checking Lightsail instance ${instance_name} (${region}) IPv4 ${current_ip}" >&2
-    if [ -n "$current_ip" ] && [ "$current_ip" != "None" ]; then
+    if [ "$FORCE_ROTATE_IP" == "true" ]; then
+        print_warn "Force rotate enabled; rotating ${instance_name} even if current IPv4 is reachable" >&2
+    elif [ -n "$current_ip" ] && [ "$current_ip" != "None" ]; then
         local check_result=0
         if probe_tcp_from_china "$current_ip" "$PROBE_PORT"; then
             check_result=0
@@ -782,6 +785,7 @@ show_help() {
     echo "  --probe-timeout N    Remote TCP check timeout in seconds (default: 5)"
     echo "  --ssh-timeout N      SSH connect timeout in seconds (default: 8)"
     echo "  --max-attempts N   Max Lightsail static IP rotation attempts (default: 10)"
+    echo "  --force-rotate-ip  Always rotate Lightsail static IPs before DNS sync"
     echo "  --ttl N            TTL in seconds (default: 60)"
     echo "  --proxied          Enable Cloudflare proxy (default: off)"
     echo "  --dry-run          Show what would be done without making changes"
@@ -816,6 +820,7 @@ show_help() {
     echo "  # From AWS Lightsail, rotate static IPs until Chinese SSH probe TCP passes"
     echo "  $0 --lightsail-ids ls-a,ls-b target.example.com --probe-ssh-hosts aliyun-sh --probe-port 22"
     echo "  $0 --lightsail-tags role=proxy,env=prod target.example.com --probe-ssh-hosts aliyun-sh"
+    echo "  $0 --lightsail-tags role=proxy target.example.com --probe-ssh-hosts aliyun-sh --force-rotate-ip"
 }
 
 main() {
@@ -882,6 +887,10 @@ main() {
             --max-attempts)
                 LIGHTSAIL_MAX_ATTEMPTS="$2"
                 shift 2
+                ;;
+            --force-rotate-ip)
+                FORCE_ROTATE_IP=true
+                shift
                 ;;
             -h|--help)
                 show_help
@@ -1015,6 +1024,7 @@ main() {
         echo -e "  Target:  ${target_domain}"
         echo -e "  IPv4:    ${ipv4_count} record(s)"
         echo -e "  IPv6:    ${ipv6_count} record(s)"
+        echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
         echo -e "  Mode:    ${YELLOW}DNS SKIPPED${NC}"
         echo -e "${CYAN}============================================${NC}"
         exit 0
@@ -1078,6 +1088,9 @@ main() {
     echo -e "  IPv6:    ${ipv6_count} record(s)"
     echo -e "  TTL:     ${TTL}s"
     echo -e "  Proxied: ${PROXIED}"
+    if [ "$SOURCE_MODE" == "lightsail" ]; then
+        echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
+    fi
     if [ "$DRY_RUN" == "true" ]; then
         echo -e "  Mode:    ${YELLOW}DRY-RUN${NC}"
     else
