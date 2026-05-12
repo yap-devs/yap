@@ -53,11 +53,22 @@ PROBE_TIMEOUT=5
 SSH_CONNECT_TIMEOUT=8
 LIGHTSAIL_MAX_ATTEMPTS=10
 CREATED_STATIC_IPS=()
+LOG_TS_FORMAT='%Y-%m-%d %H:%M:%S%z'
 
-print_ok()   { echo -e "${GREEN}[OK]${NC} $1"; }
-print_err()  { echo -e "${RED}[ERROR]${NC} $1"; }
-print_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
-print_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+log_line() {
+    local color=$1
+    local level=$2
+    local message=$3
+    local timestamp
+    timestamp=$(date "+${LOG_TS_FORMAT}")
+
+    echo -e "${color}[${timestamp}] [${level}]${NC} ${message}"
+}
+
+print_ok()   { log_line "$GREEN" "OK" "$1"; }
+print_err()  { log_line "$RED" "ERROR" "$1"; }
+print_info() { log_line "$BLUE" "INFO" "$1"; }
+print_warn() { log_line "$YELLOW" "WARN" "$1"; }
 
 CF_API="https://api.cloudflare.com/client/v4"
 
