@@ -7,6 +7,7 @@ use App\Models\UserPackage;
 use App\Models\VmessServer;
 use App\Services\ClashService;
 use App\Services\V2rayService;
+use App\Services\V2rayUserIdentifier;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -46,7 +47,7 @@ class GenerateClashProfileLink implements ShouldQueue
     /**
      * Processes a user for V2ray and Clash services.
      *
-     * @param User $user The user entity to be processed
+     * @param  User  $user  The user entity to be processed
      * @return array [$user, array] [$user, servers belonging to the user]
      */
     private function preProcessUser(User $user): array
@@ -58,11 +59,11 @@ class GenerateClashProfileLink implements ShouldQueue
             $user->deleted_at
             // or user is not valid and no active packages
             || (
-                !$user->is_valid
+                ! $user->is_valid
                 && $user->packages->where('status', UserPackage::STATUS_ACTIVE)->isEmpty()
             )
         ) {
-            if (!$clash->confExists()) {
+            if (! $clash->confExists()) {
                 return [$user, []];
             }
 
@@ -74,7 +75,7 @@ class GenerateClashProfileLink implements ShouldQueue
         $servers = [];
         /** @var VmessServer $vmess_server */
         foreach ($this->vmess_servers as $vmess_server) {
-            if ($user->is_low_priority && !$vmess_server->for_low_priority) {
+            if ($user->is_low_priority && ! $vmess_server->for_low_priority) {
                 continue;
             }
 
@@ -88,33 +89,12 @@ class GenerateClashProfileLink implements ShouldQueue
 
     private function processV2Ray(array $result)
     {
-        // ['internal_server' => $users] - deduplicate users by uuid per internal_server
-        // Multiple vmess_servers may share the same internal_server (different entry points),
-        // so we must avoid adding the same user multiple times.
-        $server_user_map = [];
-        foreach ($result as $item) {
-            /** @var User $user */
-            /** @var VmessServer $servers */
-            [$user, $servers] = $item;
-            if (empty($servers)) {
-                continue;
-            }
+        $server_user_map = $this->buildServerUserMap($result);
 
-            foreach ($servers as $server) {
-                $server_user_map[$server->internal_server][$user->uuid] = [
-                    'id' => $user->uuid,
-                    'email' => $user->email,
-                ];
-            }
-        }
-
-        // Convert associative arrays back to indexed arrays
-        $server_user_map = array_map('array_values', $server_user_map);
-
-        foreach ($server_user_map as $internal_server => $users) {
+        foreach ($server_user_map as $internal_server => $users_by_port) {
             try {
                 $v2ray = new V2rayService($internal_server);
-                $v2ray->addOrRemoveUsers($users);
+                $v2ray->syncUsersByPort($users_by_port);
             } catch (Throwable $e) {
                 logger()->driver('job')->log(
                     'error',
@@ -122,5 +102,42 @@ class GenerateClashProfileLink implements ShouldQueue
                 );
             }
         }
+    }
+
+    private function buildServerUserMap(array $result): array
+    {
+        // ['internal_server' => ['port' => $users]] - seed every enabled port so stale clients are cleared.
+        $server_user_map = [];
+        $identifier = app(V2rayUserIdentifier::class);
+        $server_port_counts = $identifier->portCounts($this->vmess_servers ?? []);
+
+        /** @var VmessServer $server */
+        foreach ($this->vmess_servers ?? [] as $server) {
+            $server_user_map[$server->internal_server][$server->port] = [];
+        }
+
+        foreach ($result as $item) {
+            /** @var User $user */
+            /** @var VmessServer[] $servers */
+            [$user, $servers] = $item;
+            if (empty($servers)) {
+                continue;
+            }
+
+            foreach ($servers as $server) {
+                $server_user_map[$server->internal_server][$server->port][$user->uuid] = [
+                    'id' => $user->uuid,
+                    'email' => $identifier->clientEmail($user, $server, $server_port_counts),
+                ];
+            }
+        }
+
+        foreach ($server_user_map as $internal_server => $users_by_port) {
+            foreach ($users_by_port as $port => $users) {
+                $server_user_map[$internal_server][$port] = array_values($users);
+            }
+        }
+
+        return $server_user_map;
     }
 }

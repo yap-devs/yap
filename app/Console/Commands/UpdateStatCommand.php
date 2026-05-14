@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserPackage;
 use App\Models\VmessServer;
 use App\Services\V2rayService;
+use App\Services\V2rayUserIdentifier;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
@@ -44,6 +45,8 @@ class UpdateStatCommand extends Command
         }])->get();
         $vmess_servers = VmessServer::where('enabled', true)->get();
         $all_stats = $this->getAllStats($vmess_servers);
+        $identifier = app(V2rayUserIdentifier::class);
+        $server_port_counts = $identifier->portCounts($vmess_servers);
 
         /** @var User $user */
         foreach ($users as $user) {
@@ -52,24 +55,25 @@ class UpdateStatCommand extends Command
             $is_valid_initial = $this->checkIsValid($user);
             $is_low_priority_initial = $user->is_low_priority;
 
-            // Track which internal_servers have been counted to avoid double-counting
-            // when multiple vmess_servers share the same internal_server
-            $counted_internal_servers = [];
+            // Track entry ports to avoid double-counting duplicate records for the same inbound.
+            $counted_entry_ports = [];
 
             /** @var VmessServer $vmess_server */
             foreach ($vmess_servers as $vmess_server) {
-                if (isset($counted_internal_servers[$vmess_server->internal_server])) {
+                $entry_port_key = $vmess_server->internal_server.'|'.$vmess_server->port;
+                if (isset($counted_entry_ports[$entry_port_key])) {
                     continue;
                 }
-                $counted_internal_servers[$vmess_server->internal_server] = true;
+                $counted_entry_ports[$entry_port_key] = true;
 
                 $stats = Arr::get($all_stats, $vmess_server->id, []);
+                $client_email = $identifier->clientEmail($user, $vmess_server, $server_port_counts);
 
-                if (! $stats || ! isset($stats['user'][$user->email])) {
+                if (! $stats || ! isset($stats['user'][$client_email])) {
                     continue;
                 }
 
-                $user_stat = $stats['user'][$user->email];
+                $user_stat = $stats['user'][$client_email];
                 $uplink = Arr::get($user_stat, 'uplink', 0) * $vmess_server->rate;
                 $downlink = Arr::get($user_stat, 'downlink', 0) * $vmess_server->rate;
 
@@ -217,6 +221,7 @@ class UpdateStatCommand extends Command
     private function getAllStats($vmess_servers)
     {
         $stats = [];
+        $stats_by_internal_server = [];
 
         // Deduplicate by internal_server to avoid SSHing into the same server twice.
         // Multiple vmess_servers may share the same internal_server (different entry points).
@@ -234,13 +239,18 @@ class UpdateStatCommand extends Command
 
             try {
                 $v2ray = new V2rayService($vmess_server->internal_server);
-                $stats[$vmess_server->id] = $v2ray->getStats(reset: true);
+                $stats_by_internal_server[$vmess_server->internal_server] = $v2ray->getStats(reset: true);
             } catch (Throwable $e) {
                 logger()->driver('job')->log(
                     'error',
                     "[UpdateStatCommand] Failed to get stats from server: {$vmess_server->internal_server}, error: {$e->getMessage()}"
                 );
             }
+        }
+
+        /** @var VmessServer $vmess_server */
+        foreach ($vmess_servers as $vmess_server) {
+            $stats[$vmess_server->id] = $stats_by_internal_server[$vmess_server->internal_server] ?? [];
         }
 
         return $stats;

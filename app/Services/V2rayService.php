@@ -2,10 +2,15 @@
 
 namespace App\Services;
 
+use RuntimeException;
 use Spatie\Ssh\Ssh;
 
 class V2rayService
 {
+    public const DEFAULT_CONFIG_PATH = '/usr/local/etc/v2ray/config.json';
+
+    public const DEFAULT_SERVICE_NAME = 'v2ray';
+
     private Ssh $ssh;
 
     public function __construct(
@@ -25,36 +30,30 @@ class V2rayService
             ->setTimeout(10);
     }
 
-    public function addOrRemoveUsers(array $users)
+    public function syncUsersByPort(array $users_by_port): void
     {
-        // 1. read current json conf
-        $current_config = json_decode($this->ssh->execute('cat /usr/local/etc/v2ray/config.json')->getOutput());
+        $editor = new V2rayConfigEditor;
+        [$config, $is_template] = $this->loadConfigOrTemplate($editor);
+        $changed = false;
 
-        // If config is empty, invalid, or missing required structure, use the demo config as template
-        $is_invalid_config = is_null($current_config)
-            || (is_object($current_config) && empty((array) $current_config))
-            || ! isset($current_config->inbounds[0]->settings);
-
-        if ($is_invalid_config) {
-            logger()->driver('job')->log(
-                'info',
-                "[V2rayService] Empty or invalid config detected, using demo config as template: $this->internal_server"
-            );
-            $demo_config_path = resource_path('v2ray-conf-demo.json');
-            $current_config = json_decode(file_get_contents($demo_config_path));
-            if (is_null($current_config)) {
-                logger()->driver('job')->log(
-                    'warning',
-                    "[V2rayService] Failed to read demo V2ray config: $demo_config_path"
-                );
-
-                return;
-            }
+        if ($is_template) {
+            [$config, $changed] = $editor->prepareTemplateVmessInboundsForPorts($config, array_keys($users_by_port));
         }
 
-        // 2. compare with given users
-        $current_users = $current_config->inbounds[0]->settings->clients ?? [];
-        if (array_column($current_users, 'id') == array_column($users, 'id')) {
+        foreach ($users_by_port as $port => $users) {
+            [$config, $found, $port_changed] = $editor->updateVmessClientsByPort($config, (int) $port, array_values($users));
+
+            if (! $found) {
+                logger()->driver('job')->log(
+                    'warning',
+                    "[V2rayService] No matching V2Ray vmess inbound found: $this->internal_server, port: $port"
+                );
+            }
+
+            $changed = $changed || $port_changed;
+        }
+
+        if (! $changed) {
             logger()->driver('job')->log(
                 'info',
                 "[V2rayService] No need to update V2ray users: $this->internal_server"
@@ -63,21 +62,51 @@ class V2rayService
             return;
         }
 
-        // 3. write back to json conf
-        $current_config->inbounds[0]->settings->clients = $users;
-        // backup first
-        $this->ssh->execute('cp /usr/local/etc/v2ray/config.json /usr/local/etc/v2ray/config.'.now()->format('YmdHis').'.json');
-        $this->ssh->execute('echo \''.json_encode($current_config).'\' > /usr/local/etc/v2ray/config.json');
-        $this->ssh->execute('systemctl restart v2ray');
+        $this->writeConfig($editor->encode($config));
         logger()->driver('job')->log(
             'info',
             "[V2rayService] Updated V2ray users: $this->internal_server"
         );
     }
 
-    public function getStats($reset = false)
+    public function readConfig(string $config_path = self::DEFAULT_CONFIG_PATH): string
     {
-        $command = '/usr/local/bin/v2ray api stats -s localhost:10085 -json';
+        $process = $this->ssh->execute('cat '.$this->shellQuote($config_path));
+        if ($process->isSuccessful()) {
+            return $process->getOutput();
+        }
+
+        throw new RuntimeException('Failed to read V2Ray config: '.$process->getErrorOutput());
+    }
+
+    public function writeConfig(
+        string $json,
+        string $config_path = self::DEFAULT_CONFIG_PATH,
+        string $service_name = self::DEFAULT_SERVICE_NAME,
+    ): void {
+        (new V2rayConfigEditor)->decode($json);
+
+        $encoded_config = base64_encode($json);
+        $quoted_config_path = $this->shellQuote($config_path);
+        $backup_path = $this->shellQuote($config_path.'.'.now()->format('YmdHis').'.json');
+
+        $this->run(
+            'test -f '.$quoted_config_path.' && cp '.$quoted_config_path.' '.$backup_path.' || true',
+            'Failed to backup V2Ray config'
+        );
+        $this->run(
+            'printf %s '.$this->shellQuote($encoded_config).' | base64 -d > '.$quoted_config_path,
+            'Failed to write V2Ray config'
+        );
+        $this->run(
+            'systemctl restart '.$this->shellQuote($service_name),
+            'Failed to restart V2Ray service'
+        );
+    }
+
+    public function getStats(bool $reset = false, int $api_port = 10085): array
+    {
+        $command = '/usr/local/bin/v2ray api stats -s localhost:'.(int) $api_port.' -json';
         if ($reset) {
             $command .= ' -reset';
         }
@@ -109,5 +138,41 @@ class V2rayService
         }
 
         return $res;
+    }
+
+    private function loadConfigOrTemplate(V2rayConfigEditor $editor): array
+    {
+        try {
+            return [$editor->decode($this->readConfig()), false];
+        } catch (RuntimeException) {
+            logger()->driver('job')->log(
+                'info',
+                "[V2rayService] Empty or invalid config detected, using demo config as template: $this->internal_server"
+            );
+        }
+
+        $demo_config_path = resource_path('v2ray-conf-demo.json');
+        $demo_config = file_get_contents($demo_config_path);
+        if ($demo_config !== false) {
+            return [$editor->decode($demo_config), true];
+        }
+
+        throw new RuntimeException("Failed to read demo V2Ray config: $demo_config_path");
+    }
+
+    private function run(string $command, string $message): void
+    {
+        $process = $this->ssh->execute($command);
+
+        if ($process->isSuccessful()) {
+            return;
+        }
+
+        throw new RuntimeException($message.': '.$process->getErrorOutput());
+    }
+
+    private function shellQuote(string $value): string
+    {
+        return "'".str_replace("'", "'\"'\"'", $value)."'";
     }
 }
