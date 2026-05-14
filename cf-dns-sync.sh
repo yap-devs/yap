@@ -41,6 +41,7 @@ TTL=60        # 60s = minimum allowed by Cloudflare
 PROXIED=false
 DRY_RUN=false
 SKIP_DNS_SYNC=false
+DEBUG=false
 CHECK_PORT=""  # empty = skip health check
 CHECK_TIMEOUT=3
 SOURCE_MODE="source"
@@ -66,10 +67,11 @@ log_line() {
     echo -e "${color}[${timestamp}] [${level}]${NC} ${message}"
 }
 
-print_ok()   { log_line "$GREEN" "OK" "$1"; }
+print_ok()   { [ "$DEBUG" == "true" ] && log_line "$GREEN" "OK" "$1"; return 0; }
 print_err()  { log_line "$RED" "ERROR" "$1"; }
-print_info() { log_line "$BLUE" "INFO" "$1"; }
+print_info() { [ "$DEBUG" == "true" ] && log_line "$BLUE" "INFO" "$1"; return 0; }
 print_warn() { log_line "$YELLOW" "WARN" "$1"; }
+print_result() { log_line "$CYAN" "RESULT" "$1"; }
 
 CF_API="https://api.cloudflare.com/client/v4"
 
@@ -202,12 +204,12 @@ extract_ips_from_text() {
     # Extract IPv4
     while IFS= read -r ip; do
         [ -n "$ip" ] && ipv4_list+=("$ip")
-    done < <(echo "$text" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | sort -u)
+    done < <(echo "$text" | { grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' || true; } | sort -u)
 
     # Extract IPv6 (simplified: sequences of hex groups separated by colons)
     while IFS= read -r ip; do
         [ -n "$ip" ] && ipv6_list+=("$ip")
-    done < <(echo "$text" | grep -oE '([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' | sort -u)
+    done < <(echo "$text" | { grep -oE '([0-9a-fA-F]{0,4}:){2,7}[0-9a-fA-F]{0,4}' || true; } | sort -u)
 
     # Build JSON
     local json='{"A":[],"AAAA":[]}'
@@ -230,12 +232,12 @@ resolve_ips() {
     # Resolve A records (IPv4)
     while IFS= read -r ip; do
         [ -n "$ip" ] && ipv4_list+=("$ip")
-    done < <(dig +short A "$domain" 2>/dev/null | grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$')
+    done < <(dig +short A "$domain" 2>/dev/null | { grep -E '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$' || true; })
 
     # Resolve AAAA records (IPv6)
     while IFS= read -r ip; do
         [ -n "$ip" ] && ipv6_list+=("$ip")
-    done < <(dig +short AAAA "$domain" 2>/dev/null | grep -E '^[0-9a-fA-F:]+$')
+    done < <(dig +short AAAA "$domain" 2>/dev/null | { grep -E '^[0-9a-fA-F:]+$' || true; })
 
     # Output as JSON for easy parsing
     local json='{"A":[],"AAAA":[]}'
@@ -512,6 +514,9 @@ ensure_lightsail_instance_reachable() {
 
             if [ "$check_result" -eq 0 ]; then
                 print_ok "Selected IPv4 for ${instance_name}: ${new_ip}" >&2
+                if [ -n "$current_ip" ] && [ "$current_ip" != "None" ] && [ "$current_ip" != "$new_ip" ]; then
+                    print_result "Rotated ${instance_name}: ${current_ip} -> ${new_ip}" >&2
+                fi
                 echo "$new_ip"
                 return 0
             fi
@@ -790,6 +795,7 @@ show_help() {
     echo "  --proxied          Enable Cloudflare proxy (default: off)"
     echo "  --dry-run          Show what would be done without making changes"
     echo "  --skip-dns-sync    Collect/rotate IPs but do not update Cloudflare DNS"
+    echo "  --debug            Show detailed step-by-step logs"
     echo "  -h, --help         Show this help"
     echo ""
     echo "Environment (one of the following):"
@@ -844,6 +850,10 @@ main() {
                 ;;
             --skip-dns-sync)
                 SKIP_DNS_SYNC=true
+                shift
+                ;;
+            --debug)
+                DEBUG=true
                 shift
                 ;;
             --check-port)
@@ -945,8 +955,10 @@ main() {
     check_deps
 
     # Step 1: Get IPs from source
-    echo ""
-    echo -e "${CYAN}=== Step 1: Collect IPs from source ===${NC}"
+    if [ "$DEBUG" == "true" ]; then
+        echo ""
+        echo -e "${CYAN}=== Step 1: Collect IPs from source ===${NC}"
+    fi
 
     local resolved
     if [ "$SOURCE_MODE" == "lightsail" ]; then
@@ -986,14 +998,14 @@ main() {
         exit 1
     fi
 
-    if [ "$ipv4_count" -gt 0 ]; then
+    if [ "$DEBUG" == "true" ] && [ "$ipv4_count" -gt 0 ]; then
         print_ok "IPv4 (A) records: ${ipv4_count}"
         echo "$resolved" | jq -r '.A[]' | while read -r ip; do
             echo -e "  ${GREEN}$ip${NC}"
         done
     fi
 
-    if [ "$ipv6_count" -gt 0 ]; then
+    if [ "$DEBUG" == "true" ] && [ "$ipv6_count" -gt 0 ]; then
         print_ok "IPv6 (AAAA) records: ${ipv6_count}"
         echo "$resolved" | jq -r '.AAAA[]' | while read -r ip; do
             echo -e "  ${GREEN}$ip${NC}"
@@ -1002,8 +1014,10 @@ main() {
 
     # Health check: filter by TCP port reachability
     if [ -n "$CHECK_PORT" ]; then
-        echo ""
-        echo -e "${CYAN}=== Health Check: TCP port ${CHECK_PORT} ===${NC}"
+        if [ "$DEBUG" == "true" ]; then
+            echo ""
+            echo -e "${CYAN}=== Health Check: TCP port ${CHECK_PORT} ===${NC}"
+        fi
         resolved=$(filter_by_port "$resolved" "$CHECK_PORT")
 
         # Recount after filtering
@@ -1017,22 +1031,34 @@ main() {
     fi
 
     if [ "$SKIP_DNS_SYNC" == "true" ]; then
-        print_warn "Skipping Cloudflare DNS sync by request"
-        echo ""
-        echo -e "${CYAN}============================================${NC}"
-        echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
-        echo -e "  Target:  ${target_domain}"
-        echo -e "  IPv4:    ${ipv4_count} record(s)"
-        echo -e "  IPv6:    ${ipv6_count} record(s)"
-        echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
-        echo -e "  Mode:    ${YELLOW}DNS SKIPPED${NC}"
-        echo -e "${CYAN}============================================${NC}"
+        local compact_ips
+        compact_ips=$(echo "$resolved" | jq -r '.A + .AAAA | join(",")')
+        if [ "$DEBUG" == "true" ]; then
+            print_warn "Skipping Cloudflare DNS sync by request"
+            echo ""
+            echo -e "${CYAN}============================================${NC}"
+            if [ "$SOURCE_MODE" == "lightsail" ]; then
+                echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
+                echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
+            else
+                echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
+            fi
+            echo -e "  Target:  ${target_domain}"
+            echo -e "  IPv4:    ${ipv4_count} record(s)"
+            echo -e "  IPv6:    ${ipv6_count} record(s)"
+            echo -e "  Mode:    ${YELLOW}DNS SKIPPED${NC}"
+            echo -e "${CYAN}============================================${NC}"
+        else
+            print_result "DNS skipped target=${target_domain} ips=${compact_ips}"
+        fi
         exit 0
     fi
 
     # Step 2: Get Cloudflare Zone ID for target domain
-    echo ""
-    echo -e "${CYAN}=== Step 2: Find Cloudflare zone for target ===${NC}"
+    if [ "$DEBUG" == "true" ]; then
+        echo ""
+        echo -e "${CYAN}=== Step 2: Find Cloudflare zone for target ===${NC}"
+    fi
     print_info "Looking up zone for: ${target_domain}"
 
     local zone_id
@@ -1047,8 +1073,10 @@ main() {
     print_ok "Zone ID: ${zone_id}"
 
     # Step 3: Sync DNS records
-    echo ""
-    echo -e "${CYAN}=== Step 3: Sync DNS records to ${target_domain} ===${NC}"
+    if [ "$DEBUG" == "true" ]; then
+        echo ""
+        echo -e "${CYAN}=== Step 3: Sync DNS records to ${target_domain} ===${NC}"
+    fi
 
     if [ "$DRY_RUN" == "true" ]; then
         print_warn "DRY-RUN mode: no changes will be made"
@@ -1076,27 +1104,35 @@ main() {
     fi
 
     # Summary
-    echo ""
-    echo -e "${CYAN}============================================${NC}"
-    if [ "$SOURCE_MODE" == "lightsail" ]; then
-        echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
+    local compact_ips
+    compact_ips=$(echo "$resolved" | jq -r '.A + .AAAA | join(",")')
+    if [ "$DEBUG" == "true" ]; then
+        echo ""
+        echo -e "${CYAN}============================================${NC}"
+        if [ "$SOURCE_MODE" == "lightsail" ]; then
+            echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
+        else
+            echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
+        fi
+        echo -e "  Target:  ${target_domain}"
+        echo -e "  IPv4:    ${ipv4_count} record(s)"
+        echo -e "  IPv6:    ${ipv6_count} record(s)"
+        echo -e "  TTL:     ${TTL}s"
+        echo -e "  Proxied: ${PROXIED}"
+        if [ "$SOURCE_MODE" == "lightsail" ]; then
+            echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
+        fi
+        if [ "$DRY_RUN" == "true" ]; then
+            echo -e "  Mode:    ${YELLOW}DRY-RUN${NC}"
+        else
+            echo -e "  Mode:    ${GREEN}LIVE${NC}"
+        fi
+        echo -e "${CYAN}============================================${NC}"
     else
-        echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
+        local mode="LIVE"
+        [ "$DRY_RUN" == "true" ] && mode="DRY-RUN"
+        print_result "Synced target=${target_domain} ips=${compact_ips} mode=${mode}"
     fi
-    echo -e "  Target:  ${target_domain}"
-    echo -e "  IPv4:    ${ipv4_count} record(s)"
-    echo -e "  IPv6:    ${ipv6_count} record(s)"
-    echo -e "  TTL:     ${TTL}s"
-    echo -e "  Proxied: ${PROXIED}"
-    if [ "$SOURCE_MODE" == "lightsail" ]; then
-        echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
-    fi
-    if [ "$DRY_RUN" == "true" ]; then
-        echo -e "  Mode:    ${YELLOW}DRY-RUN${NC}"
-    else
-        echo -e "  Mode:    ${GREEN}LIVE${NC}"
-    fi
-    echo -e "${CYAN}============================================${NC}"
 }
 
 main "$@"
