@@ -105,7 +105,6 @@ Route::group(['prefix' => 'balance/detail', 'middleware' => ['auth']], function 
 Route::group(['prefix' => 'ai', 'middleware' => ['auth']], function () {
     Route::get('/', [AiController::class, 'index'])->name('ai.index');
     Route::post('/key', [AiController::class, 'store'])
-        ->middleware('throttle:financial')
         ->name('ai.key.store');
 });
 
@@ -119,7 +118,6 @@ Route::group(['prefix' => 'customer/service', 'middleware' => ['auth']], functio
 Route::group(['prefix' => 'package', 'middleware' => ['auth']], function () {
     Route::get('/', [PackageController::class, 'index'])->name('package');
     Route::post('/{package}/buy', [PackageController::class, 'buy'])
-        ->middleware('throttle:financial')
         ->name('package.buy');
 });
 
