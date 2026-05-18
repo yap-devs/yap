@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -17,8 +16,7 @@ class PackageExpireReminder extends Notification
      */
     public function __construct(
         public User $user,
-    )
-    {
+    ) {
         //
     }
 
@@ -38,12 +36,12 @@ class PackageExpireReminder extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Your Subscription Is About to Expire')
-            ->greeting('Dear ' . $this->user->name . ',')
-            ->line('We would like to remind you that your subscription is approaching its expiration date. To ensure uninterrupted service, please renew your subscription at your earliest convenience.')
-            ->line('If you have any questions or require assistance, feel free to contact our support team.')
-            ->action('Renew Now', url('/package'))
-            ->line('Thank you for choosing our service. We appreciate your continued support.');
+            ->subject(__('messages.notifications.package_expire_subject'))
+            ->greeting(__('messages.notifications.greeting', ['name' => $this->user->name]))
+            ->line(__('messages.notifications.package_expire_line_1'))
+            ->line(__('messages.notifications.package_expire_line_2'))
+            ->action(__('messages.notifications.renew_now'), url('/package'))
+            ->line(__('messages.notifications.thanks'));
     }
 
     /**

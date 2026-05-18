@@ -76,7 +76,7 @@ class ProcessPaymentCommand extends Command
 
                 $payment->user->balanceDetails()->create([
                     'amount' => $payment->amount,
-                    'description' => 'Alipay payment',
+                    'description' => __('messages.balance_descriptions.alipay_payment', [], 'en'),
                 ]);
 
                 GenerateClashProfileLink::dispatch();
@@ -156,7 +156,7 @@ class ProcessPaymentCommand extends Command
 
                     $payment->user->balanceDetails()->create([
                         'amount' => $payment->amount,
-                        'description' => 'Stripe payment',
+                        'description' => __('messages.balance_descriptions.stripe_payment', [], 'en'),
                     ]);
 
                     GenerateClashProfileLink::dispatch();

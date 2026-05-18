@@ -60,7 +60,7 @@ class AlipayController extends Controller
 
             $payment->user->balanceDetails()->create([
                 'amount' => $payment->amount,
-                'description' => 'Alipay payment',
+                'description' => __('messages.balance_descriptions.alipay_payment', [], 'en'),
             ]);
 
             GenerateClashProfileLink::dispatch();
@@ -80,7 +80,7 @@ class AlipayController extends Controller
         $user = $request->user();
         if ($payment->user->isNot($user)) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'Payment not found.',
+                'message' => __('messages.errors.payment_not_found'),
             ]);
         }
 
@@ -118,7 +118,7 @@ class AlipayController extends Controller
                 logger()->critical('Alipay scan failed: '.json_encode($qr_info));
 
                 return redirect()->route('recharge')->withErrors([
-                    'message' => 'Failed to create Alipay payment.',
+                    'message' => __('messages.errors.alipay_create_failed'),
                 ]);
             }
 
@@ -143,13 +143,13 @@ class AlipayController extends Controller
         $user = $request->user();
         if ($payment->user->isNot($user)) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'Payment not found.',
+                'message' => __('messages.errors.payment_not_found'),
             ]);
         }
 
         if ($payment->gateway !== Payment::GATEWAY_ALIPAY) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'Invalid payment gateway.',
+                'message' => __('messages.errors.invalid_payment_gateway'),
             ]);
         }
 

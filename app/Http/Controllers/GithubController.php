@@ -46,11 +46,11 @@ class GithubController extends Controller
         $user = User::where('github_id', $request->input('sponsorship.sponsor.id'))->first();
 
         if (! $user) {
-            return response()->json(['message' => 'User not found']);
+            return response()->json(['message' => __('messages.errors.user_not_found')]);
         }
 
         if ($request->input('action') !== 'created') {
-            return response()->json(['message' => 'Ignoring action']);
+            return response()->json(['message' => __('messages.errors.ignoring_action')]);
         }
 
         $amount = $request->input('sponsorship.tier.monthly_price_in_dollars');
@@ -58,7 +58,7 @@ class GithubController extends Controller
         if (! is_numeric($amount) || $amount <= 0) {
             logger()->warning('GitHub sponsor webhook: invalid amount', ['amount' => $amount]);
 
-            return response()->json(['message' => 'Invalid amount']);
+            return response()->json(['message' => __('messages.errors.invalid_amount')]);
         }
 
         $remote_id = $request->input('sponsorship.tier.node_id').'|'.$request->input('sponsorship.tier.created_at');
@@ -83,12 +83,12 @@ class GithubController extends Controller
 
             $user->balanceDetails()->create([
                 'amount' => $amount,
-                'description' => 'GitHub sponsor',
+                'description' => __('messages.balance_descriptions.github_sponsor', [], 'en'),
             ]);
 
             GenerateClashProfileLink::dispatch();
         });
 
-        return response()->json(['message' => 'ok']);
+        return response()->json(['message' => __('messages.errors.ok')]);
     }
 }

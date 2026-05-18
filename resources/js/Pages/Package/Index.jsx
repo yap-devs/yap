@@ -6,6 +6,7 @@ import {formatPrice} from "@/Utils/formatPrice.js";
 import Modal from "@/Components/Modal.jsx";
 import PrimaryButton from "@/Components/PrimaryButton.jsx";
 import {useState} from 'react';
+import {trans} from '@/Utils/i18n';
 
 
 export default function Index({auth, packages, userPackages}) {
@@ -21,30 +22,29 @@ export default function Index({auth, packages, userPackages}) {
   }
 
   const calcPercentageOff = (rawPrice, price) => {
-    return `${(((rawPrice - price) / rawPrice) * 100).toFixed(0)}% OFF`;
+    return trans('package.off', {percent: (((rawPrice - price) / rawPrice) * 100).toFixed(0)});
   }
 
   return (
     <AuthenticatedLayout
       user={auth.user}
-      header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Traffic Packages</h2>}
+      header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">{trans('package.title')}</h2>}
     >
-      <Head title="Traffic Packages"/>
+      <Head title={trans('package.title')}/>
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
           {/* Explanation banner */}
           <div className="mb-6 bg-blue-50 rounded-lg p-4 border border-blue-100">
             <p className="text-sm text-blue-800">
-              <span className="font-semibold">Traffic packages are optional.</span>
-              {' '}By default, you are billed per GB (pay-as-you-go). Packages offer a lower per-GB rate
-              and are recommended if you use a lot of traffic. Packages are deducted from your balance.
+              <span className="font-semibold">{trans('package.optional_title')}</span>
+              {' '}{trans('package.optional_body')}
             </p>
             <div className="mt-2">
               <button
                 onClick={() => router.get(route('recharge'))}
                 className="text-sm text-blue-600 hover:text-blue-800 font-medium underline"
               >
-                Need to add funds first?
+                {trans('package.need_funds')}
               </button>
             </div>
           </div>
@@ -55,20 +55,19 @@ export default function Index({auth, packages, userPackages}) {
                 <thead>
                 <tr>
                   <th
-                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Name
+                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.name')}
                   </th>
                   <th
-                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Description
+                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.description')}
                   </th>
                   <th
-                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Traffic
+                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.traffic')}
                   </th>
                   <th
-                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Price
+                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.price')}
                   </th>
                   <th
-                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Validity
-                    Period (days)
+                    className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.validity_days')}
                   </th>
                   <th className="px-6 py-3 bg-gray-50"></th>
                 </tr>
@@ -108,7 +107,7 @@ export default function Index({auth, packages, userPackages}) {
                         onClick={() => setConfirmingBuy(_package.id)}
                         className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-lg transition duration-200"
                       >
-                        Buy
+                        {trans('common.buy')}
                       </button>
                     </td>
                   </tr>
@@ -120,25 +119,23 @@ export default function Index({auth, packages, userPackages}) {
 
           {userPackages.length > 0 && (
             <div className="mt-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-3">Your Packages</h2>
+              <h2 className="text-lg font-medium text-gray-900 mb-3">{trans('package.your_packages')}</h2>
               <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div className="p-6 text-gray-900" style={{overflowX: 'auto'}}>
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead>
                     <tr>
                       <th
-                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Name
+                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.name')}
                       </th>
                       <th
-                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Traffic
-                        (Remain/Total)
+                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.traffic_remain_total')}
                       </th>
                       <th
-                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Status
+                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('common.status')}
                       </th>
                       <th
-                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">Expired
-                        At
+                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.expired_at')}
                       </th>
                     </tr>
                     </thead>
@@ -177,13 +174,13 @@ export default function Index({auth, packages, userPackages}) {
 
       <Modal show={confirmingBuy} onClose={() => setConfirmingBuy(false)}>
         <form className="p-6" onSubmit={handleSubmit}>
-          <h2 className="text-lg font-medium text-gray-900">Are you sure you want to buy this package?</h2>
+          <h2 className="text-lg font-medium text-gray-900">{trans('package.confirm_title')}</h2>
           <p className="mt-1 text-sm text-gray-600">
-            Buying this package will directly deduct ${packages.find(p => p.id === confirmingBuy)?.price} from your balance.
+            {trans('package.confirm_body', {amount: packages.find(p => p.id === confirmingBuy)?.price})}
           </p>
           <div className="mt-6 flex justify-end">
-            <SecondaryButton onClick={() => setConfirmingBuy(false)}>Cancel</SecondaryButton>
-            <PrimaryButton className="ms-3">Buy</PrimaryButton>
+            <SecondaryButton onClick={() => setConfirmingBuy(false)}>{trans('common.cancel')}</SecondaryButton>
+            <PrimaryButton className="ms-3">{trans('common.buy')}</PrimaryButton>
           </div>
         </form>
       </Modal>

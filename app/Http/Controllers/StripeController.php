@@ -31,15 +31,18 @@ class StripeController extends Controller
     {
         $request->validate([
             'amount' => 'required|numeric|min:2|max:100',  // in USD
+            'currency' => 'nullable|string|in:cny,jpy',
         ]);
 
         /** @var User $user */
         $user = $request->user();
 
         $amount = $request->input('amount');
+        $currency = $request->input('currency') ?: 'cny';
 
-        return $rechargeOrderLockService->create($user, function () use ($amount, $user) {
+        return $rechargeOrderLockService->create($user, function () use ($amount, $currency, $user) {
             $out_trade_no = 'S'.time().random_int(100000, 999999);
+            $payment_amount = $this->convertUsdAmount($amount, $currency);
 
             // Create payment record first so we have the ID for the success URL
             /** @var Payment $payment */
@@ -49,23 +52,23 @@ class StripeController extends Controller
                 'amount' => $amount,
                 'remote_id' => $out_trade_no,
                 'payload' => [
-                    Payment::STATUS_CREATED => [],
+                    Payment::STATUS_CREATED => [
+                        'currency' => $currency,
+                        'amount' => $payment_amount,
+                    ],
                 ],
             ]);
 
             try {
-                // Convert USD to CNY using configured rate, then to fen (cents).
-                // CNY enables Alipay, WeChat Pay and other CN payment methods on Stripe.
-                $cny_amount = bcmul($amount, config('yap.payment.usd_rmb_rate'), 2);
-                $unit_amount = bcmul($cny_amount, 100, 0);
+                $unit_amount = $this->stripeUnitAmount($payment_amount, $currency);
 
                 $session = Session::create([
                     // Let Stripe determine available payment methods based on Dashboard settings,
-                    // currency (CNY), and customer location.
+                    // currency, and customer location.
                     'customer_email' => $user->email,
                     'line_items' => [[
                         'price_data' => [
-                            'currency' => 'cny',
+                            'currency' => $currency,
                             'product_data' => [
                                 'name' => 'Yap Account Recharge',
                             ],
@@ -85,7 +88,7 @@ class StripeController extends Controller
                 $payment->delete();
 
                 return redirect()->route('recharge')->withErrors([
-                    'message' => 'Failed to create Stripe payment.',
+                    'message' => __('messages.errors.stripe_create_failed'),
                 ]);
             }
 
@@ -94,6 +97,8 @@ class StripeController extends Controller
                 Payment::STATUS_CREATED => [
                     'session_id' => $session->id,
                     'checkout_url' => $session->url,
+                    'currency' => $currency,
+                    'amount' => $payment_amount,
                 ],
             ];
             $payment->save();
@@ -114,14 +119,14 @@ class StripeController extends Controller
 
         if ($payment->status !== Payment::STATUS_CREATED) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'Payment is no longer available.',
+                'message' => __('messages.errors.payment_unavailable'),
             ]);
         }
 
         $checkout_url = $payment->payload[Payment::STATUS_CREATED]['checkout_url'] ?? null;
         if (! $checkout_url) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'Checkout session not found.',
+                'message' => __('messages.errors.checkout_not_found'),
             ]);
         }
 
@@ -134,7 +139,7 @@ class StripeController extends Controller
         $user = $request->user();
         if ($payment->user->isNot($user)) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'Payment not found.',
+                'message' => __('messages.errors.payment_not_found'),
             ]);
         }
 
@@ -234,10 +239,28 @@ class StripeController extends Controller
 
             $payment->user->balanceDetails()->create([
                 'amount' => $payment->amount,
-                'description' => 'Stripe payment',
+                'description' => __('messages.balance_descriptions.stripe_payment', [], 'en'),
             ]);
 
             GenerateClashProfileLink::dispatch();
         });
+    }
+
+    private function convertUsdAmount(float|int|string $amount, string $currency): string
+    {
+        if ($currency === 'jpy') {
+            return (string) round((float) $amount * (float) config('yap.payment.usd_jpy_rate'));
+        }
+
+        return bcmul($amount, config('yap.payment.usd_rmb_rate'), 2);
+    }
+
+    private function stripeUnitAmount(string $amount, string $currency): int
+    {
+        if ($currency === 'jpy') {
+            return (int) $amount;
+        }
+
+        return (int) bcmul($amount, 100, 0);
     }
 }

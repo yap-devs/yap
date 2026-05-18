@@ -5,7 +5,6 @@ namespace App\Notifications;
 use App\Models\User;
 use App\Models\UserPackage;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -20,8 +19,7 @@ class PackageLowTrafficReminder extends Notification
         public User $user,
         public UserPackage $userPackage,
         public float $remainingPercentage
-    )
-    {
+    ) {
         //
     }
 
@@ -45,13 +43,17 @@ class PackageLowTrafficReminder extends Notification
         $percentRemaining = round($this->remainingPercentage * 100);
 
         return (new MailMessage)
-            ->subject('Notice: Low Data Remaining in Your Package')
-            ->greeting('Dear ' . $this->user->name . ',')
-            ->line('We would like to inform you that your current package is running low on available data.')
-            ->line("You have approximately {$remainingGB} GB remaining out of your {$totalGB} GB package ({$percentRemaining}%).")
-            ->line('To avoid any service disruption or additional charges, please consider purchasing additional data.')
-            ->action('Purchase Additional Data', url('/package'))
-            ->line('Thank you for choosing our services. If you need any assistance, please contact our support team.');
+            ->subject(__('messages.notifications.package_low_subject'))
+            ->greeting(__('messages.notifications.greeting', ['name' => $this->user->name]))
+            ->line(__('messages.notifications.package_low_line_1'))
+            ->line(__('messages.notifications.package_low_line_2', [
+                'remaining' => $remainingGB,
+                'total' => $totalGB,
+                'percent' => $percentRemaining,
+            ]))
+            ->line(__('messages.notifications.package_low_line_3'))
+            ->action(__('messages.notifications.purchase_data'), url('/package'))
+            ->line(__('messages.notifications.thanks'));
     }
 
     /**

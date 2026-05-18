@@ -1,17 +1,24 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, router, usePage} from '@inertiajs/react';
-import {useState, useEffect} from 'react';
+import {useEffect, useState} from 'react';
 import Modal from '@/Components/Modal';
+import {trans} from '@/Utils/i18n';
 
-export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPayment}) {
-  const {errors} = usePage().props;
+export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPayment, paymentRates}) {
+  const {errors, locale} = usePage().props;
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [submittingGateway, setSubmittingGateway] = useState(null);
+  const [paymentCurrency, setPaymentCurrency] = useState(() => {
+    const storedCurrency = localStorage.getItem('payment_currency');
+    const isManualCurrency = localStorage.getItem('payment_currency_manual') === 'true';
+
+    return isManualCurrency && storedCurrency ? storedCurrency : (locale === 'ja' ? 'jpy' : 'cny');
+  });
 
   const gatewayLabels = {
     alipay: 'Alipay',
     usdt: 'USDT',
-    stripe: 'Stripe',
+    stripe: paymentCurrency === 'jpy' ? trans('recharge.stripe_jpy') : trans('recharge.stripe_cny'),
     github: 'GitHub Sponsors',
   };
 
@@ -37,11 +44,13 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
   const redirectToGithubOauth = () => {
     window.location.href = route('github.redirect');
   };
+
   const redirectToGithubSponsor = () => {
     const url = new URL(githubSponsorURL);
     url.searchParams.append('amount', githubAmount || 5);
     window.open(url.href, '_blank');
-  }
+  };
+
   const redirectToAlipayScanPage = () => {
     if (submittingGateway || pendingPayment) return;
     setSubmittingGateway('alipay');
@@ -50,7 +59,8 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
       data: {amount: alipayAmount || 5},
       onFinish: () => setSubmittingGateway(null),
     });
-  }
+  };
+
   const redirectToUSDTPage = () => {
     if (submittingGateway || pendingPayment) return;
     setSubmittingGateway('usdt');
@@ -59,14 +69,15 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
       data: {amount: usdtAmount || 5},
       onFinish: () => setSubmittingGateway(null),
     });
-  }
+  };
+
   const redirectToStripePage = () => {
     if (submittingGateway || pendingPayment) return;
     setSubmittingGateway('stripe');
-    router.post(route('stripe.newOrder'), {amount: stripeAmount || 5}, {
+    router.post(route('stripe.newOrder'), {amount: stripeAmount || 5, currency: paymentCurrency}, {
       onFinish: () => setSubmittingGateway(null),
     });
-  }
+  };
 
   const [githubAmount, setGithubAmount] = useState(5);
   const [alipayAmount, setAlipayAmount] = useState(5);
@@ -78,24 +89,19 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
   const [stripeError, setStripeError] = useState('');
 
   useEffect(() => {
-    if (alipayAmount) {
-      const numVal = parseInt(alipayAmount);
-      if (numVal < 2) {
-        setAlipayError('Amount must be at least $2');
-      } else if (numVal > 100) {
-        setAlipayError('Amount cannot exceed $100');
-      }
-    }
+    localStorage.setItem('payment_currency', paymentCurrency);
+  }, [paymentCurrency]);
 
-    if (usdtAmount) {
-      const numVal = parseInt(usdtAmount);
-      if (numVal < 2) {
-        setUsdtError('Amount must be at least $2');
-      } else if (numVal > 100) {
-        setUsdtError('Amount cannot exceed $100');
-      }
+  useEffect(() => {
+    if (localStorage.getItem('payment_currency_manual') !== 'true') {
+      setPaymentCurrency(locale === 'ja' ? 'jpy' : 'cny');
     }
-  }, []);
+  }, [locale]);
+
+  const changePaymentCurrency = (currency) => {
+    localStorage.setItem('payment_currency_manual', 'true');
+    setPaymentCurrency(currency);
+  };
 
   const sponsorAmountChange = (e, setFunc, setError) => {
     const val = e.target.value;
@@ -112,15 +118,29 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
 
     const numVal = parseInt(val);
     if (numVal < 2) {
-      setError('Amount must be at least $2');
+      setError(trans('recharge.amount_min'));
     } else if (numVal > 100) {
-      setError('Amount cannot exceed $100');
+      setError(trans('recharge.amount_max'));
     } else {
       setError('');
     }
-  }
+  };
 
-  // Use static class maps so Tailwind JIT can detect all class names
+  const formatLocalAmount = (amount, currency) => {
+    const rate = paymentRates?.[currency] || 1;
+    const value = currency === 'jpy' ? Math.round(amount * rate) : (amount * rate).toFixed(2);
+
+    return new Intl.NumberFormat(currency === 'jpy' ? 'ja-JP' : 'en-US').format(value);
+  };
+
+  const currencyHelp = () => {
+    const amount = formatLocalAmount(stripeAmount || 5, paymentCurrency);
+
+    return paymentCurrency === 'jpy'
+      ? trans('recharge.jpy_estimate', {amount})
+      : trans('recharge.cny_estimate', {amount});
+  };
+
   const colorStyles = {
     blue: {
       border: 'border-blue-200',
@@ -153,7 +173,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
         setAmount(newAmount);
         if (newAmount >= 2) setError('');
       } else {
-        setError('Amount cannot exceed $100');
+        setError(trans('recharge.amount_max'));
       }
     };
 
@@ -164,7 +184,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
         setError('');
       } else {
         setAmount(newAmount);
-        setError('Amount must be at least $2');
+        setError(trans('recharge.amount_min'));
       }
     };
 
@@ -183,7 +203,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
           {children}
           <div className="mb-4">
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Amount (USD)
+              {trans('recharge.amount_label')}
             </label>
             <div className="flex items-center">
               <div className="relative flex-grow">
@@ -223,7 +243,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
               </div>
             ) : (
               <div className="mt-1 text-xs text-gray-500 text-center">
-                Enter amount between $2-$100
+                {trans('recharge.amount_help')}
               </div>
             )}
           </div>
@@ -238,12 +258,12 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
             onClick={onSubmit}
             disabled={isDisabled}
           >
-              {isSubmitting ? 'Creating Order...' : 'Recharge Now'}
+            {isSubmitting ? trans('recharge.creating_order') : trans('recharge.recharge_now')}
           </button>
         </div>
       </div>
     );
-  }
+  };
 
   const renderGithubSection = () => {
     if (auth.user.github_id) {
@@ -261,7 +281,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
             </div>
           </div>
           <div className="p-4 bg-white text-gray-800">
-            <p className="text-sm text-gray-600 mb-3">Sponsor via GitHub to add funds to your account.</p>
+            <p className="text-sm text-gray-600 mb-3">{trans('recharge.github_sponsor_body')}</p>
             <div className="flex items-center">
               <div className="relative flex-grow">
                 <input
@@ -279,7 +299,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
                 className="ml-2 px-4 py-2 bg-gray-800 hover:bg-gray-900 text-white font-medium rounded-md transition-colors"
                 onClick={redirectToGithubSponsor}
               >
-                Sponsor
+                {trans('recharge.sponsor')}
               </button>
             </div>
           </div>
@@ -298,52 +318,51 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
           </h3>
         </div>
         <div className="p-4 bg-white text-gray-800">
-          <p className="text-sm text-gray-600 mb-3">Link your GitHub account first to use this payment method.</p>
+          <p className="text-sm text-gray-600 mb-3">{trans('recharge.github_link_body')}</p>
           <button
             onClick={redirectToGithubOauth}
             className="w-full py-2 px-4 font-medium text-white bg-gray-800 hover:bg-gray-900 rounded-md transition-colors"
           >
-            Link GitHub Account
+            {trans('recharge.link_github')}
           </button>
         </div>
       </div>
     );
-  }
+  };
 
   return (
     <AuthenticatedLayout
       user={auth.user}
-      header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Recharge</h2>}
+      header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">{trans('recharge.title')}</h2>}
     >
-      <Head title="Recharge"/>
+      <Head title={trans('recharge.title')}/>
 
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
-          {(errors.message || errors.amount) && (
+          {(errors.message || errors.amount || errors.currency) && (
             <div className="mb-6 p-4 bg-red-50 border-l-4 border-red-500 text-red-700 rounded-lg">
               <div className="flex items-center">
                 <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
-                <span>{errors.message || errors.amount}</span>
+                <span>{errors.message || errors.amount || errors.currency}</span>
               </div>
             </div>
           )}
 
-          {/* Pending Payment Banner */}
           {pendingPayment && (
             <div className="mb-6 p-4 bg-amber-50 border-l-4 border-amber-500 rounded-lg">
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-amber-800">You have an unpaid order</h3>
+                  <h3 className="text-sm font-semibold text-amber-800">{trans('recharge.pending_title')}</h3>
                   <p className="mt-1 text-sm text-amber-700">
                     {gatewayLabels[pendingPayment.gateway] || pendingPayment.gateway} - ${pendingPayment.amount}
                     <span className="ml-2 text-amber-600 text-xs">
-                      Created: {pendingPayment.created_at}
+                      {trans('recharge.pending_created')} {pendingPayment.created_at}
                     </span>
                   </p>
                   <p className="mt-1 text-xs text-amber-600">
-                    Please complete this payment or cancel it before creating a new one.
+                    {trans('recharge.pending_body')}
                   </p>
                 </div>
                 <div className="flex gap-2 ml-4 shrink-0">
@@ -353,7 +372,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
                       onClick={continuePendingPayment}
                       className="px-3 py-1.5 text-sm font-medium text-white bg-amber-600 hover:bg-amber-700 rounded-md transition-colors"
                     >
-                      Continue Payment
+                      {trans('recharge.continue_payment')}
                     </button>
                   )}
                   <button
@@ -361,24 +380,23 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
                     onClick={() => setConfirmingCancel(true)}
                     className="px-3 py-1.5 text-sm font-medium text-amber-700 bg-white border border-amber-300 hover:bg-amber-50 rounded-md transition-colors"
                   >
-                    Cancel Order
+                    {trans('recharge.cancel_order')}
                   </button>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Current Balance */}
           <div className="mb-8 bg-white rounded-lg shadow-sm p-6 border border-gray-200">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Current Balance</p>
+                <p className="text-sm text-gray-500">{trans('recharge.current_balance')}</p>
                 <p className={`text-3xl font-bold ${auth.user.balance > 0 ? 'text-green-600' : auth.user.balance < 0 ? 'text-red-600' : 'text-gray-800'}`}>
                   ${auth.user.balance}
                 </p>
               </div>
               <div className="text-right">
-                <p className="text-sm text-gray-500">Account Status</p>
+                <p className="text-sm text-gray-500">{trans('recharge.account_status')}</p>
                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
                   auth.user.is_valid
                     ? auth.user.is_low_priority
@@ -387,29 +405,43 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
                     : 'bg-red-100 text-red-800'
                 }`}>
                   {auth.user.is_valid
-                    ? auth.user.is_low_priority ? 'Low Priority' : 'Active'
-                    : 'Limited'}
+                    ? auth.user.is_low_priority ? trans('recharge.low_priority') : trans('recharge.active')
+                    : trans('recharge.limited')}
                 </span>
               </div>
             </div>
           </div>
 
-          {/* How it works */}
           <div className="mb-8 bg-blue-50 rounded-lg p-4 border border-blue-100">
             <p className="text-sm text-blue-800">
-              <span className="font-semibold">How billing works:</span> You are billed per GB of traffic used (pay-as-you-go).
-              Simply add funds to your account and start using the service immediately.
-              Your balance will be deducted based on actual usage.
+              <span className="font-semibold">{trans('recharge.billing_title')}</span> {trans('recharge.billing_body')}
             </p>
           </div>
 
-          {/* Payment Methods */}
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">Choose a payment method</h3>
+          <div className="mb-6 flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <label className="text-sm font-medium text-gray-700" htmlFor="payment-currency">
+                {trans('common.currency')}
+              </label>
+              <p className="mt-1 text-xs text-gray-500">{trans('recharge.manual_currency_help')}</p>
+            </div>
+            <select
+              id="payment-currency"
+              value={paymentCurrency}
+              onChange={(e) => changePaymentCurrency(e.target.value)}
+              className="rounded-md border-gray-300 text-sm text-gray-700 focus:border-indigo-500 focus:ring-indigo-500"
+            >
+              <option value="cny">CNY</option>
+              <option value="jpy">JPY</option>
+            </select>
+          </div>
+
+          <h3 className="text-lg font-semibold text-gray-800 mb-4">{trans('recharge.choose_method')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {renderPaymentCard({
+            {paymentCurrency === 'cny' && renderPaymentCard({
               title: 'Alipay',
               gateway: 'alipay',
-              badge: <span className="text-xs bg-blue-400/30 px-2 py-1 rounded">Fast</span>,
+              badge: <span className="text-xs bg-blue-400/30 px-2 py-1 rounded">{trans('recharge.fast')}</span>,
               color: 'blue',
               amount: alipayAmount,
               setAmount: setAlipayAmount,
@@ -421,7 +453,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
             {renderPaymentCard({
               title: 'USDT',
               gateway: 'usdt',
-              badge: <span className="text-xs bg-green-400/30 px-2 py-1 rounded">Crypto</span>,
+              badge: <span className="text-xs bg-green-400/30 px-2 py-1 rounded">{trans('recharge.crypto')}</span>,
               color: 'green',
               amount: usdtAmount,
               setAmount: setUsdtAmount,
@@ -430,20 +462,20 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
               onSubmit: redirectToUSDTPage,
               children: (
                 <div className="mb-3 px-2 py-1.5 bg-yellow-50 border border-yellow-200 rounded text-xs text-yellow-700 text-center">
-                  Only <span className="font-semibold">Polygon (MATIC)</span> chain is supported
+                  {trans('recharge.polygon_only')}
                 </div>
               ),
             })}
 
             {renderPaymentCard({
-              title: 'Stripe',
+              title: paymentCurrency === 'jpy' ? trans('recharge.stripe_jpy') : trans('recharge.stripe_cny'),
               gateway: 'stripe',
               badge: (
                 <div className="flex items-center gap-2">
                   {stripeSandbox && (
-                    <span className="text-xs bg-yellow-400 text-yellow-900 font-bold px-2 py-1 rounded">TEST MODE</span>
+                    <span className="text-xs bg-yellow-400 text-yellow-900 font-bold px-2 py-1 rounded">{trans('recharge.test_mode')}</span>
                   )}
-                  <span className="text-xs bg-purple-400/30 px-2 py-1 rounded">Card & more</span>
+                  <span className="text-xs bg-purple-400/30 px-2 py-1 rounded">{trans('recharge.card_more')}</span>
                 </div>
               ),
               color: 'purple',
@@ -452,19 +484,26 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
               error: stripeError,
               setError: setStripeError,
               onSubmit: redirectToStripePage,
+              children: (
+                <div className="mb-3 px-2 py-1.5 bg-purple-50 border border-purple-200 rounded text-xs text-purple-700 text-center">
+                  {currencyHelp()}
+                </div>
+              ),
             })}
 
-            {renderGithubSection()}
+            {paymentCurrency === 'cny' && renderGithubSection()}
           </div>
         </div>
       </div>
 
       <Modal show={confirmingCancel} onClose={() => setConfirmingCancel(false)} maxWidth="md">
         <div className="p-6">
-          <h2 className="text-lg font-medium text-gray-900">Cancel this order?</h2>
+          <h2 className="text-lg font-medium text-gray-900">{trans('recharge.cancel_title')}</h2>
           <p className="mt-2 text-sm text-gray-600">
-            Are you sure you want to cancel the {pendingPayment ? (gatewayLabels[pendingPayment.gateway] || pendingPayment.gateway) : ''} order
-            of ${pendingPayment?.amount}? You can only cancel up to 2 orders per day.
+            {trans('recharge.cancel_body', {
+              gateway: pendingPayment ? (gatewayLabels[pendingPayment.gateway] || pendingPayment.gateway) : '',
+              amount: `$${pendingPayment?.amount}`,
+            })}
           </p>
           <div className="mt-6 flex justify-end gap-3">
             <button
@@ -472,14 +511,14 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
               onClick={() => setConfirmingCancel(false)}
               className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
             >
-              Keep Order
+              {trans('recharge.keep_order')}
             </button>
             <button
               type="button"
               onClick={cancelPendingPayment}
               className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
             >
-              Confirm Cancel
+              {trans('recharge.confirm_cancel')}
             </button>
           </div>
         </div>

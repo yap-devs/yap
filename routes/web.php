@@ -8,6 +8,7 @@ use App\Http\Controllers\ClashController;
 use App\Http\Controllers\CustomerServiceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GithubController;
+use App\Http\Controllers\LocaleController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\ProfileController;
@@ -45,6 +46,8 @@ Route::get('/commercial-disclosure', function () {
         'headOfOperations' => config('yap.commercial_disclosure.head_of_operations'),
     ]);
 })->name('commercial.disclosure');
+
+Route::post('/locale', [LocaleController::class, 'update'])->name('locale.update');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

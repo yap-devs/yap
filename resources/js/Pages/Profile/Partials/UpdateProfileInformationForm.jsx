@@ -4,6 +4,7 @@ import PrimaryButton from '@/Components/PrimaryButton';
 import TextInput from '@/Components/TextInput';
 import {Link, useForm, usePage} from '@inertiajs/react';
 import {Transition} from '@headlessui/react';
+import {trans} from '@/Utils/i18n';
 
 export default function UpdateProfileInformation({mustVerifyEmail, status, className = ''}) {
   const user = usePage().props.auth.user;
@@ -22,16 +23,16 @@ export default function UpdateProfileInformation({mustVerifyEmail, status, class
   return (
     <section className={className}>
       <header>
-        <h2 className="text-lg font-medium text-gray-900">Profile Information</h2>
+        <h2 className="text-lg font-medium text-gray-900">{trans('profile.profile_information')}</h2>
 
         <p className="mt-1 text-sm text-gray-600">
-          Update your account's profile information and email address.
+          {trans('profile.profile_information_body')}
         </p>
       </header>
 
       <form onSubmit={submit} className="mt-6 space-y-6">
         <div>
-          <InputLabel htmlFor="name" value="Name"/>
+          <InputLabel htmlFor="name" value={trans('common.name')}/>
 
           <TextInput
             id="name"
@@ -46,7 +47,7 @@ export default function UpdateProfileInformation({mustVerifyEmail, status, class
         </div>
 
         <div>
-          <InputLabel htmlFor="email" value="Email"/>
+          <InputLabel htmlFor="email" value={trans('common.email')}/>
 
           <TextInput
             id="email"
@@ -64,27 +65,27 @@ export default function UpdateProfileInformation({mustVerifyEmail, status, class
         {mustVerifyEmail && user.email_verified_at === null && (
           <div>
             <p className="text-sm mt-2 text-gray-800">
-              Your email address is unverified.
+              {trans('profile.email_unverified')}
               <Link
                 href={route('verification.send')}
                 method="post"
                 as="button"
                 className="underline text-sm text-gray-600 hover:text-gray-900 rounded-md focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                Click here to re-send the verification email.
+                {trans('profile.resend_verification')}
               </Link>
             </p>
 
             {status === 'verification-link-sent' && (
               <div className="mt-2 font-medium text-sm text-green-600">
-                A new verification link has been sent to your email address.
+                {trans('profile.verification_sent')}
               </div>
             )}
           </div>
         )}
 
         <div className="flex items-center gap-4">
-          <PrimaryButton disabled={processing}>Save</PrimaryButton>
+          <PrimaryButton disabled={processing}>{trans('common.save')}</PrimaryButton>
 
           <Transition
             show={recentlySuccessful}
@@ -93,7 +94,7 @@ export default function UpdateProfileInformation({mustVerifyEmail, status, class
             leave="transition ease-in-out"
             leaveTo="opacity-0"
           >
-            <p className="text-sm text-gray-600">Saved.</p>
+            <p className="text-sm text-gray-600">{trans('common.saved')}</p>
           </Transition>
         </div>
       </form>

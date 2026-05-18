@@ -1,9 +1,11 @@
 import {useState} from 'react';
 import ApplicationLogo from '@/Components/ApplicationLogo';
 import Dropdown from '@/Components/Dropdown';
+import LanguageSelector from '@/Components/LanguageSelector';
 import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import {Link, usePage} from '@inertiajs/react';
+import {trans} from '@/Utils/i18n';
 
 export default function Authenticated({user, header, children}) {
   const [showingNavigationDropdown, setShowingNavigationDropdown] = useState(false);
@@ -23,20 +25,20 @@ export default function Authenticated({user, header, children}) {
 
               <div className="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                 <NavLink href={route('dashboard')} active={route().current('dashboard')}>
-                  Dashboard
+                  {trans('nav.dashboard')}
                 </NavLink>
                 <NavLink href={route('recharge')} active={route().current('recharge')}>
-                  Recharge
+                  {trans('nav.recharge')}
                 </NavLink>
                 <NavLink href={route('package')} active={route().current('package')}>
-                  Traffic Packages
+                  {trans('nav.traffic_packages')}
                 </NavLink>
                 <NavLink href={route('stat')} active={route().current('stat')}>
-                  Statistics
+                  {trans('nav.statistics')}
                 </NavLink>
                 {features.ai_enabled && (
                   <NavLink href={route('ai.index')} active={route().current('ai.index')}>
-                    AI Key
+                    {trans('nav.ai_key')}
                   </NavLink>
                 )}
                 <NavLink
@@ -44,12 +46,13 @@ export default function Authenticated({user, header, children}) {
                   active={route().current('customer.service')}
                   className="transition-all duration-200 ease-in-out transform animate-pulse bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-transparent bg-clip-text"
                 >
-                  <span>Customer Service</span>
+                  <span>{trans('nav.customer_service')}</span>
                 </NavLink>
               </div>
             </div>
 
             <div className="hidden sm:flex sm:items-center sm:ms-6">
+              <LanguageSelector className="mr-3" />
               <div className="ms-3 relative">
                 <Dropdown>
                   <Dropdown.Trigger>
@@ -76,11 +79,11 @@ export default function Authenticated({user, header, children}) {
                   </Dropdown.Trigger>
 
                   <Dropdown.Content>
-                    <Dropdown.Link href={route('profile.edit')}>Profile</Dropdown.Link>
-                    <Dropdown.Link href={route('payment')}>Payment History</Dropdown.Link>
-                    <Dropdown.Link href={route('balance.detail')}>Balance Detail</Dropdown.Link>
+                    <Dropdown.Link href={route('profile.edit')}>{trans('nav.profile')}</Dropdown.Link>
+                    <Dropdown.Link href={route('payment')}>{trans('nav.payment_history')}</Dropdown.Link>
+                    <Dropdown.Link href={route('balance.detail')}>{trans('nav.balance_detail')}</Dropdown.Link>
                     <Dropdown.Link href={route('logout')} method="post" as="button">
-                      Log Out
+                      {trans('nav.log_out')}
                     </Dropdown.Link>
                   </Dropdown.Content>
                 </Dropdown>
@@ -116,24 +119,24 @@ export default function Authenticated({user, header, children}) {
         <div className={(showingNavigationDropdown ? 'block' : 'hidden') + ' sm:hidden'}>
           <div className="pt-2 pb-3 space-y-1">
             <ResponsiveNavLink href={route('dashboard')} active={route().current('dashboard')}>
-              Dashboard
+              {trans('nav.dashboard')}
             </ResponsiveNavLink>
             <ResponsiveNavLink href={route('recharge')} active={route().current('recharge')}>
-              Recharge
+              {trans('nav.recharge')}
             </ResponsiveNavLink>
             <ResponsiveNavLink href={route('package')} active={route().current('package')}>
-              Traffic Packages
+              {trans('nav.traffic_packages')}
             </ResponsiveNavLink>
             <ResponsiveNavLink href={route('stat')} active={route().current('stat')}>
-              Statistics
+              {trans('nav.statistics')}
             </ResponsiveNavLink>
             {features.ai_enabled && (
               <ResponsiveNavLink href={route('ai.index')} active={route().current('ai.index')}>
-                AI Key
+                {trans('nav.ai_key')}
               </ResponsiveNavLink>
             )}
             <ResponsiveNavLink href={route('customer.service')} active={route().current('customer.service')}>
-              <span className="animate-pulse bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-transparent bg-clip-text">Customer Service</span>
+              <span className="animate-pulse bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-transparent bg-clip-text">{trans('nav.customer_service')}</span>
             </ResponsiveNavLink>
           </div>
 
@@ -144,11 +147,14 @@ export default function Authenticated({user, header, children}) {
             </div>
 
             <div className="mt-3 space-y-1">
-              <ResponsiveNavLink href={route('profile.edit')}>Profile</ResponsiveNavLink>
-              <ResponsiveNavLink href={route('payment')}>Payment History</ResponsiveNavLink>
-              <ResponsiveNavLink href={route('balance.detail')}>Balance Detail</ResponsiveNavLink>
+              <div className="px-4 py-2">
+                <LanguageSelector />
+              </div>
+              <ResponsiveNavLink href={route('profile.edit')}>{trans('nav.profile')}</ResponsiveNavLink>
+              <ResponsiveNavLink href={route('payment')}>{trans('nav.payment_history')}</ResponsiveNavLink>
+              <ResponsiveNavLink href={route('balance.detail')}>{trans('nav.balance_detail')}</ResponsiveNavLink>
               <ResponsiveNavLink method="post" href={route('logout')} as="button">
-                Log Out
+                {trans('nav.log_out')}
               </ResponsiveNavLink>
             </div>
           </div>

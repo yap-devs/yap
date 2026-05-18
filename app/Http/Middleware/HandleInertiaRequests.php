@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\App;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -34,6 +35,9 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'locale' => App::getLocale(),
+            'locales' => config('yap.locales'),
+            'translations' => trans('messages'),
             'features' => [
                 'ai_enabled' => (bool) config('services.sub2api.enabled'),
             ],

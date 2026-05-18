@@ -58,13 +58,13 @@ class BepusdtController extends Controller
         $user = $request->user();
         if ($payment->user->isNot($user)) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'Payment not found.',
+                'message' => __('messages.errors.payment_not_found'),
             ]);
         }
 
         if ($payment->gateway !== Payment::GATEWAY_USDT) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'Invalid payment gateway.',
+                'message' => __('messages.errors.invalid_payment_gateway'),
             ]);
         }
 
@@ -73,7 +73,7 @@ class BepusdtController extends Controller
 
         if (! $payment_url) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'Payment URL not found.',
+                'message' => __('messages.errors.payment_url_not_found'),
             ]);
         }
 
@@ -116,7 +116,7 @@ class BepusdtController extends Controller
 
             $payment->user->balanceDetails()->create([
                 'amount' => $payment->amount,
-                'description' => 'Usdt payment',
+                'description' => __('messages.balance_descriptions.usdt_payment', [], 'en'),
             ]);
 
             GenerateClashProfileLink::dispatch();

@@ -23,7 +23,7 @@ class RechargeOrderLockService
             });
         } catch (LockTimeoutException) {
             return redirect()->route('recharge')->withErrors([
-                'message' => 'A recharge order is already being created. Please wait a moment and try again.',
+                'message' => __('messages.errors.recharge_order_locked'),
             ]);
         }
     }
@@ -36,7 +36,7 @@ class RechargeOrderLockService
     private function pendingPaymentRedirect(): RedirectResponse
     {
         return redirect()->route('recharge')->withErrors([
-            'message' => 'You have an unpaid payment. Please complete or cancel it before creating a new one.',
+            'message' => __('messages.errors.unpaid_payment_exists'),
         ]);
     }
 }

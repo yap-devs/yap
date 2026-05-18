@@ -26,7 +26,7 @@ class CustomerServiceController extends Controller
 
         if (! config('services.sub2api.enabled') && $user->sub2api_key_id) {
             return redirect()->route('customer.service')
-                ->with('error', 'Subscription UUID reset is unavailable while AI issuance is disabled for accounts with an active AI key.');
+                ->with('error', __('messages.errors.ai_subscription_reset_unavailable'));
         }
 
         return DB::transaction(function () use ($user) {
@@ -40,25 +40,25 @@ class CustomerServiceController extends Controller
 
             if (Cache::has($pending_key)) {
                 return redirect()->route('customer.service')
-                    ->with('error', 'A subscription reset is already in progress. Please wait a few minutes and try again.');
+                    ->with('error', __('messages.errors.subscription_reset_in_progress'));
             }
 
             if ($user->balance < $price) {
                 return redirect()->route('customer.service')
-                    ->with('error', 'Insufficient balance to reset subscription.');
+                    ->with('error', __('messages.errors.insufficient_reset_balance'));
             }
 
             $user->decrement('balance', $price);
             $user->balanceDetails()->create([
                 'amount' => -$price,
-                'description' => 'Subscription URL reset',
+                'description' => __('messages.balance_descriptions.subscription_url_reset', [], 'en'),
             ]);
 
             Cache::put($pending_key, true, now()->addMinutes(15));
             UpdateUserUuid::dispatch($user, $old_key_id, $old_uuid, $new_uuid)->afterCommit();
 
             return redirect()->route('customer.service')
-                ->with('success', 'Subscription reset successfully, please wait for a few minutes for the changes to take effect.');
+                ->with('success', __('messages.success.subscription_reset'));
         });
     }
 }

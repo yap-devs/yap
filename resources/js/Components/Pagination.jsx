@@ -1,4 +1,5 @@
 import { Link } from "@inertiajs/react";
+import {trans} from '@/Utils/i18n';
 
 function decodeLabel(label) {
   return label.replace(/&laquo;/g, '\u00AB').replace(/&raquo;/g, '\u00BB');
@@ -11,7 +12,7 @@ export default function Pagination({ links }) {
     <div className="bg-white px-4 py-3 flex items-center justify-between border-t border-gray-200 sm:px-6">
       <div>
         <div>
-          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+          <nav className="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label={trans('common.pagination')}>
             {links.map((link, index) => (
               <Link
                 preserveScroll

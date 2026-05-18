@@ -1,5 +1,7 @@
 import {Head, Link} from '@inertiajs/react';
 import {useEffect, useState} from 'react';
+import LanguageSelector from '@/Components/LanguageSelector';
+import {trans} from '@/Utils/i18n';
 
 export default function Welcome({auth, laravelVersion, phpVersion}) {
   const [scrolled, setScrolled] = useState(false);
@@ -12,7 +14,7 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
 
   return (
     <>
-      <Head title="YAP - Network Acceleration Service"/>
+      <Head title={trans('welcome.title')}/>
       <div className="bg-gray-950 text-gray-100 min-h-screen flex flex-col antialiased">
 
         {/* Navigation */}
@@ -22,21 +24,22 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
             <div className="flex items-center gap-4">
               {auth.user ? (
                 <Link href={route('dashboard')} className="text-sm text-gray-300 hover:text-white transition-colors">
-                  Dashboard
+                  {trans('nav.dashboard')}
                 </Link>
               ) : (
                 <>
                   <Link href={route('login')} className="text-sm text-gray-400 hover:text-white transition-colors">
-                    Log in
+                    {trans('auth.login')}
                   </Link>
                   <Link
                     href={route('register')}
                     className="text-sm font-medium px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white transition-colors"
                   >
-                    Get Started
+                    {trans('welcome.get_started')}
                   </Link>
                 </>
               )}
+              <LanguageSelector className="text-gray-300" />
             </div>
           </div>
         </nav>
@@ -54,24 +57,23 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
 
             <div className="relative max-w-6xl mx-auto px-6 text-center">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.15] text-white">
-                Fast, Stable, Global<br className="hidden sm:block"/> Network Acceleration
+                {trans('welcome.hero_title')}
               </h1>
               <p className="mt-6 text-lg sm:text-xl text-gray-400 max-w-2xl mx-auto leading-relaxed">
-                Premium proxy service with smart routing, multi-platform support,
-                and streaming media unlock. Pay only for the traffic you use.
+                {trans('welcome.hero_body')}
               </p>
               <div className="mt-10 flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Link
                   href={route('register')}
                   className="w-full sm:w-auto text-center px-8 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors text-sm"
                 >
-                  Create Free Account
+                  {trans('welcome.create_free_account')}
                 </Link>
                 <a
                   href="#features"
                   className="w-full sm:w-auto text-center px-8 py-3 rounded-lg border border-gray-700 hover:border-gray-500 text-gray-300 hover:text-white font-medium transition-colors text-sm"
                 >
-                  Learn More
+                  {trans('welcome.learn_more')}
                 </a>
               </div>
             </div>
@@ -81,12 +83,7 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
           <section className="border-y border-white/5 bg-white/[0.02]">
             <div className="max-w-6xl mx-auto px-6 py-8">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
-                {[
-                  {label: 'Supported Clients', value: 'Clash / Shadowrocket / Stash'},
-                  {label: 'Payment Methods', value: 'Alipay / USDT / GitHub'},
-                  {label: 'Billing Model', value: 'Pay-per-traffic'},
-                  {label: 'Support', value: 'Telegram Community'},
-                ].map((item, i) => (
+                {trans('welcome.trust').map((item, i) => (
                   <div key={i}>
                     <div className="text-xs text-gray-500 uppercase tracking-wider mb-1">{item.label}</div>
                     <div className="text-sm font-medium text-gray-200">{item.value}</div>
@@ -101,10 +98,10 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
             <div className="max-w-6xl mx-auto px-6">
               <div className="text-center mb-16">
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  Everything you need for unrestricted access
+                  {trans('welcome.features_title')}
                 </h2>
                 <p className="mt-4 text-gray-400 max-w-xl mx-auto">
-                  Built for performance, priced for fairness.
+                  {trans('welcome.features_body')}
                 </p>
               </div>
 
@@ -114,43 +111,37 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
                     icon: (
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 13.5l10.5-11.25L12 10.5h8.25L9.75 21.75 12 13.5H3.75z"/>
                     ),
-                    title: 'High-speed Nodes',
-                    desc: 'Optimized global server network with low-latency connections and high-bandwidth backbone infrastructure.',
+                    ...trans('welcome.features')[0],
                   },
                   {
                     icon: (
                       <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z"/>
                     ),
-                    title: 'Privacy First',
-                    desc: 'No activity logging, no user tracking. Your connection data is never stored or monitored.',
+                    ...trans('welcome.features')[1],
                   },
                   {
                     icon: (
                       <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 21L3 16.5m0 0L7.5 12M3 16.5h13.5m0-13.5L21 7.5m0 0L16.5 12M21 7.5H7.5"/>
                     ),
-                    title: 'Smart Routing',
-                    desc: 'Automatic split tunneling -- direct connection for domestic sites, accelerated routing for international access.',
+                    ...trans('welcome.features')[2],
                   },
                   {
                     icon: (
                       <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z M15.91 11.672a.375.375 0 010 .656l-5.603 3.113a.375.375 0 01-.557-.328V8.887c0-.286.307-.466.557-.327l5.603 3.112z"/>
                     ),
-                    title: 'Streaming Unlock',
-                    desc: 'Dedicated nodes for Netflix, Disney+, HBO, Hulu and more. Watch global content without restrictions.',
+                    ...trans('welcome.features')[3],
                   },
                   {
                     icon: (
                       <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18.75a60.07 60.07 0 0115.797 2.101c.727.198 1.453-.342 1.453-1.096V18.75M3.75 4.5v.75A.75.75 0 013 6h-.75m0 0v-.375c0-.621.504-1.125 1.125-1.125H20.25M2.25 6v9m18-10.5v.75c0 .414.336.75.75.75h.75m-1.5-1.5h.375c.621 0 1.125.504 1.125 1.125v9.75c0 .621-.504 1.125-1.125 1.125h-.375m1.5-1.5H21a.75.75 0 00-.75.75v.75m0 0H3.75m0 0h-.375a1.125 1.125 0 01-1.125-1.125V15m1.5 1.5v-.75A.75.75 0 003 15h-.75M15 10.5a3 3 0 11-6 0 3 3 0 016 0zm3 0h.008v.008H18V10.5zm-12 0h.008v.008H6V10.5z"/>
                     ),
-                    title: 'Flexible Billing',
-                    desc: 'Pay-as-you-go pricing or purchase traffic packages at bulk discount rates. No monthly subscriptions forced.',
+                    ...trans('welcome.features')[4],
                   },
                   {
                     icon: (
                       <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 1.5H8.25A2.25 2.25 0 006 3.75v16.5a2.25 2.25 0 002.25 2.25h7.5A2.25 2.25 0 0018 20.25V3.75a2.25 2.25 0 00-2.25-2.25H13.5m-3 0V3h3V1.5m-3 0h3m-3 18.75h3"/>
                     ),
-                    title: 'Multi-platform',
-                    desc: 'One subscription URL works across Clash, Shadowrocket, and Stash on Windows, macOS, iOS, Android, and Linux.',
+                    ...trans('welcome.features')[5],
                   },
                 ].map((feature, i) => (
                   <div key={i} className="group p-6 rounded-xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/10 transition-colors">
@@ -172,17 +163,13 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
             <div className="max-w-6xl mx-auto px-6">
               <div className="text-center mb-16">
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  Get connected in minutes
+                  {trans('welcome.how_title')}
                 </h2>
-                <p className="mt-4 text-gray-400">Three simple steps to get started.</p>
+                <p className="mt-4 text-gray-400">{trans('welcome.how_body')}</p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-                {[
-                  {step: '1', title: 'Create an account', desc: 'Sign up for free with just your email. No credit card required.'},
-                  {step: '2', title: 'Top up balance', desc: 'Add funds via Alipay, USDT, or GitHub Sponsors. Start from as low as $2.'},
-                  {step: '3', title: 'Import & connect', desc: 'Copy your subscription URL into Clash, Shadowrocket, or Stash and connect instantly.'},
-                ].map((item, i) => (
+                {trans('welcome.steps').map((item, i) => (
                   <div key={i} className="text-center">
                     <div className="w-10 h-10 rounded-full bg-indigo-600/20 text-indigo-400 text-sm font-bold flex items-center justify-center mx-auto mb-4">
                       {item.step}
@@ -200,17 +187,17 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
             <div className="max-w-6xl mx-auto px-6">
               <div className="rounded-2xl bg-gradient-to-b from-indigo-600/10 to-transparent border border-indigo-500/10 p-12 sm:p-16 text-center">
                 <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-                  Start using YAP today
+                  {trans('welcome.cta_title')}
                 </h2>
                 <p className="mt-4 text-gray-400 max-w-lg mx-auto">
-                  Free to register. No monthly commitment. Pay only for the traffic you actually use.
+                  {trans('welcome.cta_body')}
                 </p>
                 <div className="mt-8">
                   <Link
                     href={route('register')}
                     className="inline-flex items-center px-8 py-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition-colors text-sm"
                   >
-                    Create Free Account
+                    {trans('welcome.create_free_account')}
                     <svg className="ml-2 w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3"/>
                     </svg>
@@ -232,9 +219,9 @@ export default function Welcome({auth, laravelVersion, phpVersion}) {
                 </span>
               </div>
               <div className="flex items-center gap-6 text-xs text-gray-500">
-                <Link href={route('policy')} className="hover:text-gray-300 transition-colors">Privacy Policy</Link>
-                <Link href={route('tos')} className="hover:text-gray-300 transition-colors">Terms of Service</Link>
-                <Link href={route('commercial.disclosure')} className="hover:text-gray-300 transition-colors">Commercial Disclosure</Link>
+                <Link href={route('policy')} className="hover:text-gray-300 transition-colors">{trans('common.privacy_policy')}</Link>
+                <Link href={route('tos')} className="hover:text-gray-300 transition-colors">{trans('common.terms_of_service')}</Link>
+                <Link href={route('commercial.disclosure')} className="hover:text-gray-300 transition-colors">{trans('common.commercial_disclosure')}</Link>
               </div>
               <div className="flex items-center gap-4">
                 <a href="https://t.me/yap_devs" target="_blank" rel="noopener noreferrer"

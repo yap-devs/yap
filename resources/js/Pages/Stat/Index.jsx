@@ -3,14 +3,15 @@ import {Head} from '@inertiajs/react';
 import {formatBytes} from "@/Utils/formatBytes";
 import {CategoryScale, Chart as ChartJS, Legend, LinearScale, LineElement, PointElement, Tooltip,} from 'chart.js';
 import {Line} from "react-chartjs-2";
+import {trans} from '@/Utils/i18n';
 
 export default function Index({auth, chartData}) {
   const renderChart = () => {
     if (chartData.length === 0) {
       return (
         <div className="text-center text-gray-500">
-          <div>Oops! It looks like there's nothing here.</div>
-          <div>Once data is available, it will appear here.</div>
+          <div>{trans('stat.empty_title')}</div>
+          <div>{trans('stat.empty_body')}</div>
         </div>
       );
     }
@@ -64,9 +65,9 @@ export default function Index({auth, chartData}) {
 
   return (<AuthenticatedLayout
     user={auth.user}
-    header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Stat</h2>}
+    header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">{trans('stat.title')}</h2>}
   >
-    <Head title="Stat"/>
+    <Head title={trans('stat.title')}/>
 
     <div className="py-12">
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">

@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Models\User;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -17,8 +16,7 @@ class BalanceReminder extends Notification
      */
     public function __construct(
         public User $user,
-    )
-    {
+    ) {
         //
     }
 
@@ -38,12 +36,12 @@ class BalanceReminder extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Account Balance Notification')
-            ->greeting('Dear ' . $this->user->name . ',')
-            ->line('This is a reminder that your account balance is currently low. To avoid any interruption of service, please consider recharging your account at your earliest convenience.')
-            ->line('If you have any questions or need assistance, our support team is here to help.')
-            ->action('Recharge Account', url('/profile'))
-            ->line('Thank you for your continued trust in our services.');
+            ->subject(__('messages.notifications.balance_subject'))
+            ->greeting(__('messages.notifications.greeting', ['name' => $this->user->name]))
+            ->line(__('messages.notifications.balance_line_1'))
+            ->line(__('messages.notifications.balance_line_2'))
+            ->action(__('messages.notifications.balance_action'), url('/profile'))
+            ->line(__('messages.notifications.thanks'));
     }
 
     /**

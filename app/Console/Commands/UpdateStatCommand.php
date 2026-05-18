@@ -165,7 +165,7 @@ class UpdateStatCommand extends Command
             if ($locked_user->isDirty(['balance', 'traffic_unpaid'])) {
                 $locked_user->balanceDetails()->create([
                     'amount' => $locked_user->balance - $locked_user->getOriginal('balance'),
-                    'description' => 'Traffic deduction',
+                    'description' => __('messages.balance_descriptions.traffic_deduction', [], 'en'),
                 ]);
 
                 $this->log("User $locked_user->email balance updated from {$locked_user->getOriginal('balance')} to $locked_user->balance");
@@ -291,7 +291,7 @@ class UpdateStatCommand extends Command
                 $locked_user->traffic_unpaid = 0;
                 $locked_user->balanceDetails()->create([
                     'amount' => $locked_user->balance - $locked_user->getOriginal('balance'),
-                    'description' => 'Daily deduction',
+                    'description' => __('messages.balance_descriptions.daily_deduction', [], 'en'),
                 ]);
                 $this->log("User $locked_user->email balance updated from {$locked_user->getOriginal('balance')} to $locked_user->balance");
                 $locked_user->save();

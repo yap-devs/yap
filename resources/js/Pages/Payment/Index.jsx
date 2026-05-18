@@ -1,6 +1,7 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, Link} from '@inertiajs/react';
 import Pagination from "@/Components/Pagination.jsx";
+import {trans} from '@/Utils/i18n';
 
 export default function Index({auth, payments}) {
   const statusCssMap = {
@@ -13,9 +14,9 @@ export default function Index({auth, payments}) {
 
   return (<AuthenticatedLayout
     user={auth.user}
-    header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">Payment</h2>}
+    header={<h2 className="font-semibold text-xl text-gray-800 leading-tight">{trans('payment.title')}</h2>}
   >
-    <Head title="Payment"/>
+    <Head title={trans('payment.title')}/>
 
     <div className="py-12">
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -23,7 +24,7 @@ export default function Index({auth, payments}) {
           <div className="p-6 text-gray-900" style={{overflowX: 'auto'}}>
             {
               payments.data.length === 0 ? (
-                <div className="text-center text-gray-600">No payments found.</div>
+                <div className="text-center text-gray-600">{trans('payment.no_payments')}</div>
               ) : (
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead>
@@ -34,23 +35,23 @@ export default function Index({auth, payments}) {
                     </th>
                     <th
                       className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Gateway
+                      {trans('payment.gateway')}
                     </th>
                     <th
                       className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Date
+                      {trans('common.date')}
                     </th>
                     <th
                       className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Amount
+                      {trans('common.amount')}
                     </th>
                     <th
                       className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Status
+                      {trans('common.status')}
                     </th>
                     <th
                       className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">
-                      Action
+                      {trans('common.action')}
                     </th>
                   </tr>
                   </thead>
@@ -72,26 +73,26 @@ export default function Index({auth, payments}) {
                       <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusCssMap[payment.status]}`}>
-                            {payment.status}
+                            {trans(`payment.${payment.status}`, {}, payment.status)}
                           </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {
                           (payment.status === 'created') && (payment.gateway === 'alipay') && (
                             <Link href={route('alipay.scan', payment)}
-                                  className="text-indigo-600 hover:text-indigo-900">Pay</Link>
+                                   className="text-indigo-600 hover:text-indigo-900">{trans('common.pay')}</Link>
                           )
                         }
                         {
                           (payment.status === 'created') && (payment.gateway === 'usdt') && (
                             <a href={route('bepusdt.scan', payment)}
-                                  className="text-indigo-600 hover:text-indigo-900">Pay</a>
+                                   className="text-indigo-600 hover:text-indigo-900">{trans('common.pay')}</a>
                           )
                         }
                         {
                           (payment.status === 'created') && (payment.gateway === 'stripe') && (
                             <Link href={route('stripe.pay', payment)}
-                                  className="text-indigo-600 hover:text-indigo-900">Pay</Link>
+                                   className="text-indigo-600 hover:text-indigo-900">{trans('common.pay')}</Link>
                           )
                         }
                       </td>

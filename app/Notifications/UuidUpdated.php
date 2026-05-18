@@ -16,8 +16,7 @@ class UuidUpdated extends Notification
      */
     public function __construct(
         public User $user,
-    )
-    {
+    ) {
         //
     }
 
@@ -37,12 +36,12 @@ class UuidUpdated extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('Your UUID Has Been Updated')
-            ->greeting('Dear ' . $this->user->name . ',')
-            ->line('We would like to inform you that your UUID has been successfully updated.')
-            ->line('Please ensure that you update your subscription configuration with the new UUID to maintain uninterrupted service.')
-            ->action('Access Dashboard', url('/dashboard'))
-            ->line('Thank you for your continued support. If you have any questions, please contact our support team.');
+            ->subject(__('messages.notifications.uuid_subject'))
+            ->greeting(__('messages.notifications.greeting', ['name' => $this->user->name]))
+            ->line(__('messages.notifications.uuid_line_1'))
+            ->line(__('messages.notifications.uuid_line_2'))
+            ->action(__('messages.notifications.dashboard_action'), url('/dashboard'))
+            ->line(__('messages.notifications.thanks'));
     }
 
     /**

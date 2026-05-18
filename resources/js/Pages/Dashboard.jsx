@@ -2,18 +2,19 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, Link, router} from '@inertiajs/react';
 import {useState} from "react";
 import {formatBytes} from "@/Utils/formatBytes";
+import {trans} from '@/Utils/i18n';
 
 export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraffic}) {
-  const [copyButton, setCopyButton] = useState('Copy URL');
+  const [copyButton, setCopyButton] = useState(trans('dashboard.copy_url'));
   const [showTooltip, setShowTooltip] = useState(false);
 
   const copyToClipboard = async text => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopyButton('Copied!');
+      setCopyButton(trans('dashboard.copied'));
       setShowTooltip(true);
       setTimeout(() => {
-        setCopyButton('Copy URL');
+        setCopyButton(trans('dashboard.copy_url'));
         setShowTooltip(false);
       }, 2000);
     } catch (err) {
@@ -37,9 +38,9 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
 
   const renderStepIndicator = () => {
     const steps = [
-      {num: 1, label: 'Add Funds'},
-      {num: 2, label: 'Connect'},
-      {num: 3, label: 'You\'re Online'},
+      {num: 1, label: trans('dashboard.add_funds')},
+      {num: 2, label: trans('dashboard.connect')},
+      {num: 3, label: trans('dashboard.online')},
     ];
 
     return (
@@ -85,7 +86,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
     }`}>
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm text-gray-500 mb-1">Balance</p>
+          <p className="text-sm text-gray-500 mb-1">{trans('dashboard.balance')}</p>
           <p className={`text-3xl font-bold ${
             auth.user.balance > 0 ? 'text-green-600' : auth.user.balance < 0 ? 'text-red-600' : 'text-gray-800'
           }`}>
@@ -103,12 +104,12 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
           </svg>
-          Add Funds
+          {trans('dashboard.add_funds')}
         </button>
       </div>
       <div className="mt-3 pt-3 border-t border-gray-200">
         <p className="text-xs text-gray-500">
-          Pay-as-you-go: ${unitPrice}/GB. Traffic packages are optional for heavy users.
+          {trans('dashboard.payg', {price: unitPrice})}
         </p>
       </div>
     </div>
@@ -123,15 +124,15 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
             </svg>
             <div>
-              <p className="font-medium text-amber-800">Add funds to activate your subscription</p>
+              <p className="font-medium text-amber-800">{trans('dashboard.activate_title')}</p>
               <p className="text-sm text-amber-700 mt-1">
-                Once you have a positive balance, your subscription URL will become active and you can connect immediately.
+                {trans('dashboard.activate_body')}
               </p>
               <button
                 onClick={() => router.get(route('recharge'))}
                 className="mt-3 bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 px-4 rounded-lg transition duration-200"
               >
-                Recharge Now
+                {trans('dashboard.recharge_now')}
               </button>
             </div>
           </div>
@@ -148,15 +149,15 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"/>
               </svg>
               <p className="text-sm text-amber-800">
-                <span className="font-medium">Low priority mode.</span>
-                {' '}Some servers are restricted.{' '}
+                <span className="font-medium">{trans('dashboard.low_priority_title')}</span>
+                {' '}{trans('dashboard.low_priority_body')}{' '}
                 <button
                   onClick={() => router.get(route('recharge'))}
                   className="text-blue-600 hover:text-blue-800 underline font-medium"
                 >
-                  Add funds
+                  {trans('dashboard.add_funds')}
                 </button>
-                {' '}to upgrade.
+                {' '}{trans('dashboard.low_priority_suffix')}
               </p>
             </div>
           </div>
@@ -173,7 +174,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
             {copyButton}
             {showTooltip && (
               <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded">
-                Copied!
+                {trans('dashboard.copied')}
               </span>
             )}
           </button>
@@ -184,7 +185,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
             </svg>
-            Import to Clash
+            {trans('dashboard.import_clash')}
           </button>
           <button
             onClick={() => window.location.href = 'shadowrocket://add/sub://' + btoa(clashUrl)}
@@ -193,7 +194,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z"/>
             </svg>
-            Import to Shadowrocket
+            {trans('dashboard.import_shadowrocket')}
           </button>
           <button
             onClick={() => window.location.href = 'stash://install-config?url=' + encodeURIComponent(clashUrl)}
@@ -202,7 +203,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            Import to Stash
+            {trans('dashboard.import_stash')}
           </button>
         </div>
       </div>
@@ -216,7 +217,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
           <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4"/>
           </svg>
-          <span>No servers available at the moment.</span>
+          <span>{trans('dashboard.no_servers')}</span>
         </div>
       );
     }
@@ -246,7 +247,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                   </svg>
-                  {needsRecharge ? 'Requires active account' : 'Requires higher priority'}
+                  {needsRecharge ? trans('dashboard.requires_active') : trans('dashboard.requires_priority')}
                 </div>
               )}
             </div>
@@ -260,10 +261,10 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
     <AuthenticatedLayout
       user={auth.user}
       header={
-        <h2 className="font-semibold text-xl text-gray-800 leading-tight">Dashboard</h2>
+        <h2 className="font-semibold text-xl text-gray-800 leading-tight">{trans('dashboard.title')}</h2>
       }
     >
-      <Head title="Dashboard"/>
+      <Head title={trans('dashboard.title')}/>
 
       <div className="py-8">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -277,15 +278,15 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
 
             {/* Usage stats card */}
             <div className="bg-white rounded-xl p-5 border border-gray-200">
-              <p className="text-sm text-gray-500 mb-1">Traffic Usage</p>
+              <p className="text-sm text-gray-500 mb-1">{trans('dashboard.traffic_usage')}</p>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-2xl font-bold text-gray-800">{totalTraffic}</p>
-                  <p className="text-xs text-gray-400">Total</p>
+                  <p className="text-xs text-gray-400">{trans('dashboard.total')}</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-gray-800">{formatBytes(todayTraffic)}</p>
-                  <p className="text-xs text-gray-400">Today</p>
+                  <p className="text-xs text-gray-400">{trans('dashboard.today')}</p>
                 </div>
               </div>
               <div className="mt-3 pt-3 border-t border-gray-100">
@@ -293,7 +294,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
                   href={route('stat')}
                   className="text-sm text-blue-600 hover:text-blue-800 font-medium transition-colors"
                 >
-                  View detailed statistics &rarr;
+                  {trans('dashboard.view_stats')}
                 </Link>
               </div>
             </div>
@@ -305,7 +306,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
               <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1"/>
               </svg>
-              Subscription
+              {trans('dashboard.subscription')}
             </h3>
             {renderSubscriptionButtons()}
           </div>
@@ -317,7 +318,10 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01"/>
                 </svg>
-                Servers ({servers.filter(s => !((auth.user.is_low_priority && !s.for_low_priority) || !auth.user.is_valid)).length}/{servers.length} available)
+                {trans('dashboard.servers_available', {
+                  available: servers.filter(s => !((auth.user.is_low_priority && !s.for_low_priority) || !auth.user.is_valid)).length,
+                  total: servers.length,
+                })}
               </h3>
             </div>
             {renderServers()}

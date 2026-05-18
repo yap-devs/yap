@@ -2,8 +2,13 @@
 
 return [
     'unit_price' => env('YAP_UNIT_PRICE', 0.02),  // 0.02 USD per GB
+    'locales' => [
+        'en' => 'English',
+        'ja' => '日本語',
+    ],
     'payment' => [
         'usd_rmb_rate' => env('YAP_USD_RMB_RATE', 7.3),
+        'usd_jpy_rate' => env('YAP_USD_JPY_RATE', 165),
         'alipay' => [
             'subject' => env('ALIPAY_SUBJECT', 'Yap Donation'),
         ],

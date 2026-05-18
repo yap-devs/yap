@@ -60,9 +60,9 @@ class AiController extends Controller
         } catch (DomainException $e) {
             return redirect()->route('ai.index')->with('error', $e->getMessage());
         } catch (RuntimeException) {
-            return redirect()->route('ai.index')->with('error', 'Failed to create AI key. Please try again later.');
+            return redirect()->route('ai.index')->with('error', __('messages.errors.ai_key_create_failed'));
         }
 
-        return redirect()->route('ai.index')->with('success', 'AI key created successfully.');
+        return redirect()->route('ai.index')->with('success', __('messages.success.ai_key_created'));
     }
 }

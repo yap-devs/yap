@@ -35,7 +35,7 @@ class PackageController extends Controller
             $user = User::lockForUpdate()->find($user->id);
 
             if ($user->balance < $package->price) {
-                return redirect()->route('package')->with('error', 'Insufficient balance to buy this package.');
+                return redirect()->route('package')->with('error', __('messages.errors.insufficient_package_balance'));
             }
 
             $started_at = CarbonImmutable::now();
@@ -62,10 +62,10 @@ class PackageController extends Controller
 
             $user->balanceDetails()->create([
                 'amount' => -$package->price,
-                'description' => 'Bought package '.$package->name,
+                'description' => __('messages.balance_descriptions.bought_package', ['name' => $package->name], 'en'),
             ]);
 
-            return redirect()->route('package')->with('success', 'Package bought successfully.');
+            return redirect()->route('package')->with('success', __('messages.success.package_bought'));
         });
     }
 }
