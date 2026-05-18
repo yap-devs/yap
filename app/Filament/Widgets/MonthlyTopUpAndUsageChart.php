@@ -4,7 +4,6 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
-use Carbon\CarbonImmutable;
 use Filament\Widgets\ChartWidget;
 
 class MonthlyTopUpAndUsageChart extends ChartWidget
@@ -18,9 +17,9 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
         'xl' => 8,
     ];
 
-    protected ?string $heading = 'Revenue vs Usage Forecast';
+    protected ?string $heading = 'Monthly Revenue & Usage';
 
-    protected ?string $description = 'Monthly cash-in, actual usage, current-month actual revenue, and projected month-end revenue.';
+    protected ?string $description = 'Actual revenue bars, current-month forecast bar, and actual usage line.';
 
     protected ?string $maxHeight = '320px';
 
@@ -30,13 +29,12 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
         $top_up = $report_service->getMonthlyTopUpSeries($this->getTrendWindowMonths());
         $usage = $report_service->getMonthlyUsageSeries($this->getTrendWindowMonths());
         $projected_revenue = $report_service->getMonthlyRevenueProjectionSeries($this->getTrendWindowMonths());
-        $current_month = CarbonImmutable::now()->format('Y-m');
 
         return [
             'labels' => $top_up->keys()->all(),
             'datasets' => [
                 [
-                    'label' => 'Monthly Revenue (USD)',
+                    'label' => 'Actual Revenue (USD)',
                     'data' => $top_up->values()->all(),
                     'backgroundColor' => 'rgba(34, 197, 94, 0.72)',
                     'borderColor' => 'rgba(34, 197, 94, 1)',
@@ -44,39 +42,24 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
                     'borderSkipped' => false,
                 ],
                 [
-                    'label' => 'Usage (USD)',
-                    'data' => $usage->values()->all(),
-                    'backgroundColor' => 'rgba(244, 63, 94, 0.58)',
-                    'borderColor' => 'rgba(244, 63, 94, 1)',
+                    'label' => 'Projected Revenue (USD)',
+                    'data' => $projected_revenue->values()->all(),
+                    'backgroundColor' => 'rgba(168, 85, 247, 0.62)',
+                    'borderColor' => 'rgba(168, 85, 247, 1)',
                     'borderRadius' => 8,
                     'borderSkipped' => false,
                 ],
                 [
                     'type' => 'line',
-                    'label' => 'Current Month Actual Revenue',
-                    'data' => $top_up->map(fn (float $value, string $month): ?float => $month === $current_month ? $value : null)->values()->all(),
-                    'borderColor' => 'rgba(14, 165, 233, 1)',
-                    'backgroundColor' => 'rgba(14, 165, 233, 1)',
-                    'pointBackgroundColor' => 'rgba(14, 165, 233, 1)',
-                    'pointBorderColor' => 'rgba(255, 255, 255, 1)',
-                    'pointBorderWidth' => 3,
-                    'pointRadius' => 7,
-                    'pointHoverRadius' => 9,
-                    'borderWidth' => 0,
-                    'spanGaps' => false,
-                ],
-                [
-                    'type' => 'line',
-                    'label' => 'Projected Month-End Revenue',
-                    'data' => $projected_revenue->values()->all(),
-                    'borderColor' => 'rgba(168, 85, 247, 1)',
-                    'backgroundColor' => 'rgba(168, 85, 247, 0.18)',
-                    'borderDash' => [6, 6],
+                    'label' => 'Actual Usage (USD)',
+                    'data' => $usage->values()->all(),
+                    'borderColor' => 'rgba(244, 63, 94, 1)',
+                    'backgroundColor' => 'rgba(244, 63, 94, 0.14)',
                     'borderWidth' => 3,
-                    'pointRadius' => 5,
-                    'pointHoverRadius' => 7,
-                    'tension' => 0.25,
-                    'spanGaps' => false,
+                    'fill' => true,
+                    'pointRadius' => 4,
+                    'pointHoverRadius' => 6,
+                    'tension' => 0.35,
                 ],
             ],
         ];
