@@ -25,10 +25,6 @@ class RechargeController extends Controller
             'githubSponsorURL' => config('yap.github.sponsor_url'),
             'stripeSandbox' => str_starts_with(config('yap.payment.stripe.secret'), 'sk_test_'),
             'pendingPayment' => $pending_payment,
-            'paymentRates' => [
-                'cny' => (float) config('yap.payment.usd_rmb_rate'),
-                'jpy' => (float) config('yap.payment.usd_jpy_rate'),
-            ],
         ]);
     }
 

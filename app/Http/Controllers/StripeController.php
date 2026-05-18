@@ -31,14 +31,14 @@ class StripeController extends Controller
     {
         $request->validate([
             'amount' => 'required|numeric|min:2|max:100',  // in USD
-            'currency' => 'nullable|string|in:cny,jpy',
+            'currency' => 'nullable|string|in:usd,cny,jpy',
         ]);
 
         /** @var User $user */
         $user = $request->user();
 
         $amount = $request->input('amount');
-        $currency = $request->input('currency') ?: 'cny';
+        $currency = $request->input('currency') ?: 'usd';
 
         return $rechargeOrderLockService->create($user, function () use ($amount, $currency, $user) {
             $out_trade_no = 'S'.time().random_int(100000, 999999);
@@ -248,6 +248,10 @@ class StripeController extends Controller
 
     private function convertUsdAmount(float|int|string $amount, string $currency): string
     {
+        if ($currency === 'usd') {
+            return number_format((float) $amount, 2, '.', '');
+        }
+
         if ($currency === 'jpy') {
             return (string) round((float) $amount * (float) config('yap.payment.usd_jpy_rate'));
         }

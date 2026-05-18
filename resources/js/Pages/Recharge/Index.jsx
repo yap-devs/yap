@@ -1,24 +1,21 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, router, usePage} from '@inertiajs/react';
-import {useEffect, useState} from 'react';
+import {useState} from 'react';
 import Modal from '@/Components/Modal';
 import {trans} from '@/Utils/i18n';
 
-export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPayment, paymentRates}) {
-  const {errors, locale} = usePage().props;
+export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPayment}) {
+  const {errors} = usePage().props;
   const [confirmingCancel, setConfirmingCancel] = useState(false);
   const [submittingGateway, setSubmittingGateway] = useState(null);
-  const [paymentCurrency, setPaymentCurrency] = useState(() => {
-    const storedCurrency = localStorage.getItem('payment_currency');
-    const isManualCurrency = localStorage.getItem('payment_currency_manual') === 'true';
-
-    return isManualCurrency && storedCurrency ? storedCurrency : (locale === 'ja' ? 'jpy' : 'cny');
+  const [stripeCurrency, setStripeCurrency] = useState(() => {
+    return localStorage.getItem('stripe_currency') || 'usd';
   });
 
   const gatewayLabels = {
     alipay: 'Alipay',
     usdt: 'USDT',
-    stripe: paymentCurrency === 'jpy' ? trans('recharge.stripe_jpy') : trans('recharge.stripe_cny'),
+    stripe: trans('recharge.stripe'),
     github: 'GitHub Sponsors',
   };
 
@@ -74,7 +71,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
   const redirectToStripePage = () => {
     if (submittingGateway || pendingPayment) return;
     setSubmittingGateway('stripe');
-    router.post(route('stripe.newOrder'), {amount: stripeAmount || 5, currency: paymentCurrency}, {
+    router.post(route('stripe.newOrder'), {amount: stripeAmount || 5, currency: stripeCurrency}, {
       onFinish: () => setSubmittingGateway(null),
     });
   };
@@ -88,20 +85,33 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
   const [usdtError, setUsdtError] = useState('');
   const [stripeError, setStripeError] = useState('');
 
-  useEffect(() => {
-    localStorage.setItem('payment_currency', paymentCurrency);
-  }, [paymentCurrency]);
-
-  useEffect(() => {
-    if (localStorage.getItem('payment_currency_manual') !== 'true') {
-      setPaymentCurrency(locale === 'ja' ? 'jpy' : 'cny');
-    }
-  }, [locale]);
-
-  const changePaymentCurrency = (currency) => {
-    localStorage.setItem('payment_currency_manual', 'true');
-    setPaymentCurrency(currency);
+  const changeStripeCurrency = (currency) => {
+    localStorage.setItem('stripe_currency', currency);
+    setStripeCurrency(currency);
   };
+
+  const renderStripeCurrencySelector = () => (
+    <div className="mb-3 rounded border border-purple-200 bg-purple-50 p-3 text-xs text-purple-800">
+      <label className="mb-2 block font-medium text-purple-900" htmlFor="stripe-currency">
+        {trans('recharge.stripe_currency')}
+      </label>
+      <select
+        id="stripe-currency"
+        value={stripeCurrency}
+        onChange={(e) => changeStripeCurrency(e.target.value)}
+        className="mb-2 w-full rounded-md border-purple-200 text-sm text-gray-700 focus:border-purple-500 focus:ring-purple-500"
+      >
+        <option value="usd">USD</option>
+        <option value="cny">CNY</option>
+        <option value="jpy">JPY</option>
+      </select>
+      <p>
+        {stripeCurrency === 'usd'
+          ? trans('recharge.stripe_currency_help_usd')
+          : trans('recharge.stripe_currency_help_local')}
+      </p>
+    </div>
+  );
 
   const sponsorAmountChange = (e, setFunc, setError) => {
     const val = e.target.value;
@@ -124,21 +134,6 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
     } else {
       setError('');
     }
-  };
-
-  const formatLocalAmount = (amount, currency) => {
-    const rate = paymentRates?.[currency] || 1;
-    const value = currency === 'jpy' ? Math.round(amount * rate) : (amount * rate).toFixed(2);
-
-    return new Intl.NumberFormat(currency === 'jpy' ? 'ja-JP' : 'en-US').format(value);
-  };
-
-  const currencyHelp = () => {
-    const amount = formatLocalAmount(stripeAmount || 5, paymentCurrency);
-
-    return paymentCurrency === 'jpy'
-      ? trans('recharge.jpy_estimate', {amount})
-      : trans('recharge.cny_estimate', {amount});
   };
 
   const colorStyles = {
@@ -418,27 +413,15 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
             </p>
           </div>
 
-          <div className="mb-6 flex flex-col gap-2 rounded-lg border border-gray-200 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <label className="text-sm font-medium text-gray-700" htmlFor="payment-currency">
-                {trans('common.currency')}
-              </label>
-              <p className="mt-1 text-xs text-gray-500">{trans('recharge.manual_currency_help')}</p>
-            </div>
-            <select
-              id="payment-currency"
-              value={paymentCurrency}
-              onChange={(e) => changePaymentCurrency(e.target.value)}
-              className="rounded-md border-gray-300 text-sm text-gray-700 focus:border-indigo-500 focus:ring-indigo-500"
-            >
-              <option value="cny">CNY</option>
-              <option value="jpy">JPY</option>
-            </select>
+          <div className="mb-8 bg-amber-50 rounded-lg p-4 border border-amber-100">
+            <p className="text-sm text-amber-800">
+              <span className="font-semibold">{trans('recharge.payment_notice_title')}</span> {trans('recharge.payment_notice_body')}
+            </p>
           </div>
 
           <h3 className="text-lg font-semibold text-gray-800 mb-4">{trans('recharge.choose_method')}</h3>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {paymentCurrency === 'cny' && renderPaymentCard({
+            {renderPaymentCard({
               title: 'Alipay',
               gateway: 'alipay',
               badge: <span className="text-xs bg-blue-400/30 px-2 py-1 rounded">{trans('recharge.fast')}</span>,
@@ -468,7 +451,7 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
             })}
 
             {renderPaymentCard({
-              title: paymentCurrency === 'jpy' ? trans('recharge.stripe_jpy') : trans('recharge.stripe_cny'),
+              title: trans('recharge.stripe'),
               gateway: 'stripe',
               badge: (
                 <div className="flex items-center gap-2">
@@ -484,14 +467,10 @@ export default function Index({auth, githubSponsorURL, stripeSandbox, pendingPay
               error: stripeError,
               setError: setStripeError,
               onSubmit: redirectToStripePage,
-              children: (
-                <div className="mb-3 px-2 py-1.5 bg-purple-50 border border-purple-200 rounded text-xs text-purple-700 text-center">
-                  {currencyHelp()}
-                </div>
-              ),
+              children: renderStripeCurrencySelector(),
             })}
 
-            {paymentCurrency === 'cny' && renderGithubSection()}
+            {renderGithubSection()}
           </div>
         </div>
       </div>
