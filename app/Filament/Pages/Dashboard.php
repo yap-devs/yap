@@ -89,7 +89,7 @@ class Dashboard extends BaseDashboard
             Select::make('polling_interval')
                 ->label('Auto Refresh')
                 ->options(static::getPollingIntervalOptions())
-                ->default('15s')
+                ->default('60s')
                 ->native(false)
                 ->selectablePlaceholder(false)
                 ->helperText('This setting controls how often all dashboard widgets refresh.'),

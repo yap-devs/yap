@@ -17,39 +17,38 @@ class TodaySnapshotChart extends ChartWidget
         'xl' => 4,
     ];
 
-    protected ?string $heading = 'Today vs This Month';
+    protected ?string $heading = 'Revenue Pace Snapshot';
 
-    protected ?string $description = 'Side-by-side comparison of today\'s progress against the full month.';
+    protected ?string $description = 'Money-only comparison for today, month-to-date revenue, forecast revenue, and usage.';
 
     protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {
         $report = app(AdminDashboardReportService::class)->getOverviewStats($this->getTrendWindowMonths());
+        $projected_revenue = app(AdminDashboardReportService::class)
+            ->getMonthlyRevenueProjectionSeries($this->getTrendWindowMonths())
+            ->filter()
+            ->last() ?? 0;
 
         return [
-            'labels' => ['Traffic (GB)', 'Top-Ups (USD)', 'Usage (USD)'],
+            'labels' => ['Today Revenue', 'MTD Revenue', 'Projected Revenue', 'MTD Usage'],
             'datasets' => [
                 [
-                    'label' => 'Today',
+                    'label' => 'USD',
                     'data' => [
-                        $report['today_traffic_gb'],
                         $report['today_top_up'],
-                        $report['today_usage'],
-                    ],
-                    'backgroundColor' => 'rgba(59, 130, 246, 0.85)',
-                    'borderRadius' => 8,
-                    'borderSkipped' => false,
-                ],
-                [
-                    'label' => 'This Month',
-                    'data' => [
-                        $report['current_month_traffic_gb'],
                         $report['current_month_top_up'],
+                        $projected_revenue,
                         $report['current_month_usage'],
                     ],
-                    'backgroundColor' => 'rgba(148, 163, 184, 0.5)',
-                    'borderRadius' => 8,
+                    'backgroundColor' => [
+                        'rgba(14, 165, 233, 0.88)',
+                        'rgba(34, 197, 94, 0.88)',
+                        'rgba(168, 85, 247, 0.88)',
+                        'rgba(244, 63, 94, 0.78)',
+                    ],
+                    'borderRadius' => 10,
                     'borderSkipped' => false,
                 ],
             ],

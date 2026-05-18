@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets\Concerns;
 
+use App\Services\AdminDashboardReportService;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Livewire\Attributes\On;
 
@@ -21,7 +22,7 @@ trait InteractsWithDashboardControls
 
     protected function getPollingInterval(): ?string
     {
-        $interval = $this->pageFilters['polling_interval'] ?? '15s';
+        $interval = $this->pageFilters['polling_interval'] ?? '60s';
 
         return $interval === 'off' ? null : $interval;
     }
@@ -39,6 +40,8 @@ trait InteractsWithDashboardControls
 
     protected function clearDashboardWidgetCaches(): void
     {
+        app(AdminDashboardReportService::class)->clearDashboardCache();
+
         if (property_exists($this, 'cachedData')) {
             $this->cachedData = null;
         }

@@ -11,6 +11,7 @@ use App\Models\UserStat;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Cache;
 
 class AdminDashboardReportService
 {
@@ -18,311 +19,346 @@ class AdminDashboardReportService
 
     private const BYTES_PER_GB = 1073741824;
 
+    private const CACHE_TTL_SECONDS = 60;
+
+    private const CACHE_VERSION_KEY = 'admin_dashboard_report_version';
+
     public function getOverviewStats(int $months = 12): array
     {
-        $monthly_traffic = $this->getMonthlyTrafficSeries($months);
-        $monthly_top_up = $this->getMonthlyTopUpSeries($months);
-        $monthly_usage = $this->getMonthlyUsageSeries($months);
-        $daily_usage = $this->getLastSevenDayUsageSeries();
-        $daily_traffic = $this->getLastSevenDayTrafficSeries();
-        $today_stats = $this->getTodayStats();
-        $current_month = CarbonImmutable::now()->format('Y-m');
-        $active_package_query = $this->getActiveUserPackagesQuery();
-        $remaining_package_traffic = (float) $active_package_query->sum('remaining_traffic');
-        $access_health = $this->getAccessHealthBreakdown();
+        return $this->remember('overview_stats', [$months], function () use ($months): array {
+            $monthly_traffic = $this->getMonthlyTrafficSeries($months);
+            $monthly_top_up = $this->getMonthlyTopUpSeries($months);
+            $monthly_usage = $this->getMonthlyUsageSeries($months);
+            $daily_usage = $this->getLastSevenDayUsageSeries();
+            $daily_traffic = $this->getLastSevenDayTrafficSeries();
+            $today_stats = $this->getTodayStats();
+            $current_month = CarbonImmutable::now()->format('Y-m');
+            $active_package_query = $this->getActiveUserPackagesQuery();
+            $remaining_package_traffic = (float) $active_package_query->sum('remaining_traffic');
+            $access_health = $this->getAccessHealthBreakdown();
 
-        return [
-            'today_traffic_gb' => $today_stats['traffic_gb'],
-            'today_top_up' => $today_stats['top_up'],
-            'today_usage' => $today_stats['usage'],
-            'today_active_users' => $today_stats['active_users'],
-            'today_top_up_orders' => $today_stats['top_up_orders'],
-            'current_month_traffic_gb' => (float) $monthly_traffic->get($current_month, 0),
-            'current_month_top_up' => (float) $monthly_top_up->get($current_month, 0),
-            'current_month_usage' => (float) $monthly_usage->get($current_month, 0),
-            'last_7_day_usage' => round((float) $daily_usage->sum(), 2),
-            'last_7_day_traffic_gb' => round((float) $daily_traffic->sum(), 2),
-            'outstanding_balance' => round((float) $this->getReportableUsersQuery()->where('balance', '>', 0)->sum('balance'), 2),
-            'active_package_count' => (clone $active_package_query)->count(),
-            'remaining_package_traffic_gb' => $this->bytesToGigabytes($remaining_package_traffic),
-            'package_backed_user_count' => (int) $access_health->get('Package-backed', 0),
-            'access_at_risk_user_count' => (int) $access_health->get('Low balance', 0) + (int) $access_health->get('Negative balance', 0),
-            'paid_order_count' => $this->getReportablePaymentsQuery()
-                ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth())
-                ->count(),
-            'monthly_traffic_trend' => $monthly_traffic->values()->all(),
-            'monthly_top_up_trend' => $monthly_top_up->values()->all(),
-            'monthly_usage_trend' => $monthly_usage->values()->all(),
-            'daily_usage_trend' => $daily_usage->values()->all(),
-            'daily_traffic_trend' => $daily_traffic->values()->all(),
-        ];
+            return [
+                'today_traffic_gb' => $today_stats['traffic_gb'],
+                'today_top_up' => $today_stats['top_up'],
+                'today_usage' => $today_stats['usage'],
+                'today_active_users' => $today_stats['active_users'],
+                'today_top_up_orders' => $today_stats['top_up_orders'],
+                'current_month_traffic_gb' => (float) $monthly_traffic->get($current_month, 0),
+                'current_month_top_up' => (float) $monthly_top_up->get($current_month, 0),
+                'current_month_usage' => (float) $monthly_usage->get($current_month, 0),
+                'last_7_day_usage' => round((float) $daily_usage->sum(), 2),
+                'last_7_day_traffic_gb' => round((float) $daily_traffic->sum(), 2),
+                'outstanding_balance' => round((float) $this->getReportableUsersQuery()->where('balance', '>', 0)->sum('balance'), 2),
+                'active_package_count' => (clone $active_package_query)->count(),
+                'remaining_package_traffic_gb' => $this->bytesToGigabytes($remaining_package_traffic),
+                'package_backed_user_count' => (int) $access_health->get('Package-backed', 0),
+                'access_at_risk_user_count' => (int) $access_health->get('Low balance', 0) + (int) $access_health->get('Negative balance', 0),
+                'paid_order_count' => $this->getReportablePaymentsQuery()
+                    ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth())
+                    ->count(),
+                'monthly_traffic_trend' => $monthly_traffic->values()->all(),
+                'monthly_top_up_trend' => $monthly_top_up->values()->all(),
+                'monthly_usage_trend' => $monthly_usage->values()->all(),
+                'daily_usage_trend' => $daily_usage->values()->all(),
+                'daily_traffic_trend' => $daily_traffic->values()->all(),
+            ];
+        });
     }
 
     public function getTodayStats(): array
     {
-        $today_start = CarbonImmutable::now()->startOfDay();
+        return $this->remember('today_stats', [], function (): array {
+            $today_start = CarbonImmutable::now()->startOfDay();
 
-        $traffic_bytes = (float) $this->getReportableUserStatsQuery()
-            ->where('created_at', '>=', $today_start)
-            ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total')
-            ->value('total');
+            $traffic_bytes = (float) $this->getReportableUserStatsQuery()
+                ->where('created_at', '>=', $today_start)
+                ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total')
+                ->value('total');
 
-        $top_up = (float) $this->getReportablePaymentsQuery()
-            ->where('created_at', '>=', $today_start)
-            ->sum('amount');
+            $top_up = (float) $this->getReportablePaymentsQuery()
+                ->where('created_at', '>=', $today_start)
+                ->sum('amount');
 
-        $usage = (float) $this->getReportableUsageQuery()
-            ->where('created_at', '>=', $today_start)
-            ->selectRaw('ABS(SUM(amount)) as total')
-            ->value('total');
+            $usage = (float) $this->getReportableUsageQuery()
+                ->where('created_at', '>=', $today_start)
+                ->selectRaw('ABS(SUM(amount)) as total')
+                ->value('total');
 
-        $active_users = (int) $this->getReportableUserStatsQuery()
-            ->where('created_at', '>=', $today_start)
-            ->distinct('user_id')
-            ->count('user_id');
+            $active_users = (int) $this->getReportableUserStatsQuery()
+                ->where('created_at', '>=', $today_start)
+                ->distinct('user_id')
+                ->count('user_id');
 
-        $top_up_orders = (int) $this->getReportablePaymentsQuery()
-            ->where('created_at', '>=', $today_start)
-            ->count();
+            $top_up_orders = (int) $this->getReportablePaymentsQuery()
+                ->where('created_at', '>=', $today_start)
+                ->count();
 
-        return [
-            'traffic_gb' => $this->bytesToGigabytes($traffic_bytes),
-            'top_up' => round($top_up, 2),
-            'usage' => round($usage, 2),
-            'active_users' => $active_users,
-            'top_up_orders' => $top_up_orders,
-        ];
+            return [
+                'traffic_gb' => $this->bytesToGigabytes($traffic_bytes),
+                'top_up' => round($top_up, 2),
+                'usage' => round($usage, 2),
+                'active_users' => $active_users,
+                'top_up_orders' => $top_up_orders,
+            ];
+        });
     }
 
     public function getLastSevenDayTrafficSeries(int $days = 7): Collection
     {
-        $rows = $this->getReportableUserStatsQuery()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
-            ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total_traffic_bytes')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
-            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
-            ->orderBy('period')
-            ->get();
+        return $this->remember('last_seven_day_traffic_series', [$days], function () use ($days): Collection {
+            $rows = $this->getReportableUserStatsQuery()
+                ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
+                ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total_traffic_bytes')
+                ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
+                ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
+                ->orderBy('period')
+                ->get();
 
-        return $this->buildDailySeries(
-            $days,
-            $rows->pluck('total_traffic_bytes', 'period')->map(fn (mixed $value): float => $this->bytesToGigabytes((float) $value)),
-        );
+            return $this->buildDailySeries(
+                $days,
+                $rows->pluck('total_traffic_bytes', 'period')->map(fn (mixed $value): float => $this->bytesToGigabytes((float) $value)),
+            );
+        });
     }
 
     public function getMonthlyTrafficSeries(int $months = 12): Collection
     {
-        $rows = $this->getReportableUserStatsQuery()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
-            ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total_traffic_bytes')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
-            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
-            ->orderBy('period')
-            ->get();
+        return $this->remember('monthly_traffic_series', [$months], function () use ($months): Collection {
+            $rows = $this->getReportableUserStatsQuery()
+                ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
+                ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total_traffic_bytes')
+                ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+                ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+                ->orderBy('period')
+                ->get();
 
-        return $this->buildMonthlySeries(
-            $months,
-            $rows->pluck('total_traffic_bytes', 'period')->map(fn (mixed $value): float => $this->bytesToGigabytes((float) $value)),
-        );
+            return $this->buildMonthlySeries(
+                $months,
+                $rows->pluck('total_traffic_bytes', 'period')->map(fn (mixed $value): float => $this->bytesToGigabytes((float) $value)),
+            );
+        });
     }
 
     public function getMonthlyTopUpSeries(int $months = 12): Collection
     {
-        $rows = $this->getReportablePaymentsQuery()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
-            ->selectRaw('SUM(amount) as total_top_up')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
-            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
-            ->orderBy('period')
-            ->get();
+        return $this->remember('monthly_top_up_series', [$months], function () use ($months): Collection {
+            $rows = $this->getReportablePaymentsQuery()
+                ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
+                ->selectRaw('SUM(amount) as total_top_up')
+                ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+                ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+                ->orderBy('period')
+                ->get();
 
-        return $this->buildMonthlySeries(
-            $months,
-            $rows->pluck('total_top_up', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
-        );
+            return $this->buildMonthlySeries(
+                $months,
+                $rows->pluck('total_top_up', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
+            );
+        });
+    }
+
+    public function getMonthlyRevenueProjectionSeries(int $months = 12): Collection
+    {
+        return $this->remember('monthly_revenue_projection_series', [$months], function () use ($months): Collection {
+            $top_up = $this->getMonthlyTopUpSeries($months);
+            $now = CarbonImmutable::now();
+            $current_month = $now->format('Y-m');
+            $current_revenue = (float) $top_up->get($current_month, 0);
+            $days_in_month = max($now->daysInMonth, 1);
+            $elapsed_days = max($now->day, 1);
+            $projected_revenue = round($current_revenue / $elapsed_days * $days_in_month, 2);
+
+            return $top_up->map(
+                fn (float $value, string $month): ?float => $month === $current_month ? $projected_revenue : null,
+            );
+        });
     }
 
     public function getMonthlyUsageSeries(int $months = 12): Collection
     {
-        $rows = $this->getReportableUsageQuery()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
-            ->selectRaw('ABS(SUM(amount)) as total_usage')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
-            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
-            ->orderBy('period')
-            ->get();
+        return $this->remember('monthly_usage_series', [$months], function () use ($months): Collection {
+            $rows = $this->getReportableUsageQuery()
+                ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
+                ->selectRaw('ABS(SUM(amount)) as total_usage')
+                ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+                ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+                ->orderBy('period')
+                ->get();
 
-        return $this->buildMonthlySeries(
-            $months,
-            $rows->pluck('total_usage', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
-        );
+            return $this->buildMonthlySeries(
+                $months,
+                $rows->pluck('total_usage', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
+            );
+        });
     }
 
     public function getLastSevenDayUsageSeries(int $days = 7): Collection
     {
-        $rows = $this->getReportableUsageQuery()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
-            ->selectRaw('ABS(SUM(amount)) as total_usage')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
-            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
-            ->orderBy('period')
-            ->get();
+        return $this->remember('last_seven_day_usage_series', [$days], function () use ($days): Collection {
+            $rows = $this->getReportableUsageQuery()
+                ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
+                ->selectRaw('ABS(SUM(amount)) as total_usage')
+                ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
+                ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
+                ->orderBy('period')
+                ->get();
 
-        return $this->buildDailySeries(
-            $days,
-            $rows->pluck('total_usage', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
-        );
+            return $this->buildDailySeries(
+                $days,
+                $rows->pluck('total_usage', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
+            );
+        });
     }
 
     public function getGatewayTopUpBreakdown(int $months = 12): Collection
     {
-        $rows = $this->getReportablePaymentsQuery()
-            ->selectRaw('gateway')
-            ->selectRaw('SUM(amount) as total_top_up')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
-            ->groupBy('gateway')
-            ->get();
+        return $this->remember('gateway_top_up_breakdown', [$months], function () use ($months): Collection {
+            $rows = $this->getReportablePaymentsQuery()
+                ->selectRaw('gateway')
+                ->selectRaw('SUM(amount) as total_top_up')
+                ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+                ->groupBy('gateway')
+                ->get();
 
-        $breakdown = collect([
-            'GitHub Sponsors' => 0.0,
-            'Alipay' => 0.0,
-            'USDT' => 0.0,
-            'Stripe' => 0.0,
-            'Other' => 0.0,
-        ]);
+            $breakdown = collect([
+                'GitHub Sponsors' => 0.0,
+                'Alipay' => 0.0,
+                'USDT' => 0.0,
+                'Stripe' => 0.0,
+                'Other' => 0.0,
+            ]);
 
-        foreach ($rows as $row) {
-            $gateway = $this->mapGatewayLabel((string) $row->gateway);
-            $this->putCollectionFloat(
-                $breakdown,
-                $gateway,
-                round((float) $breakdown->get($gateway, 0) + (float) $row->total_top_up, 2),
-            );
-        }
+            foreach ($rows as $row) {
+                $gateway = $this->mapGatewayLabel((string) $row->gateway);
+                $this->putCollectionFloat(
+                    $breakdown,
+                    $gateway,
+                    round((float) $breakdown->get($gateway, 0) + (float) $row->total_top_up, 2),
+                );
+            }
 
-        return $breakdown;
+            return $breakdown;
+        });
     }
 
     public function getUsageCompositionBreakdown(int $months = 12): Collection
     {
-        $rows = $this->getReportableUsageQuery()
-            ->select(['description'])
-            ->selectRaw('ABS(SUM(amount)) as total_usage')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
-            ->groupBy('description')
-            ->get();
+        return $this->remember('usage_composition_breakdown', [$months], function () use ($months): Collection {
+            $rows = $this->getReportableUsageQuery()
+                ->select(['description'])
+                ->selectRaw('ABS(SUM(amount)) as total_usage')
+                ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+                ->groupBy('description')
+                ->get();
 
-        $breakdown = collect([
-            'Traffic billing' => 0.0,
-            'Package purchases' => 0.0,
-            'Subscription resets' => 0.0,
-            'Other usage' => 0.0,
-        ]);
+            $breakdown = collect([
+                'Traffic billing' => 0.0,
+                'Package purchases' => 0.0,
+                'Subscription resets' => 0.0,
+                'Other usage' => 0.0,
+            ]);
 
-        foreach ($rows as $row) {
-            $category = $this->mapUsageCategory($row->description);
-            $this->putCollectionFloat(
-                $breakdown,
-                $category,
-                round((float) $breakdown->get($category, 0) + (float) $row->total_usage, 2),
-            );
-        }
+            foreach ($rows as $row) {
+                $category = $this->mapUsageCategory($row->description);
+                $this->putCollectionFloat(
+                    $breakdown,
+                    $category,
+                    round((float) $breakdown->get($category, 0) + (float) $row->total_usage, 2),
+                );
+            }
 
-        return $breakdown;
+            return $breakdown;
+        });
     }
 
     public function getAccessHealthBreakdown(): Collection
     {
-        $users = $this->getReportableUsersQuery()
-            ->withCount([
-                'packages as active_package_count' => fn (Builder $query) => $query->where('status', UserPackage::STATUS_ACTIVE),
-            ])
-            ->get(['id', 'balance']);
+        return $this->remember('access_health_breakdown', [], function (): Collection {
+            $active_package_user_ids = UserPackage::query()
+                ->select('user_id')
+                ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
+                ->where('status', UserPackage::STATUS_ACTIVE)
+                ->distinct();
 
-        $breakdown = collect([
-            'Package-backed' => 0,
-            'Healthy balance' => 0,
-            'Warm balance' => 0,
-            'Low balance' => 0,
-            'Negative balance' => 0,
-        ]);
-
-        foreach ($users as $user) {
-            if ($user->active_package_count > 0) {
-                $this->incrementCollectionCounter($breakdown, 'Package-backed');
-
-                continue;
-            }
-
-            $balance = (float) $user->balance;
-
-            if ($balance < 0) {
-                $this->incrementCollectionCounter($breakdown, 'Negative balance');
-
-                continue;
-            }
-
-            if ($balance < 1) {
-                $this->incrementCollectionCounter($breakdown, 'Low balance');
-
-                continue;
-            }
-
-            if ($balance < 5) {
-                $this->incrementCollectionCounter($breakdown, 'Warm balance');
-
-                continue;
-            }
-
-            $this->incrementCollectionCounter($breakdown, 'Healthy balance');
-        }
-
-        return $breakdown;
+            return collect([
+                'Package-backed' => (int) $this->getReportableUsersQuery()
+                    ->whereIn('id', $active_package_user_ids)
+                    ->count(),
+                'Healthy balance' => (int) $this->getReportableUsersQuery()
+                    ->whereNotIn('id', clone $active_package_user_ids)
+                    ->where('balance', '>=', 5)
+                    ->count(),
+                'Warm balance' => (int) $this->getReportableUsersQuery()
+                    ->whereNotIn('id', clone $active_package_user_ids)
+                    ->where('balance', '>=', 1)
+                    ->where('balance', '<', 5)
+                    ->count(),
+                'Low balance' => (int) $this->getReportableUsersQuery()
+                    ->whereNotIn('id', clone $active_package_user_ids)
+                    ->where('balance', '>=', 0)
+                    ->where('balance', '<', 1)
+                    ->count(),
+                'Negative balance' => (int) $this->getReportableUsersQuery()
+                    ->whereNotIn('id', clone $active_package_user_ids)
+                    ->where('balance', '<', 0)
+                    ->count(),
+            ]);
+        });
     }
 
     public function getPackageUtilizationBreakdown(): Collection
     {
-        $user_packages = $this->getActiveUserPackagesQuery()
-            ->with('package:id,traffic_limit')
-            ->get();
+        return $this->remember('package_utilization_breakdown', [], function (): Collection {
+            $user_packages = $this->getActiveUserPackagesQuery()
+                ->with('package:id,traffic_limit')
+                ->get();
 
-        $breakdown = collect([
-            'Critical <10%' => 0,
-            'Low 10-30%' => 0,
-            'Stable 30-70%' => 0,
-            'Fresh >70%' => 0,
-        ]);
+            $breakdown = collect([
+                'Critical <10%' => 0,
+                'Low 10-30%' => 0,
+                'Stable 30-70%' => 0,
+                'Fresh >70%' => 0,
+            ]);
 
-        foreach ($user_packages as $user_package) {
-            $traffic_limit = max((float) ($user_package->package?->traffic_limit ?? 0), 1);
-            $remaining_ratio = min(max((float) $user_package->remaining_traffic / $traffic_limit, 0), 1);
+            foreach ($user_packages as $user_package) {
+                $traffic_limit = max((float) ($user_package->package?->traffic_limit ?? 0), 1);
+                $remaining_ratio = min(max((float) $user_package->remaining_traffic / $traffic_limit, 0), 1);
 
-            if ($remaining_ratio < 0.1) {
-                $this->incrementCollectionCounter($breakdown, 'Critical <10%');
+                if ($remaining_ratio < 0.1) {
+                    $this->incrementCollectionCounter($breakdown, 'Critical <10%');
 
-                continue;
+                    continue;
+                }
+
+                if ($remaining_ratio < 0.3) {
+                    $this->incrementCollectionCounter($breakdown, 'Low 10-30%');
+
+                    continue;
+                }
+
+                if ($remaining_ratio < 0.7) {
+                    $this->incrementCollectionCounter($breakdown, 'Stable 30-70%');
+
+                    continue;
+                }
+
+                $this->incrementCollectionCounter($breakdown, 'Fresh >70%');
             }
 
-            if ($remaining_ratio < 0.3) {
-                $this->incrementCollectionCounter($breakdown, 'Low 10-30%');
+            return $breakdown;
+        });
+    }
 
-                continue;
-            }
-
-            if ($remaining_ratio < 0.7) {
-                $this->incrementCollectionCounter($breakdown, 'Stable 30-70%');
-
-                continue;
-            }
-
-            $this->incrementCollectionCounter($breakdown, 'Fresh >70%');
-        }
-
-        return $breakdown;
+    public function clearDashboardCache(): void
+    {
+        Cache::forever(self::CACHE_VERSION_KEY, (string) now()->getTimestampMs());
     }
 
     public function getDailyTrafficRankingQuery(): Builder
     {
+        $yesterday_start = CarbonImmutable::yesterday()->startOfDay();
+        $tomorrow_start = CarbonImmutable::tomorrow()->startOfDay();
+
         return $this->getReportableUserStatsQuery()
             ->join('users', 'users.id', '=', 'user_stats.user_id')
             ->selectRaw('MIN(user_stats.id) as id')
@@ -330,11 +366,8 @@ class AdminDashboardReportService
             ->selectRaw('user_stats.user_id')
             ->selectRaw('users.name as user_name')
             ->selectRaw('SUM(user_stats.traffic_downlink + user_stats.traffic_uplink) as daily_traffic_bytes')
-            ->where(function (Builder $query) {
-                $query
-                    ->whereDate('user_stats.created_at', CarbonImmutable::today())
-                    ->orWhereDate('user_stats.created_at', CarbonImmutable::yesterday());
-            })
+            ->where('user_stats.created_at', '>=', $yesterday_start)
+            ->where('user_stats.created_at', '<', $tomorrow_start)
             ->groupByRaw("DATE_FORMAT(user_stats.created_at, '%Y-%m-%d'), user_stats.user_id, users.name")
             ->orderByDesc('day')
             ->orderByDesc('daily_traffic_bytes');
@@ -536,6 +569,14 @@ class AdminDashboardReportService
         return $series->replace(
             $values->map(fn (mixed $value): float => round((float) $value, 2))->all(),
         );
+    }
+
+    private function remember(string $name, array $arguments, callable $callback): mixed
+    {
+        $version = Cache::rememberForever(self::CACHE_VERSION_KEY, fn (): string => '1');
+        $key = 'admin_dashboard_report:'.$version.':'.$name.':'.md5(serialize($arguments));
+
+        return Cache::remember($key, self::CACHE_TTL_SECONDS, $callback);
     }
 
     private function bytesToGigabytes(float $bytes): float
