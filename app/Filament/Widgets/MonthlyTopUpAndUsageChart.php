@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
+use Carbon\CarbonImmutable;
 use Filament\Widgets\ChartWidget;
 
 class MonthlyTopUpAndUsageChart extends ChartWidget
@@ -17,9 +18,9 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
         'xl' => 8,
     ];
 
-    protected ?string $heading = 'Monthly Revenue & Usage';
+    protected ?string $heading = 'Monthly Top-Up & Usage';
 
-    protected ?string $description = 'Actual revenue bars, current-month forecast bar, and actual usage line.';
+    protected ?string $description = 'Balance added, current-month top-up forecast extension, and actual consumed usage.';
 
     protected ?string $maxHeight = '320px';
 
@@ -28,30 +29,40 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
         $report_service = app(AdminDashboardReportService::class);
         $top_up = $report_service->getMonthlyTopUpSeries($this->getTrendWindowMonths());
         $usage = $report_service->getMonthlyUsageSeries($this->getTrendWindowMonths());
-        $projected_revenue = $report_service->getMonthlyRevenueProjectionSeries($this->getTrendWindowMonths());
+        $projected_top_up = $report_service->getMonthlyTopUpProjectionSeries($this->getTrendWindowMonths());
+        $current_month = CarbonImmutable::now()->format('Y-m');
+        $forecast_range = $projected_top_up->map(
+            fn (?float $projected, string $month): ?array => $month === $current_month && (float) $projected > (float) $top_up->get($month, 0)
+                ? [(float) $top_up->get($month, 0), (float) $projected]
+                : null,
+        );
 
         return [
             'labels' => $top_up->keys()->all(),
             'datasets' => [
                 [
-                    'label' => 'Actual Revenue (USD)',
+                    'label' => 'Balance Added (USD)',
                     'data' => $top_up->values()->all(),
                     'backgroundColor' => 'rgba(34, 197, 94, 0.72)',
                     'borderColor' => 'rgba(34, 197, 94, 1)',
+                    'grouped' => false,
                     'borderRadius' => 8,
                     'borderSkipped' => false,
                 ],
                 [
-                    'label' => 'Projected Revenue (USD)',
-                    'data' => $projected_revenue->values()->all(),
-                    'backgroundColor' => 'rgba(168, 85, 247, 0.62)',
+                    'label' => 'Month-End Top-Up Forecast (USD)',
+                    'data' => $forecast_range->values()->all(),
+                    'backgroundColor' => 'rgba(168, 85, 247, 0.32)',
                     'borderColor' => 'rgba(168, 85, 247, 1)',
+                    'borderWidth' => 2,
+                    'borderDash' => [6, 4],
+                    'grouped' => false,
                     'borderRadius' => 8,
                     'borderSkipped' => false,
                 ],
                 [
                     'type' => 'line',
-                    'label' => 'Actual Usage (USD)',
+                    'label' => 'Consumed Usage (USD)',
                     'data' => $usage->values()->all(),
                     'borderColor' => 'rgba(244, 63, 94, 1)',
                     'backgroundColor' => 'rgba(244, 63, 94, 0.14)',
@@ -83,7 +94,6 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
             ],
             'scales' => [
                 'x' => [
-                    'stacked' => false,
                     'grid' => [
                         'display' => false,
                     ],

@@ -157,19 +157,19 @@ class AdminDashboardReportService
         });
     }
 
-    public function getMonthlyRevenueProjectionSeries(int $months = 12): Collection
+    public function getMonthlyTopUpProjectionSeries(int $months = 12): Collection
     {
-        return $this->remember('monthly_revenue_projection_series', [$months], function () use ($months): Collection {
+        return $this->remember('monthly_top_up_projection_series', [$months], function () use ($months): Collection {
             $top_up = $this->getMonthlyTopUpSeries($months);
             $now = CarbonImmutable::now();
             $current_month = $now->format('Y-m');
-            $current_revenue = (float) $top_up->get($current_month, 0);
+            $current_top_up = (float) $top_up->get($current_month, 0);
             $days_in_month = max($now->daysInMonth, 1);
             $elapsed_days = max($now->day, 1);
-            $projected_revenue = round($current_revenue / $elapsed_days * $days_in_month, 2);
+            $projected_top_up = round($current_top_up / $elapsed_days * $days_in_month, 2);
 
             return $top_up->map(
-                fn (float $value, string $month): ?float => $month === $current_month ? $projected_revenue : null,
+                fn (float $value, string $month): ?float => $month === $current_month ? $projected_top_up : null,
             );
         });
     }

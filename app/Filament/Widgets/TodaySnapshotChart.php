@@ -17,29 +17,29 @@ class TodaySnapshotChart extends ChartWidget
         'xl' => 4,
     ];
 
-    protected ?string $heading = 'Revenue Pace Snapshot';
+    protected ?string $heading = 'Top-Up Pace Snapshot';
 
-    protected ?string $description = 'Money-only comparison for today, month-to-date revenue, forecast revenue, and usage.';
+    protected ?string $description = 'Money-only comparison for balance added, projected balance added, and consumed usage.';
 
     protected ?string $maxHeight = '300px';
 
     protected function getData(): array
     {
         $report = app(AdminDashboardReportService::class)->getOverviewStats($this->getTrendWindowMonths());
-        $projected_revenue = app(AdminDashboardReportService::class)
-            ->getMonthlyRevenueProjectionSeries($this->getTrendWindowMonths())
+        $projected_top_up = app(AdminDashboardReportService::class)
+            ->getMonthlyTopUpProjectionSeries($this->getTrendWindowMonths())
             ->filter()
             ->last() ?? 0;
 
         return [
-            'labels' => ['Today Revenue', 'MTD Revenue', 'Projected Revenue', 'MTD Usage'],
+            'labels' => ['Today Top-Up', 'MTD Balance Added', 'Projected Balance Added', 'MTD Usage'],
             'datasets' => [
                 [
                     'label' => 'USD',
                     'data' => [
                         $report['today_top_up'],
                         $report['current_month_top_up'],
-                        $projected_revenue,
+                        $projected_top_up,
                         $report['current_month_usage'],
                     ],
                     'backgroundColor' => [
