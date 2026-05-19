@@ -2,7 +2,7 @@
 
 # YAP - Yet Another Panel
 
-**A modern subscription panel for VPN / proxy services**
+**A usage-based panel for proxy subscriptions and AI access**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-blue.svg)](https://php.net)
@@ -19,17 +19,19 @@
 
 ## About
 
-YAP (Yet Another Panel) is a Laravel-based panel for selling and managing VPN / proxy subscriptions.
+YAP (Yet Another Panel) is a Laravel-based panel for selling and managing proxy subscriptions, usage-based account balances, and optional AI access.
 
 It combines a React + Inertia frontend for customers with a Filament admin panel for daily operations.
 
 ## Highlights
 
-- customer-facing dashboard, recharge, package purchase, payment history, and profile flows
-- Clash subscription delivery via `/clash/{uuid}/yap.yaml`
-- admin management for users, Vmess servers, and relay servers
-- payment integrations for Alipay, BEPUSDT, and Stripe
-- GitHub OAuth login and GitHub Sponsors webhook support
+- customer-facing dashboard, recharge, package purchase, payment history, balance detail, usage statistics, and profile flows
+- proxy subscription delivery via `/clash/{uuid}/yap.yaml`
+- optional AI key access using the same account balance
+- admin management for users, Vmess servers, relay servers, payments, packages, and operational metrics
+- payment support for cards, Alipay, USDT, and GitHub Sponsors where configured
+- GitHub OAuth account linking, sponsor webhook support, and account unlink flow
+- English and Japanese customer-facing translations
 - Laravel 12, React 18, Filament 5, Livewire 4, Tailwind CSS 4
 
 ## Stack
@@ -139,17 +141,19 @@ SENTRY_LARAVEL_DSN=
 - `/balance/detail`
 - `/customer/service`
 - `/profile`
+- `/ai`
 - `/stat`
 - `/policy`
 - `/tos`
 - `/commercial-disclosure`
 
-### Subscription and Payments
+### Subscription, Payments, and Webhooks
 
 - `/clash/{uuid}/yap.yaml`
 - `/alipay/*`
 - `/bepusdt/*`
 - `/stripe/*`
+- `/github/sponsor/webhook`
 
 ### Admin
 
