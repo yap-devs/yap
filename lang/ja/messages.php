@@ -210,6 +210,7 @@ return [
         'github_body' => 'GitHubアカウントを連携すると、GitHub Sponsorsでのお支払いと追加機能をご利用いただけます。',
         'link_github' => 'GitHubアカウントを連携',
         'unlink_github' => 'GitHub連携を解除',
+        'unlink_github_confirm_title' => 'GitHub連携を解除しますか？',
         'unlink_github_confirm' => 'GitHubアカウントの連携を解除しますか？',
         'profile_information' => 'プロフィール情報',
         'profile_information_body' => 'アカウントのプロフィール情報とメールアドレスを更新できます。',

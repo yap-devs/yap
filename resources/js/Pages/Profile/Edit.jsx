@@ -1,4 +1,8 @@
+import {useState} from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
+import DangerButton from '@/Components/DangerButton';
+import Modal from '@/Components/Modal';
+import SecondaryButton from '@/Components/SecondaryButton';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
@@ -6,18 +10,23 @@ import {Head, router} from '@inertiajs/react';
 import {trans} from '@/Utils/i18n';
 
 export default function Edit({auth, mustVerifyEmail, status}) {
+  const [confirmingGithubUnlink, setConfirmingGithubUnlink] = useState(false);
+
   const redirectToGithubOauth = () => {
     window.location.href = route('github.redirect');
   };
 
-  const unlinkGithub = () => {
-    if (!window.confirm(trans('profile.unlink_github_confirm'))) {
-      return;
-    }
+  const unlinkGithub = (e) => {
+    e.preventDefault();
 
     router.delete(route('github.destroy'), {
       preserveScroll: true,
+      onSuccess: () => closeGithubUnlinkModal(),
     });
+  };
+
+  const closeGithubUnlinkModal = () => {
+    setConfirmingGithubUnlink(false);
   };
 
   const renderGithubSection = () => {
@@ -34,7 +43,7 @@ export default function Edit({auth, mustVerifyEmail, status}) {
             <span className="ml-2 text-gray-500">({auth.user.github_nickname})</span>
           </div>
           <button
-            onClick={unlinkGithub}
+            onClick={() => setConfirmingGithubUnlink(true)}
             className="inline-flex items-center justify-center px-4 py-2 border border-red-200 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
           >
             {trans('profile.unlink_github')}
@@ -85,6 +94,26 @@ export default function Edit({auth, mustVerifyEmail, status}) {
               {renderGithubSection()}
             </div>
           </div>
+
+          <Modal show={confirmingGithubUnlink} onClose={closeGithubUnlinkModal} maxWidth="md">
+            <form onSubmit={unlinkGithub} className="p-6">
+              <h2 className="text-lg font-medium text-gray-900">
+                {trans('profile.unlink_github_confirm_title')}
+              </h2>
+
+              <p className="mt-1 text-sm text-gray-600">
+                {trans('profile.unlink_github_confirm')}
+              </p>
+
+              <div className="mt-6 flex justify-end">
+                <SecondaryButton onClick={closeGithubUnlinkModal}>{trans('common.cancel')}</SecondaryButton>
+
+                <DangerButton className="ms-3">
+                  {trans('profile.unlink_github')}
+                </DangerButton>
+              </div>
+            </form>
+          </Modal>
 
           <div className="p-6 sm:p-8 bg-white shadow-lg sm:rounded-lg border border-gray-200">
             <UpdateProfileInformationForm
