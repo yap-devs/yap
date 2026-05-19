@@ -74,6 +74,7 @@ Route::group(['prefix' => 'recharge', 'middleware' => ['auth']], function () {
 
 Route::group(['prefix' => 'auth/github', 'middleware' => ['auth']], function () {
     Route::get('/', [GithubController::class, 'redirect'])->name('github.redirect');
+    Route::delete('/', [GithubController::class, 'destroy'])->name('github.destroy');
     Route::get('/callback', [GithubController::class, 'callback']);
 });
 

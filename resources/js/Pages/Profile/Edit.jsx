@@ -10,17 +10,35 @@ export default function Edit({auth, mustVerifyEmail, status}) {
     window.location.href = route('github.redirect');
   };
 
+  const unlinkGithub = () => {
+    if (!window.confirm(trans('profile.unlink_github_confirm'))) {
+      return;
+    }
+
+    router.delete(route('github.destroy'), {
+      preserveScroll: true,
+    });
+  };
+
   const renderGithubSection = () => {
     if (auth.user.github_id) {
       return (
-        <div className="flex items-center">
-          <svg className="h-6 w-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
-               xmlns="http://www.w3.org/2000/svg">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-                  d="M5 13l4 4L19 7"/>
-          </svg>
-          <span className="ml-2 text-green-500">{trans('profile.github_linked')}</span>
-          <span className="ml-2 text-gray-500">({auth.user.github_nickname})</span>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center">
+            <svg className="h-6 w-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                 xmlns="http://www.w3.org/2000/svg">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
+                    d="M5 13l4 4L19 7"/>
+            </svg>
+            <span className="ml-2 text-green-500">{trans('profile.github_linked')}</span>
+            <span className="ml-2 text-gray-500">({auth.user.github_nickname})</span>
+          </div>
+          <button
+            onClick={unlinkGithub}
+            className="inline-flex items-center justify-center px-4 py-2 border border-red-200 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+          >
+            {trans('profile.unlink_github')}
+          </button>
         </div>
       );
     }

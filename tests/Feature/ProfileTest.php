@@ -50,6 +50,30 @@ test('email verification status is unchanged when the email address is unchanged
     $this->assertNotNull($user->refresh()->email_verified_at);
 });
 
+test('github account can be unlinked', function () {
+    $user = User::factory()->create([
+        'github_id' => '12345',
+        'github_nickname' => 'octocat',
+        'github_token' => 'github-token',
+        'github_created_at' => now(),
+    ]);
+
+    $response = $this
+        ->actingAs($user)
+        ->delete(route('github.destroy'));
+
+    $response
+        ->assertSessionHasNoErrors()
+        ->assertRedirect('/profile');
+
+    $user->refresh();
+
+    expect($user->github_id)->toBeNull()
+        ->and($user->github_nickname)->toBe('')
+        ->and($user->github_token)->toBe('')
+        ->and($user->github_created_at)->toBeNull();
+});
+
 test('user can delete their account', function () {
     $user = User::factory()->create();
 

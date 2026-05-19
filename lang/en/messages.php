@@ -209,6 +209,8 @@ return [
         'github_linked' => 'GitHub account is linked.',
         'github_body' => 'Link your GitHub account to enable GitHub Sponsors as a payment method and unlock additional features.',
         'link_github' => 'Link GitHub Account',
+        'unlink_github' => 'Unlink GitHub Account',
+        'unlink_github_confirm' => 'Are you sure you want to unlink your GitHub account?',
         'profile_information' => 'Profile Information',
         'profile_information_body' => 'Update your account\'s profile information and email address.',
         'email_unverified' => 'Your email address is unverified.',

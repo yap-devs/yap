@@ -39,6 +39,20 @@ class GithubController extends Controller
         return redirect()->route('profile.edit');
     }
 
+    public function destroy(Request $request)
+    {
+        $request->user()->update([
+            'github_id' => null,
+            'github_nickname' => '',
+            'github_token' => '',
+            'github_created_at' => null,
+        ]);
+
+        GenerateClashProfileLink::dispatch();
+
+        return redirect()->route('profile.edit');
+    }
+
     public function sponsorWebhook(Request $request)
     {
         logger('GitHub sponsor webhook', $request->all());
