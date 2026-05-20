@@ -15,6 +15,7 @@ class EditUser extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
+            UserResource::adjustBalanceAction(),
             DeleteAction::make(),
             ForceDeleteAction::make(),
             RestoreAction::make(),

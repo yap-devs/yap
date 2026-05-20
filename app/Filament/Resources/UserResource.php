@@ -6,13 +6,16 @@ use App\Filament\Resources\UserResource\Pages\CreateUser;
 use App\Filament\Resources\UserResource\Pages\EditUser;
 use App\Filament\Resources\UserResource\Pages\ListUsers;
 use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\DateTimePicker;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -20,6 +23,7 @@ use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Support\Facades\DB;
 
 class UserResource extends Resource
 {
@@ -126,6 +130,7 @@ class UserResource extends Resource
             ])
             ->recordActions([
                 EditAction::make(),
+                static::adjustBalanceAction(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -134,6 +139,66 @@ class UserResource extends Resource
                     RestoreBulkAction::make(),
                 ]),
             ]);
+    }
+
+    public static function adjustBalanceAction(): Action
+    {
+        return Action::make('adjustBalance')
+            ->label('Adjust Balance')
+            ->icon('heroicon-m-banknotes')
+            ->schema([
+                Select::make('operation')
+                    ->label('Operation')
+                    ->options([
+                        'increase' => 'Increase',
+                        'decrease' => 'Decrease',
+                    ])
+                    ->default('increase')
+                    ->required()
+                    ->native(false)
+                    ->selectablePlaceholder(false),
+                TextInput::make('amount')
+                    ->label('Amount')
+                    ->numeric()
+                    ->minValue(0.01)
+                    ->step(0.01)
+                    ->required(),
+                TextInput::make('description')
+                    ->label('Description')
+                    ->maxLength(255)
+                    ->default('Admin balance adjustment'),
+            ])
+            ->action(function (User $record, array $data): void {
+                $amount = number_format((float) $data['amount'], 2, '.', '');
+                $signed_amount = $data['operation'] === 'decrease' ? '-'.$amount : $amount;
+                $description = filled($data['description'] ?? null)
+                    ? $data['description']
+                    : 'Admin balance adjustment';
+
+                DB::transaction(function () use ($record, $signed_amount, $description): void {
+                    /** @var User $user */
+                    $user = User::query()
+                        ->whereKey($record->getKey())
+                        ->lockForUpdate()
+                        ->firstOrFail();
+
+                    $user->update([
+                        'balance' => bcadd((string) $user->balance, $signed_amount, 2),
+                    ]);
+
+                    $user->balanceDetails()->create([
+                        'amount' => $signed_amount,
+                        'description' => $description,
+                    ]);
+                });
+
+                $record->refresh();
+
+                Notification::make()
+                    ->title('Balance adjusted')
+                    ->success()
+                    ->send();
+            });
     }
 
     public static function getRelations(): array
