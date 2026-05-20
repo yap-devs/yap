@@ -59,7 +59,7 @@ Route::middleware('auth')->group(function () {
 require __DIR__.'/auth.php';
 
 Route::get('/clash/{uuid}/yap.yaml', [ClashController::class, 'index'])
-    ->middleware(ThrottleByDistinctIp::class.':4,120')  // Allow max 4 distinct IPs per 120 seconds for the same subscription
+    ->middleware(ThrottleByDistinctIp::class.':7,120')  // Allow max 7 distinct IPs per 120 seconds for the same subscription
     ->name('clash');
 
 Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], function () {
