@@ -5,6 +5,7 @@ return [
     'locales' => [
         'en' => 'English',
         'ja' => '日本語',
+        'zh_CN' => '简体中文',
     ],
     'payment' => [
         'usd_rmb_rate' => env('YAP_USD_RMB_RATE', 7.3),

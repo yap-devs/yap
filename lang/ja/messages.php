@@ -5,6 +5,7 @@ return [
         'language' => '表示言語',
         'english' => '英語',
         'japanese' => '日本語',
+        'simplified_chinese' => '簡体字中国語',
         'currency' => '決済通貨',
         'usd_balance' => '米ドル残高',
         'cancel' => 'キャンセル',

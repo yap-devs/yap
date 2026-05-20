@@ -7,6 +7,7 @@ export default function LanguageSelector({className = ''}) {
   const labels = {
     en: trans('common.english'),
     ja: trans('common.japanese'),
+    zh_CN: trans('common.simplified_chinese'),
   };
 
   const changeLocale = (e) => {

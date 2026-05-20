@@ -5,6 +5,7 @@ return [
         'language' => 'Language',
         'english' => 'English',
         'japanese' => 'Japanese',
+        'simplified_chinese' => 'Simplified Chinese',
         'currency' => 'Payment currency',
         'usd_balance' => 'USD balance',
         'cancel' => 'Cancel',
