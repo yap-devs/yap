@@ -9,7 +9,8 @@ use DateTimeInterface;
 
 trait SerializeDate
 {
-    protected function serializeDate(DateTimeInterface $date): string {
+    protected function serializeDate(DateTimeInterface $date): string
+    {
         return $date instanceof DateTimeImmutable ?
             CarbonImmutable::instance($date)->toDateTimeString() :
             Carbon::instance($date)->toDateTimeString();

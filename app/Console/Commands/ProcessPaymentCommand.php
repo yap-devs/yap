@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
+use App\Services\Affiliate\AffiliateService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Stripe\Checkout\Session;
@@ -78,6 +79,8 @@ class ProcessPaymentCommand extends Command
                     'amount' => $payment->amount,
                     'description' => __('messages.balance_descriptions.alipay_payment', [], 'en'),
                 ]);
+
+                app(AffiliateService::class)->handlePaymentPaid($payment);
 
                 GenerateClashProfileLink::dispatch();
             });
@@ -158,6 +161,8 @@ class ProcessPaymentCommand extends Command
                         'amount' => $payment->amount,
                         'description' => __('messages.balance_descriptions.stripe_payment', [], 'en'),
                     ]);
+
+                    app(AffiliateService::class)->handlePaymentPaid($payment);
 
                     GenerateClashProfileLink::dispatch();
                 });

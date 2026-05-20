@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class BalanceDetail extends Model
 {
-    use HasFactory, SoftDeletes, SerializeDate;
+    use HasFactory, SerializeDate, SoftDeletes;
 
     protected $fillable = [
         'user_id',

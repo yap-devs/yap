@@ -5,7 +5,7 @@
 **A usage-based panel for proxy subscriptions and AI access**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PHP Version](https://img.shields.io/badge/PHP-8.2%2B-blue.svg)](https://php.net)
+[![PHP Version](https://img.shields.io/badge/PHP-8.3%2B-blue.svg)](https://php.net)
 [![Laravel](https://img.shields.io/badge/Laravel-12-red.svg)](https://laravel.com)
 [![React](https://img.shields.io/badge/React-18-blue.svg)](https://reactjs.org)
 [![Filament](https://img.shields.io/badge/Filament-5-orange.svg)](https://filamentphp.com)
@@ -33,12 +33,13 @@ It combines a React + Inertia frontend for customers with a Filament admin panel
 - GitHub OAuth account linking, sponsor webhook support, and account unlink flow
 - English and Japanese customer-facing translations
 - Laravel 12, React 18, Filament 5, Livewire 4, Tailwind CSS 4
+- affiliate program with referral tracking, VIP commission levels, package-based commission release, and Filament management resources
 
 ## Stack
 
 ### Backend
 
-- PHP 8.2+
+- PHP 8.3+
 - Laravel 12
 - Filament 5
 - Livewire 4
@@ -53,19 +54,20 @@ It combines a React + Inertia frontend for customers with a Filament admin panel
 - Inertia.js
 - Tailwind CSS 4
 - Headless UI
-- Vite 5
+- Vite 8
 - Chart.js
 
 ### Tooling
 
-- Pest
+- Pest 4
+- Pest Browser plugin with Playwright
 - Laravel Pint
 
 ## Quick Start
 
 ### Requirements
 
-- PHP 8.2+
+- PHP 8.3+
 - Composer
 - Node.js 18+
 - npm
@@ -84,6 +86,20 @@ npm run dev
 ```
 
 If you are developing from WSL on a Windows-mounted workspace, prefer Windows-native `php`, `composer`, `node`, and `npm` binaries.
+
+### Browser Testing Setup
+
+Browser tests use Pest 4's browser plugin and Playwright. After `npm install`, install the browser binary on each development machine or CI runner:
+
+```bash
+npx playwright install chromium
+```
+
+On a Windows-mounted WSL workspace, run it through Windows-native tooling:
+
+```bash
+powershell.exe -Command "npx playwright install chromium"
+```
 
 ## Environment
 
@@ -104,6 +120,16 @@ YAP_ADMIN_PANEL_PATH=admin
 YAP_UNIT_PRICE=0.02
 YAP_RESET_SUBSCRIPTION_PRICE=0.5
 YAP_USD_RMB_RATE=7.3
+
+AFFILIATE_ENABLED=true
+AFFILIATE_COOKIE_DAYS=30
+AFFILIATE_ATTRIBUTION_TYPE=first_click
+AFFILIATE_ALLOWED_GATEWAYS=stripe,alipay,usdt,github
+AFFILIATE_MINIMUM_REFERRER_PAID_AMOUNT=5
+AFFILIATE_MINIMUM_REFERRED_FIRST_PAYMENT_AMOUNT=5
+AFFILIATE_MINIMUM_COMMISSION_AMOUNT=0.01
+AFFILIATE_PENDING_DAYS=7
+AFFILIATE_COMMISSION_EXPIRES_DAYS=90
 ```
 
 Common optional integrations:
@@ -142,6 +168,7 @@ SENTRY_LARAVEL_DSN=
 - `/customer/service`
 - `/profile`
 - `/ai`
+- `/affiliate`
 - `/stat`
 - `/policy`
 - `/tos`
@@ -179,6 +206,18 @@ php artisan test
 npm run build
 ```
 
+`php artisan test` runs the Unit and Feature suites. Browser tests are intentionally run separately because they require Playwright's browser binary:
+
+```bash
+./vendor/bin/pest tests/Browser --browser chrome
+```
+
+For Windows-mounted WSL workspaces:
+
+```bash
+powershell.exe -Command "./vendor/bin/pest tests/Browser --browser chrome"
+```
+
 ## Upgrade Status
 
 The project has been upgraded to:
@@ -186,12 +225,14 @@ The project has been upgraded to:
 - Filament 5
 - Livewire 4
 - Tailwind CSS 4
+- Pest 4 with Pest Browser plugin
 
 Customer-facing routes and Inertia page structure were kept intact. The main frontend impact is the Tailwind 4 build migration.
 
 Validated locally with:
 
 - `php artisan test`
+- `./vendor/bin/pest tests/Browser --browser chrome`
 - `npm run build`
 
 ## License

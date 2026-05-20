@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AffiliateController;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AlipayController;
 use App\Http\Controllers\BalanceDetailController;
@@ -120,6 +121,10 @@ Route::group(['prefix' => 'package', 'middleware' => ['auth']], function () {
     Route::get('/', [PackageController::class, 'index'])->name('package');
     Route::post('/{package}/buy', [PackageController::class, 'buy'])
         ->name('package.buy');
+});
+
+Route::group(['prefix' => 'affiliate', 'middleware' => ['auth']], function () {
+    Route::get('/', [AffiliateController::class, 'index'])->name('affiliate');
 });
 
 Route::group(['prefix' => 'bepusdt', 'middleware' => ['auth']], function () {

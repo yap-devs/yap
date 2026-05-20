@@ -9,14 +9,9 @@ use Illuminate\Support\Facades\File;
 
 readonly class ClashService
 {
-    /**
-     * @param User $user
-     */
     public function __construct(
         private User $user,
-    )
-    {
-    }
+    ) {}
 
     public function genConf($vmess_servers = null)
     {
@@ -29,7 +24,7 @@ readonly class ClashService
             if (empty($vmess_server->server) && $vmess_server->relays->isNotEmpty()) {
                 /** @var RelayServer $relay */
                 foreach ($vmess_server->relays as $relay) {
-                    if (!$relay->enabled) {
+                    if (! $relay->enabled) {
                         continue;
                     }
 
@@ -78,7 +73,7 @@ readonly class ClashService
                 'type' => 'fallback',
                 'url' => 'https://www.gstatic.com/generate_204',
                 'interval' => 3600,
-            ]
+            ],
         ];
 
         $path = storage_path("clash-config/{$this->user->uuid}.yaml");

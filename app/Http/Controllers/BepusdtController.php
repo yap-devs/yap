@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Affiliate\AffiliateService;
 use App\Services\BepusdtService;
 use App\Services\RechargeOrderLockService;
 use Illuminate\Http\RedirectResponse;
@@ -118,6 +119,8 @@ class BepusdtController extends Controller
                 'amount' => $payment->amount,
                 'description' => __('messages.balance_descriptions.usdt_payment', [], 'en'),
             ]);
+
+            app(AffiliateService::class)->handlePaymentPaid($payment);
 
             GenerateClashProfileLink::dispatch();
         });

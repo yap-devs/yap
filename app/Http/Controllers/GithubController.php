@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Affiliate\AffiliateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
@@ -85,7 +86,7 @@ class GithubController extends Controller
                 return;
             }
 
-            $user->payments()->create([
+            $payment = $user->payments()->create([
                 'gateway' => Payment::GATEWAY_GITHUB,
                 'status' => Payment::STATUS_PAID,
                 'amount' => $amount,
@@ -99,6 +100,8 @@ class GithubController extends Controller
                 'amount' => $amount,
                 'description' => __('messages.balance_descriptions.github_sponsor', [], 'en'),
             ]);
+
+            app(AffiliateService::class)->handlePaymentPaid($payment);
 
             GenerateClashProfileLink::dispatch();
         });

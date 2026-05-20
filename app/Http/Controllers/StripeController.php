@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\Affiliate\AffiliateService;
 use App\Services\RechargeOrderLockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -241,6 +242,8 @@ class StripeController extends Controller
                 'amount' => $payment->amount,
                 'description' => __('messages.balance_descriptions.stripe_payment', [], 'en'),
             ]);
+
+            app(AffiliateService::class)->handlePaymentPaid($payment);
 
             GenerateClashProfileLink::dispatch();
         });

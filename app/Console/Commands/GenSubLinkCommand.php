@@ -3,10 +3,6 @@
 namespace App\Console\Commands;
 
 use App\Jobs\GenerateClashProfileLink;
-use App\Models\User;
-use App\Models\VmessServer;
-use App\Services\ClashService;
-use App\Services\V2rayService;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -28,6 +24,7 @@ class GenSubLinkCommand extends Command
 
     /**
      * Execute the console command.
+     *
      * @throws Throwable
      */
     public function handle()

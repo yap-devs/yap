@@ -12,7 +12,9 @@ class Package extends Model
     use HasFactory, SoftDeletes;
 
     const STATUS_ACTIVE = 'active';
+
     const STATUS_HIDDEN = 'hidden';
+
     const STATUS_DISABLED = 'disabled';
 
     protected $appends = ['original_price'];

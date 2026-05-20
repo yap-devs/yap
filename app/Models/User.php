@@ -120,6 +120,26 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Sub2apiUsageRecord::class);
     }
 
+    public function affiliatePromoter()
+    {
+        return $this->hasOne(AffiliatePromoter::class);
+    }
+
+    public function affiliateReferral()
+    {
+        return $this->hasOne(AffiliateReferral::class, 'referred_user_id');
+    }
+
+    public function affiliateReferrals()
+    {
+        return $this->hasMany(AffiliateReferral::class, 'referrer_user_id');
+    }
+
+    public function affiliateCommissions()
+    {
+        return $this->hasMany(AffiliateCommission::class, 'referrer_user_id');
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         return $this->id === 1;

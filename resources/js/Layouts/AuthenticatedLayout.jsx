@@ -36,6 +36,11 @@ export default function Authenticated({user, header, children}) {
                 <NavLink href={route('stat')} active={route().current('stat')}>
                   {trans('nav.statistics')}
                 </NavLink>
+                {features.affiliate_enabled && (
+                  <NavLink href={route('affiliate')} active={route().current('affiliate')}>
+                    {trans('nav.affiliate')}
+                  </NavLink>
+                )}
                 {features.ai_enabled && (
                   <NavLink href={route('ai.index')} active={route().current('ai.index')}>
                     {trans('nav.ai_key')}
@@ -130,6 +135,11 @@ export default function Authenticated({user, header, children}) {
             <ResponsiveNavLink href={route('stat')} active={route().current('stat')}>
               {trans('nav.statistics')}
             </ResponsiveNavLink>
+            {features.affiliate_enabled && (
+              <ResponsiveNavLink href={route('affiliate')} active={route().current('affiliate')}>
+                {trans('nav.affiliate')}
+              </ResponsiveNavLink>
+            )}
             {features.ai_enabled && (
               <ResponsiveNavLink href={route('ai.index')} active={route().current('ai.index')}>
                 {trans('nav.ai_key')}

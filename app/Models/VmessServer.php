@@ -19,14 +19,14 @@ class VmessServer extends Model
     protected function rate(): Attribute
     {
         return Attribute::make(
-            get: fn($value) => (int)$value == $value ? (int)$value : $value,
+            get: fn ($value) => (int) $value == $value ? (int) $value : $value,
         );
     }
 
     protected function server(): Attribute
     {
         return Attribute::make(
-            set: fn($value) => $value ?? '',
+            set: fn ($value) => $value ?? '',
         );
     }
 

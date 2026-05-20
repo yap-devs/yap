@@ -46,7 +46,7 @@ class GenerateClashProfileLink implements ShouldQueue
     /**
      * Processes a user for V2ray and Clash services.
      *
-     * @param User $user The user entity to be processed
+     * @param  User  $user  The user entity to be processed
      * @return array [$user, array] [$user, servers belonging to the user]
      */
     private function preProcessUser(User $user): array
@@ -58,11 +58,11 @@ class GenerateClashProfileLink implements ShouldQueue
             $user->deleted_at
             // or user is not valid and no active packages
             || (
-                !$user->is_valid
+                ! $user->is_valid
                 && $user->packages->where('status', UserPackage::STATUS_ACTIVE)->isEmpty()
             )
         ) {
-            if (!$clash->confExists()) {
+            if (! $clash->confExists()) {
                 return [$user, []];
             }
 
@@ -74,7 +74,7 @@ class GenerateClashProfileLink implements ShouldQueue
         $servers = [];
         /** @var VmessServer $vmess_server */
         foreach ($this->vmess_servers as $vmess_server) {
-            if ($user->is_low_priority && !$vmess_server->for_low_priority) {
+            if ($user->is_low_priority && ! $vmess_server->for_low_priority) {
                 continue;
             }
 

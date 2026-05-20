@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('financial', function (Request $request) {
             return Limit::perMinute(4)->by($request->user()?->id ?: $request->ip())->response(function (Request $request) {
-                logger()->driver('throttle')->warning('RateLimiter [financial]: ' . $request->path(), [
+                logger()->driver('throttle')->warning('RateLimiter [financial]: '.$request->path(), [
                     'user_id' => $request->user()?->id,
                     'ip' => $request->ip(),
                 ]);
@@ -43,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
 
         RateLimiter::for('subscription-reset', function (Request $request) {
             return Limit::perMinute(1)->by($request->user()?->id ?: $request->ip())->response(function (Request $request) {
-                logger()->driver('throttle')->warning('RateLimiter [subscription-reset]: ' . $request->path(), [
+                logger()->driver('throttle')->warning('RateLimiter [subscription-reset]: '.$request->path(), [
                     'user_id' => $request->user()?->id,
                     'ip' => $request->ip(),
                 ]);

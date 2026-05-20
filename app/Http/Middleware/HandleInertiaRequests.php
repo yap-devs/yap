@@ -39,6 +39,7 @@ class HandleInertiaRequests extends Middleware
             'locales' => config('yap.locales'),
             'translations' => trans('messages'),
             'features' => [
+                'affiliate_enabled' => (bool) config('affiliate.enabled'),
                 'ai_enabled' => (bool) config('services.sub2api.enabled'),
             ],
             'flash' => [

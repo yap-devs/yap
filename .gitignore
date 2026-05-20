@@ -6,6 +6,7 @@ id_ed25519
 /public/storage
 /storage/*.key
 /vendor
+/tests/Browser/Screenshots
 .env
 .env.backup
 .env.production

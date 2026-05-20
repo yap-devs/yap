@@ -7,7 +7,9 @@ use Illuminate\Support\Facades\Http;
 class BepusdtService
 {
     const STATUS_WAIT = 1;
+
     const STATUS_SUCCESS = 2;
+
     const STATUS_EXPIRED = 3;
 
     protected $config;
@@ -20,9 +22,8 @@ class BepusdtService
     /**
      * Create a transaction with Bepusdt.
      *
-     * @param float|int $amount The amount to be processed in the payment.
-     * @param int|string $order_id The unique identifier for the order.
-     *
+     * @param  float|int  $amount  The amount to be processed in the payment.
+     * @param  int|string  $order_id  The unique identifier for the order.
      * @return array The API response containing the transaction details, including the payment URL.
      *
      * @throws \Exception If the API response indicates an error.
@@ -41,9 +42,9 @@ class BepusdtService
         $signature = $this->epusdtSign($data, $this->config['auth_token']);
         $data['signature'] = $signature;
 
-        $res = Http::post($this->config['app_uri'] . '/api/v1/order/create-transaction', $data);
+        $res = Http::post($this->config['app_uri'].'/api/v1/order/create-transaction', $data);
 
-        throw_if($res->json('status_code') !== 200, new \Exception('Bepusdt API error: ' . $res->json('message')));
+        throw_if($res->json('status_code') !== 200, new \Exception('Bepusdt API error: '.$res->json('message')));
 
         return $res->json();
     }
@@ -73,15 +74,17 @@ class BepusdtService
 
         $sign = '';
         foreach ($parameter as $key => $val) {
-            if ($val == '') continue;
+            if ($val == '') {
+                continue;
+            }
             if ($key != 'signature') {
                 if ($sign != '') {
-                    $sign .= "&";
+                    $sign .= '&';
                 }
                 $sign .= "$key=$val";
             }
         }
 
-        return md5($sign . $signKey);
+        return md5($sign.$signKey);
     }
 }

@@ -11,8 +11,11 @@ class UserPackage extends Model
     use HasFactory, SoftDeletes;
 
     const STATUS_ACTIVE = 'active';
+
     const STATUS_EXPIRED = 'expired';
+
     const STATUS_USED = 'used';
+
     const STATUS_DISABLED = 'disabled';
 
     protected $with = ['package'];

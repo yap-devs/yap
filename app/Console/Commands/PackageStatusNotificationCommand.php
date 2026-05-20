@@ -40,7 +40,7 @@ class PackageStatusNotificationCommand extends Command
                 ->orderBy('ended_at', 'desc')
                 ->first();
 
-            if (!$latest_active_user_package) {
+            if (! $latest_active_user_package) {
                 continue;
             }
 

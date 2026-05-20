@@ -1,7 +1,7 @@
 # AGENTS.md - YAP (Yet Another Panel)
 
 Laravel 12 + React 18 (Inertia.js) application for managing VPN/proxy subscriptions.
-PHP 8.2+ backend, JavaScript/JSX frontend, Filament admin panel, Tailwind CSS.
+PHP 8.3+ backend, JavaScript/JSX frontend, Filament admin panel, Tailwind CSS.
 
 ## Development Environment
 
@@ -23,11 +23,13 @@ php artisan test --filter=ProfileTest     # Run a single test file
 php artisan test --filter="profile page"  # Run a single test by name
 php artisan test tests/Feature/Auth       # Run tests in a directory
 php artisan test --parallel               # Run tests in parallel
+./vendor/bin/pest tests/Browser --browser chrome  # Run Pest 4 browser tests (requires Playwright Chromium)
 ./vendor/bin/pint                         # Format PHP (Laravel Pint)
 ./vendor/bin/pint --test                  # Check formatting without fixing
 
 # Frontend
 npm install                               # Install JS dependencies
+npx playwright install chromium           # Install browser binary for Pest browser tests
 npm run build                             # Production build (Vite)
 npm run dev                               # Dev server with HMR
 
@@ -67,6 +69,7 @@ resources/js/
   Utils/                # Utility functions (camelCase files)
 tests/
   Feature/              # Integration tests (use RefreshDatabase)
+  Browser/              # Pest 4 browser tests (use Playwright)
   Unit/                 # Unit tests
 ```
 
@@ -175,6 +178,8 @@ import {formatBytes} from "@/Utils/formatBytes";
 - Test descriptions are lowercase human-readable sentences
 - Use `test()` function (preferred) or `it()` for assertions
 - Feature tests auto-apply `RefreshDatabase` via `tests/Pest.php`
+- Browser tests use Pest 4 Browser and Playwright; run them separately with `./vendor/bin/pest tests/Browser --browser chrome`
+- Install Playwright Chromium with `npx playwright install chromium` before running browser tests
 - Create users with `User::factory()->create()`
 - Authenticate with `$this->actingAs($user)`
 - Fluent response assertions: `$response->assertSessionHasNoErrors()->assertRedirect(...)`

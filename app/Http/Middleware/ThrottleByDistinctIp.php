@@ -19,14 +19,14 @@ class ThrottleByDistinctIp
     public function handle(Request $request, \Closure $next, int $max_ips = 5, int $window_seconds = 60): Response
     {
         $ip = $request->ip();
-        $cache_key = 'distinct_ip_throttle:' . $request->path();
+        $cache_key = 'distinct_ip_throttle:'.$request->path();
 
         /** @var array $ips */
         $ips = Cache::get($cache_key, []);
 
         // Remove expired entries
         $now = time();
-        $ips = array_filter($ips, fn(int $timestamp) => ($now - $timestamp) < $window_seconds);
+        $ips = array_filter($ips, fn (int $timestamp) => ($now - $timestamp) < $window_seconds);
 
         // If this IP is already recorded, always allow and refresh its timestamp
         if (isset($ips[$ip])) {
@@ -38,7 +38,7 @@ class ThrottleByDistinctIp
 
         // New IP: check if we've exceeded the distinct IP limit
         if (count($ips) >= $max_ips) {
-            logger()->driver('throttle')->warning('ThrottleByDistinctIp: Too many distinct IPs accessing ' . $request->path(), [
+            logger()->driver('throttle')->warning('ThrottleByDistinctIp: Too many distinct IPs accessing '.$request->path(), [
                 'current_ips' => array_keys($ips),
                 'new_ip' => $ip,
             ]);

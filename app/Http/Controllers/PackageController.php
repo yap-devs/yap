@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Package;
 use App\Models\User;
 use App\Models\UserPackage;
+use App\Services\Affiliate\AffiliateService;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,14 +24,14 @@ class PackageController extends Controller
         return Inertia::render('Package/Index', compact('packages', 'userPackages'));
     }
 
-    public function buy(Request $request, Package $package)
+    public function buy(Request $request, Package $package, AffiliateService $affiliateService)
     {
         abort_if($package->status !== Package::STATUS_ACTIVE, 404);
 
         /** @var User $user */
         $user = $request->user();
 
-        return DB::transaction(function () use ($user, $package) {
+        return DB::transaction(function () use ($user, $package, $affiliateService) {
             // Lock the user row to prevent concurrent balance modifications
             $user = User::lockForUpdate()->find($user->id);
 
@@ -64,6 +65,8 @@ class PackageController extends Controller
                 'amount' => -$package->price,
                 'description' => __('messages.balance_descriptions.bought_package', ['name' => $package->name], 'en'),
             ]);
+
+            $affiliateService->handlePackagePurchased($user_package);
 
             return redirect()->route('package')->with('success', __('messages.success.package_bought'));
         });
