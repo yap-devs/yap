@@ -10,6 +10,7 @@ use App\Filament\Widgets\LastSevenDayUsageChart;
 use App\Filament\Widgets\MonthlyTopUpAndUsageChart;
 use App\Filament\Widgets\MonthlyTrafficReportChart;
 use App\Filament\Widgets\PackageUtilizationHealthChart;
+use App\Filament\Widgets\PaymentTopUpRankingTable;
 use App\Filament\Widgets\ReportOverviewWidget;
 use App\Filament\Widgets\TodaySnapshotChart;
 use App\Filament\Widgets\TotalTrafficLeaderboardTable;
@@ -66,6 +67,7 @@ class Dashboard extends BaseDashboard
             UsageCompositionChart::class,
             UserAccessHealthChart::class,
             PackageUtilizationHealthChart::class,
+            PaymentTopUpRankingTable::class,
             DailyTrafficRankingTable::class,
             TotalTrafficLeaderboardTable::class,
             ActiveUserPackagesTable::class,

@@ -390,6 +390,25 @@ class AdminDashboardReportService
             ->orderBy('ended_at');
     }
 
+    public function getPaymentTopUpRankingQuery(): Builder
+    {
+        return Payment::query()
+            ->join('users', 'users.id', '=', 'payments.user_id')
+            ->where('payments.status', Payment::STATUS_PAID)
+            ->where('payments.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
+            ->selectRaw('MIN(payments.id) as id')
+            ->selectRaw('payments.user_id')
+            ->selectRaw('users.name as user_name')
+            ->selectRaw('users.email as user_email')
+            ->selectRaw('COUNT(*) as top_up_count')
+            ->selectRaw('COUNT(DISTINCT payments.gateway) as gateway_count')
+            ->selectRaw('SUM(payments.amount) as total_top_up')
+            ->selectRaw('MAX(payments.created_at) as last_top_up_at')
+            ->groupBy('payments.user_id', 'users.name', 'users.email')
+            ->orderByDesc('total_top_up')
+            ->limit(10);
+    }
+
     public function getAiOverviewStats(int $months = 12): array
     {
         $today_start = CarbonImmutable::now()->startOfDay();
