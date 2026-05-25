@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
-use App\Services\Affiliate\AffiliateService;
 use App\Services\BepusdtService;
+use App\Services\PaymentFulfillmentService;
 use App\Services\RechargeOrderLockService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Random\RandomException;
 use Throwable;
@@ -84,7 +82,7 @@ class BepusdtController extends Controller
     /**
      * @throws Throwable
      */
-    public function notify(Request $request, BepusdtService $bepusdtService)
+    public function notify(Request $request, BepusdtService $bepusdtService, PaymentFulfillmentService $paymentFulfillmentService)
     {
         $bepusdtService->callback();
 
@@ -101,29 +99,7 @@ class BepusdtController extends Controller
             return $bepusdtService->success();
         }
 
-        DB::transaction(function () use ($payment, $request) {
-            $payment = Payment::lockForUpdate()->find($payment->id);
-            if ($payment->status === Payment::STATUS_PAID) {
-                return;
-            }
-
-            $payment->status = Payment::STATUS_PAID;
-            $payload = $payment->payload;
-            $payload[Payment::STATUS_PAID] = $request->all();
-            $payment->payload = $payload;
-            $payment->save();
-
-            $payment->user->increment('balance', $payment->amount);
-
-            $payment->user->balanceDetails()->create([
-                'amount' => $payment->amount,
-                'description' => __('messages.balance_descriptions.usdt_payment', [], 'en'),
-            ]);
-
-            app(AffiliateService::class)->handlePaymentPaid($payment);
-
-            GenerateClashProfileLink::dispatch();
-        });
+        $paymentFulfillmentService->fulfill($payment, $request->all());
 
         return $bepusdtService->success();
     }

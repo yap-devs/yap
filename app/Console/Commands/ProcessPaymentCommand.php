@@ -2,11 +2,9 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
-use App\Services\Affiliate\AffiliateService;
+use App\Services\PaymentFulfillmentService;
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
 use Stripe\Checkout\Session;
 use Stripe\Stripe;
 use Yansongda\LaravelPay\Facades\Pay;
@@ -30,14 +28,14 @@ class ProcessPaymentCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(PaymentFulfillmentService $paymentFulfillmentService)
     {
         $payments = Payment::where('status', Payment::STATUS_CREATED)->get();
 
         /** @var Payment $payment */
         foreach ($payments as $payment) {
             if ($payment->gateway === Payment::GATEWAY_ALIPAY) {
-                $this->processAlipay($payment);
+                $this->processAlipay($payment, $paymentFulfillmentService);
             }
 
             if ($payment->gateway === Payment::GATEWAY_USDT) {
@@ -45,12 +43,12 @@ class ProcessPaymentCommand extends Command
             }
 
             if ($payment->gateway === Payment::GATEWAY_STRIPE) {
-                $this->processStripe($payment);
+                $this->processStripe($payment, $paymentFulfillmentService);
             }
         }
     }
 
-    private function processAlipay(Payment $payment)
+    private function processAlipay(Payment $payment, PaymentFulfillmentService $paymentFulfillmentService)
     {
         if ($payment->status !== Payment::STATUS_CREATED) {
             return false;
@@ -61,29 +59,7 @@ class ProcessPaymentCommand extends Command
         ]);
 
         if ($result->get('trade_status') === 'TRADE_SUCCESS') {
-            DB::transaction(function () use ($payment, $result) {
-                $payment = Payment::lockForUpdate()->find($payment->id);
-                if ($payment->status === Payment::STATUS_PAID) {
-                    return;
-                }
-
-                $payment->status = Payment::STATUS_PAID;
-                $payload = $payment->payload;
-                $payload[Payment::STATUS_PAID] = $result->toArray();
-                $payment->payload = $payload;
-                $payment->save();
-
-                $payment->user->increment('balance', $payment->amount);
-
-                $payment->user->balanceDetails()->create([
-                    'amount' => $payment->amount,
-                    'description' => __('messages.balance_descriptions.alipay_payment', [], 'en'),
-                ]);
-
-                app(AffiliateService::class)->handlePaymentPaid($payment);
-
-                GenerateClashProfileLink::dispatch();
-            });
+            $paymentFulfillmentService->fulfill($payment, $result->toArray());
 
             return true;
         }
@@ -114,7 +90,7 @@ class ProcessPaymentCommand extends Command
         return false;
     }
 
-    private function processStripe(Payment $payment)
+    private function processStripe(Payment $payment, PaymentFulfillmentService $paymentFulfillmentService)
     {
         if ($payment->status !== Payment::STATUS_CREATED) {
             return false;
@@ -139,33 +115,11 @@ class ProcessPaymentCommand extends Command
             $session = Session::retrieve($session_id);
 
             if ($session->payment_status === 'paid') {
-                DB::transaction(function () use ($payment, $session) {
-                    $payment = Payment::lockForUpdate()->find($payment->id);
-                    if ($payment->status === Payment::STATUS_PAID) {
-                        return;
-                    }
-
-                    $payment->status = Payment::STATUS_PAID;
-                    $payload = $payment->payload;
-                    $payload[Payment::STATUS_PAID] = [
-                        'session_id' => $session->id,
-                        'payment_intent' => $session->payment_intent,
-                        'payment_status' => $session->payment_status,
-                    ];
-                    $payment->payload = $payload;
-                    $payment->save();
-
-                    $payment->user->increment('balance', $payment->amount);
-
-                    $payment->user->balanceDetails()->create([
-                        'amount' => $payment->amount,
-                        'description' => __('messages.balance_descriptions.stripe_payment', [], 'en'),
-                    ]);
-
-                    app(AffiliateService::class)->handlePaymentPaid($payment);
-
-                    GenerateClashProfileLink::dispatch();
-                });
+                $paymentFulfillmentService->fulfill($payment, [
+                    'session_id' => $session->id,
+                    'payment_intent' => $session->payment_intent,
+                    'payment_status' => $session->payment_status,
+                ]);
 
                 return true;
             }

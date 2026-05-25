@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
-use App\Services\Affiliate\AffiliateService;
+use App\Services\PaymentFulfillmentService;
 use App\Services\RechargeOrderLockService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Random\RandomException;
 use Stripe\Checkout\Session;
@@ -220,33 +218,11 @@ class StripeController extends Controller
             return;
         }
 
-        DB::transaction(function () use ($payment, $session) {
-            $payment = Payment::lockForUpdate()->find($payment->id);
-            if ($payment->status === Payment::STATUS_PAID) {
-                return;
-            }
-
-            $payment->status = Payment::STATUS_PAID;
-            $payload = $payment->payload;
-            $payload[Payment::STATUS_PAID] = [
-                'session_id' => $session->id,
-                'payment_intent' => $session->payment_intent,
-                'payment_status' => $session->payment_status,
-            ];
-            $payment->payload = $payload;
-            $payment->save();
-
-            $payment->user->increment('balance', $payment->amount);
-
-            $payment->user->balanceDetails()->create([
-                'amount' => $payment->amount,
-                'description' => __('messages.balance_descriptions.stripe_payment', [], 'en'),
-            ]);
-
-            app(AffiliateService::class)->handlePaymentPaid($payment);
-
-            GenerateClashProfileLink::dispatch();
-        });
+        app(PaymentFulfillmentService::class)->fulfill($payment, [
+            'session_id' => $session->id,
+            'payment_intent' => $session->payment_intent,
+            'payment_status' => $session->payment_status,
+        ]);
     }
 
     private function convertUsdAmount(float|int|string $amount, string $currency): string

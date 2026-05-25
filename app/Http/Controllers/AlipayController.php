@@ -2,13 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
-use App\Services\Affiliate\AffiliateService;
+use App\Services\PaymentFulfillmentService;
 use App\Services\RechargeOrderLockService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
 use Random\RandomException;
 use Yansongda\Artful\Exception\ContainerException;
@@ -21,7 +19,7 @@ use Yansongda\Pay\Exception\Exception as PayException;
 class AlipayController extends Controller
 {
     /** @noinspection PhpRedundantCatchClauseInspection */
-    public function notify()
+    public function notify(PaymentFulfillmentService $paymentFulfillmentService)
     {
         try {
             $result = Pay::alipay()->callback();
@@ -45,29 +43,7 @@ class AlipayController extends Controller
             return Pay::alipay()->success();
         }
 
-        DB::transaction(function () use ($payment, $result) {
-            $payment = Payment::lockForUpdate()->find($payment->id);
-            if ($payment->status === Payment::STATUS_PAID) {
-                return;
-            }
-
-            $payment->status = Payment::STATUS_PAID;
-            $payload = $payment->payload;
-            $payload[Payment::STATUS_PAID] = $result->toArray();
-            $payment->payload = $payload;
-            $payment->save();
-
-            $payment->user->increment('balance', $payment->amount);
-
-            $payment->user->balanceDetails()->create([
-                'amount' => $payment->amount,
-                'description' => __('messages.balance_descriptions.alipay_payment', [], 'en'),
-            ]);
-
-            app(AffiliateService::class)->handlePaymentPaid($payment);
-
-            GenerateClashProfileLink::dispatch();
-        });
+        $paymentFulfillmentService->fulfill($payment, $result->toArray());
 
         return Pay::alipay()->success();
     }
