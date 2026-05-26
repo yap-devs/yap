@@ -48,8 +48,14 @@ class AffiliateReferralResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('referrer.email')->label('Referrer')->searchable(),
-                TextColumn::make('referred.email')->label('Referred')->searchable(),
+                TextColumn::make('referrer.email')
+                    ->label('Referrer')
+                    ->searchable()
+                    ->url(fn (AffiliateReferral $record): string => UserResource::getUrl('edit', ['record' => $record->referrer_user_id])),
+                TextColumn::make('referred.email')
+                    ->label('Referred')
+                    ->searchable()
+                    ->url(fn (AffiliateReferral $record): string => UserResource::getUrl('edit', ['record' => $record->referred_user_id])),
                 TextColumn::make('code')->searchable(),
                 TextColumn::make('status')->badge()->sortable(),
                 TextColumn::make('first_qualified_payment_amount')->money()->sortable(),
