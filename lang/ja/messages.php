@@ -132,6 +132,7 @@ return [
         'subscription' => 'サブスクリプション',
         'servers_available' => 'サーバー（:available/:total 利用可能）',
         'guide_badge' => 'クイックスタート',
+        'guide_dismiss' => 'ガイドを閉じる',
         'guide_title_inactive' => 'チャージ後は、そのままサブスクリプションをインポートして利用できます',
         'guide_title_active' => '残高は有効です。次にクライアントへサブスクリプションをインポートしてください',
         'guide_body_inactive' => '標準では利用した通信量に応じた従量課金です。チャージするとアカウントが有効になります。データパッケージは通信量が多い方向けの任意の割引です。',

@@ -132,6 +132,7 @@ return [
         'subscription' => '订阅',
         'servers_available' => '服务器（:available/:total 可用）',
         'guide_badge' => '新手指引',
+        'guide_dismiss' => '关闭指引',
         'guide_title_inactive' => '充值后不用再买套餐，直接导入订阅即可使用',
         'guide_title_active' => '余额已可用，下一步导入订阅到客户端',
         'guide_body_inactive' => '这里默认按实际使用流量扣费。充值让账户变为可用；流量包只是给大流量用户的优惠选项，不是必买步骤。',

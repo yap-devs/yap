@@ -132,6 +132,7 @@ return [
         'subscription' => 'Subscription',
         'servers_available' => 'Servers (:available/:total available)',
         'guide_badge' => 'Quick start',
+        'guide_dismiss' => 'Dismiss guide',
         'guide_title_inactive' => 'After recharging, you can import the subscription directly',
         'guide_title_active' => 'Your balance is active. Import the subscription into your client next',
         'guide_body_inactive' => 'This service is pay-as-you-go by default. Adding funds activates the account; traffic packages are only optional discounts for heavy users.',

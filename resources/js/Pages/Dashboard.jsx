@@ -7,6 +7,9 @@ import {trans} from '@/Utils/i18n';
 export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraffic}) {
   const [copyButton, setCopyButton] = useState(trans('dashboard.copy_url'));
   const [showTooltip, setShowTooltip] = useState(false);
+  const [showGuide, setShowGuide] = useState(() => {
+    return localStorage.getItem('dashboard_guide_dismissed') !== 'true';
+  });
 
   const copyToClipboard = async text => {
     try {
@@ -27,6 +30,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
 
   const isNewUser = auth.user.balance <= 0 && totalBytes === 0;
   const needsRecharge = !auth.user.is_valid;
+  const shouldShowGuide = showGuide && (needsRecharge || totalBytes === 0);
 
   // Determine which step the user is on
   const getOnboardingStep = () => {
@@ -104,10 +108,25 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
     return (
       <div className="mb-6 overflow-hidden rounded-2xl border border-blue-100 bg-linear-to-br from-blue-50 via-white to-indigo-50 shadow-sm">
         <div className="grid gap-6 p-5 lg:grid-cols-[1.15fr_0.85fr] lg:p-6">
-          <div>
-            <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
-              {trans('dashboard.guide_badge')}
-            </span>
+          <div className="relative">
+            <div className="flex items-start justify-between gap-3">
+              <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+                {trans('dashboard.guide_badge')}
+              </span>
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.setItem('dashboard_guide_dismissed', 'true');
+                  setShowGuide(false);
+                }}
+                className="rounded-full p-1.5 text-gray-400 transition hover:bg-white hover:text-gray-600"
+                aria-label={trans('dashboard.guide_dismiss')}
+              >
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
             <h3 className="mt-3 text-2xl font-bold text-gray-900">
               {needsRecharge ? trans('dashboard.guide_title_inactive') : trans('dashboard.guide_title_active')}
             </h3>
@@ -381,7 +400,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
           {/* Onboarding steps - show for new/inactive users */}
           {(isNewUser || needsRecharge) && renderStepIndicator()}
 
-          {renderNextStepGuide()}
+          {shouldShowGuide && renderNextStepGuide()}
 
           {/* Balance + Usage row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
