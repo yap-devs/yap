@@ -76,6 +76,115 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
     );
   }
 
+  const renderNextStepGuide = () => {
+    const guideItems = [
+      {
+        num: 1,
+        title: trans('dashboard.guide_step_recharge_title'),
+        body: trans('dashboard.guide_step_recharge_body'),
+        active: currentStep === 1,
+        done: currentStep > 1,
+      },
+      {
+        num: 2,
+        title: trans('dashboard.guide_step_import_title'),
+        body: trans('dashboard.guide_step_import_body'),
+        active: currentStep === 2,
+        done: currentStep > 2,
+      },
+      {
+        num: 3,
+        title: trans('dashboard.guide_step_use_title'),
+        body: trans('dashboard.guide_step_use_body'),
+        active: currentStep === 3,
+        done: currentStep > 3,
+      },
+    ];
+
+    return (
+      <div className="mb-6 overflow-hidden rounded-2xl border border-blue-100 bg-linear-to-br from-blue-50 via-white to-indigo-50 shadow-sm">
+        <div className="grid gap-6 p-5 lg:grid-cols-[1.15fr_0.85fr] lg:p-6">
+          <div>
+            <span className="inline-flex rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">
+              {trans('dashboard.guide_badge')}
+            </span>
+            <h3 className="mt-3 text-2xl font-bold text-gray-900">
+              {needsRecharge ? trans('dashboard.guide_title_inactive') : trans('dashboard.guide_title_active')}
+            </h3>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-600">
+              {needsRecharge ? trans('dashboard.guide_body_inactive') : trans('dashboard.guide_body_active')}
+            </p>
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              {needsRecharge ? (
+                <button
+                  onClick={() => router.get(route('recharge'))}
+                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-blue-700"
+                >
+                  {trans('dashboard.guide_primary_recharge')}
+                </button>
+              ) : (
+                <button
+                  onClick={() => window.location.href = 'clash://install-config?url=' + encodeURIComponent(clashUrl)}
+                  className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-blue-700"
+                >
+                  {trans('dashboard.guide_primary_import')}
+                </button>
+              )}
+              <button
+                onClick={() => copyToClipboard(clashUrl)}
+                disabled={needsRecharge}
+                className={`inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition duration-200 ${
+                  needsRecharge
+                    ? 'cursor-not-allowed bg-gray-100 text-gray-400'
+                    : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {copyButton}
+              </button>
+              <Link
+                href={route('customer.service')}
+                className="inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold text-blue-700 transition duration-200 hover:bg-blue-100"
+              >
+                {trans('dashboard.guide_help')}
+              </Link>
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            {guideItems.map((item) => (
+              <div
+                key={item.num}
+                className={`rounded-xl border p-4 ${
+                  item.active
+                    ? 'border-blue-300 bg-white shadow-sm'
+                    : item.done
+                      ? 'border-green-200 bg-green-50'
+                      : 'border-gray-200 bg-white/70'
+                }`}
+              >
+                <div className="flex gap-3">
+                  <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${
+                    item.done
+                      ? 'bg-green-500 text-white'
+                      : item.active
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-100 text-gray-400'
+                  }`}>
+                    {item.done ? '✓' : item.num}
+                  </div>
+                  <div>
+                    <p className="font-semibold text-gray-900">{item.title}</p>
+                    <p className="mt-1 text-sm leading-5 text-gray-600">{item.body}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const renderBalanceCard = () => (
     <div className={`rounded-xl p-5 border ${
       auth.user.balance > 0
@@ -271,6 +380,8 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
 
           {/* Onboarding steps - show for new/inactive users */}
           {(isNewUser || needsRecharge) && renderStepIndicator()}
+
+          {renderNextStepGuide()}
 
           {/* Balance + Usage row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
