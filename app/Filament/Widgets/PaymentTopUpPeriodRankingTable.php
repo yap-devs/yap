@@ -5,14 +5,13 @@ namespace App\Filament\Widgets;
 use App\Models\Payment;
 use App\Services\AdminDashboardReportService;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaymentTopUpPeriodRankingTable extends TableWidget
 {
-    use InteractsWithPageFilters;
-
     protected static bool $isLazy = false;
 
     protected ?string $pollingInterval = '60s';
@@ -21,16 +20,33 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
 
     public function table(Table $table): Table
     {
-        $period = (string) ($this->pageFilters['period'] ?? 'day');
         $report_service = app(AdminDashboardReportService::class);
 
         return $table
             ->heading('User Top-Up Ranking')
-            ->description('Paid payment orders from '.$report_service->getPaymentTopUpRankingPeriodLabel($period).'.')
-            ->query($report_service->getPaymentTopUpRankingByPeriodQuery($period))
+            ->description('Paid payment orders ranked by selected reporting period.')
+            ->query($report_service->getPaymentTopUpRankingBaseQuery())
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
             ->striped()
+            ->filters([
+                SelectFilter::make('period')
+                    ->label('Period')
+                    ->options([
+                        'day' => 'Today',
+                        'month' => 'This month',
+                        'quarter' => 'This quarter',
+                        'half_year' => 'This half-year',
+                    ])
+                    ->default('day')
+                    ->native(false)
+                    ->selectablePlaceholder(false)
+                    ->query(function (Builder $query, array $data) use ($report_service): Builder {
+                        $period = $report_service->normalizePaymentTopUpRankingPeriod($data['value'] ?? null);
+
+                        return $report_service->applyPaymentTopUpRankingPeriod($query, $period);
+                    }),
+            ])
             ->columns([
                 TextColumn::make('rank')
                     ->label('#')
@@ -70,13 +86,6 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
                     ->since()
                     ->sortable(),
             ]);
-    }
-
-    public function updatedPageFilters(): void
-    {
-        if (method_exists($this, 'flushCachedTableRecords')) {
-            $this->flushCachedTableRecords();
-        }
     }
 
     private function formatCurrency(float $amount): string

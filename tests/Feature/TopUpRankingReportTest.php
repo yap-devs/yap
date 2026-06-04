@@ -96,3 +96,11 @@ test('payment top up ranking supports month quarter and half year periods', func
     'quarter' => ['quarter', 30.0],
     'half year' => ['half_year', 30.0],
 ]);
+
+test('payment top up ranking period falls back to day for invalid values', function () {
+    $report_service = app(AdminDashboardReportService::class);
+
+    expect($report_service->normalizePaymentTopUpRankingPeriod('invalid'))->toBe('day')
+        ->and($report_service->normalizePaymentTopUpRankingPeriod(null))->toBe('day')
+        ->and($report_service->normalizePaymentTopUpRankingPeriod('quarter'))->toBe('quarter');
+});

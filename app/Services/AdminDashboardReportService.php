@@ -393,33 +393,51 @@ class AdminDashboardReportService
 
     public function getPaymentTopUpRankingQuery(): Builder
     {
-        return Payment::query()
-            ->join('users', 'users.id', '=', 'payments.user_id')
-            ->where('payments.status', Payment::STATUS_PAID)
-            ->where('payments.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
-            ->selectRaw('MIN(payments.id) as id')
-            ->selectRaw('payments.user_id')
-            ->selectRaw('users.name as user_name')
-            ->selectRaw('users.email as user_email')
-            ->selectRaw('COUNT(*) as top_up_count')
-            ->selectRaw('COUNT(DISTINCT payments.gateway) as gateway_count')
-            ->selectRaw('SUM(payments.amount) as total_top_up')
-            ->selectRaw('MAX(payments.created_at) as last_top_up_at')
-            ->groupBy('payments.user_id', 'users.name', 'users.email')
-            ->orderByDesc('total_top_up')
+        return $this->getPaymentTopUpRankingBaseQuery()
             ->limit(10);
+    }
+
+    public function getPaymentTopUpRankingBaseQuery(): Builder
+    {
+        return $this->buildPaymentTopUpRankingQuery();
     }
 
     public function getPaymentTopUpRankingByPeriodQuery(string $period): Builder
     {
         [$start_at, $end_at] = $this->getPaymentTopUpRankingPeriodBounds($period);
 
+        return $this->buildPaymentTopUpRankingQuery($start_at, $end_at);
+    }
+
+    public function applyPaymentTopUpRankingPeriod(Builder $query, string $period): Builder
+    {
+        [$start_at, $end_at] = $this->getPaymentTopUpRankingPeriodBounds($period);
+
+        return $query
+            ->where('payments.created_at', '>=', $start_at)
+            ->where('payments.created_at', '<', $end_at);
+    }
+
+    public function normalizePaymentTopUpRankingPeriod(?string $period): string
+    {
+        return in_array($period, ['day', 'month', 'quarter', 'half_year'], true) ? $period : 'day';
+    }
+
+    public function getPaymentTopUpRankingPeriodLabel(string $period): string
+    {
+        [$start_at, $end_at] = $this->getPaymentTopUpRankingPeriodBounds($period);
+
+        return $start_at->format('Y-m-d').' to '.$end_at->subDay()->format('Y-m-d');
+    }
+
+    private function buildPaymentTopUpRankingQuery(?CarbonImmutable $start_at = null, ?CarbonImmutable $end_at = null): Builder
+    {
         return Payment::query()
             ->join('users', 'users.id', '=', 'payments.user_id')
             ->where('payments.status', Payment::STATUS_PAID)
             ->where('payments.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
-            ->where('payments.created_at', '>=', $start_at)
-            ->where('payments.created_at', '<', $end_at)
+            ->when($start_at, fn (Builder $query): Builder => $query->where('payments.created_at', '>=', $start_at))
+            ->when($end_at, fn (Builder $query): Builder => $query->where('payments.created_at', '<', $end_at))
             ->selectRaw('MIN(payments.id) as id')
             ->selectRaw('payments.user_id')
             ->selectRaw('users.name as user_name')
@@ -431,13 +449,6 @@ class AdminDashboardReportService
             ->selectRaw('MAX(payments.created_at) as last_top_up_at')
             ->groupBy('payments.user_id', 'users.name', 'users.email')
             ->orderByDesc('total_top_up');
-    }
-
-    public function getPaymentTopUpRankingPeriodLabel(string $period): string
-    {
-        [$start_at, $end_at] = $this->getPaymentTopUpRankingPeriodBounds($period);
-
-        return $start_at->format('Y-m-d').' to '.$end_at->subDay()->format('Y-m-d');
     }
 
     public function getAiOverviewStats(int $months = 12): array
