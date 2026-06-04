@@ -76,7 +76,7 @@ test('it credits cashback for paid top-ups on the target date', function () {
 
 test('it does not credit twice for the same date', function () {
     $user = User::factory()->create(['balance' => 0]);
-    $user->payments()->create([
+    $payment = $user->payments()->create([
         'gateway' => Payment::GATEWAY_ALIPAY,
         'status' => Payment::STATUS_PAID,
         'amount' => 2,
@@ -100,7 +100,7 @@ test('it does not credit twice for the same date', function () {
 
 test('it applies a custom top-up cashback ratio', function () {
     $user = User::factory()->create(['balance' => 0]);
-    $user->payments()->create([
+    $payment = $user->payments()->create([
         'gateway' => Payment::GATEWAY_ALIPAY,
         'status' => Payment::STATUS_PAID,
         'amount' => 2,
@@ -146,7 +146,7 @@ test('it previews top-up cashback without crediting by default', function () {
     Bus::fake();
 
     $user = User::factory()->create(['balance' => 0]);
-    $user->payments()->create([
+    $payment = $user->payments()->create([
         'gateway' => Payment::GATEWAY_ALIPAY,
         'status' => Payment::STATUS_PAID,
         'amount' => 2,
@@ -156,6 +156,9 @@ test('it previews top-up cashback without crediting by default', function () {
     ]);
 
     $this->artisan('app:credit-top-up-cashback-command', ['date' => '2026-06-03'])
+        ->expectsTable(['User ID', 'Email', 'Payment ID', 'Gateway', 'Remote ID', 'Top Up', 'Created At'], [
+            [$user->id, $user->email, $payment->id, Payment::GATEWAY_ALIPAY, 'A100', '2.00', '2026-06-03 08:00:00'],
+        ])
         ->expectsOutput('Would credit 1 users with 2.00 top-up cashback for 2026-06-03.')
         ->assertSuccessful();
 

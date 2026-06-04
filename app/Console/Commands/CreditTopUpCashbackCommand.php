@@ -31,26 +31,49 @@ class CreditTopUpCashbackCommand extends Command
         $credited_count = 0;
         $credited_amount = '0.00';
 
-        Payment::query()
+        $rows = [];
+
+        $user_totals = Payment::query()
             ->select('user_id')
-            ->selectRaw('SUM(amount) as top_up_amount')
+            ->selectRaw('SUM(amount) as source_amount')
             ->where('status', Payment::STATUS_PAID)
             ->whereBetween('created_at', [$target_date->startOfDay(), $target_date->endOfDay()])
             ->groupBy('user_id')
             ->orderBy('user_id')
-            ->chunk(100, function ($rows) use ($ratio, $description, $execute, &$credited_count, &$credited_amount): void {
-                foreach ($rows as $row) {
-                    $cashback_amount = number_format(round((float) $row->top_up_amount * $ratio, 2), 2, '.', '');
-                    if ((float) $cashback_amount <= 0) {
-                        continue;
-                    }
+            ->get();
 
-                    if ($this->handleUser((int) $row->user_id, $cashback_amount, $description, $execute)) {
-                        $credited_count++;
-                        $credited_amount = bcadd($credited_amount, $cashback_amount, 2);
-                    }
-                }
+        foreach ($user_totals as $user_total) {
+            $cashback_amount = number_format(round((float) $user_total->source_amount * $ratio, 2), 2, '.', '');
+            if ((float) $cashback_amount <= 0) {
+                continue;
+            }
+
+            if ($this->handleUser((int) $user_total->user_id, $cashback_amount, $description, $execute)) {
+                $credited_count++;
+                $credited_amount = bcadd($credited_amount, $cashback_amount, 2);
+            }
+        }
+
+        Payment::query()
+            ->with('user:id,email')
+            ->where('status', Payment::STATUS_PAID)
+            ->whereBetween('created_at', [$target_date->startOfDay(), $target_date->endOfDay()])
+            ->orderBy('user_id')
+            ->orderBy('created_at')
+            ->get()
+            ->each(function (Payment $payment) use (&$rows): void {
+                $rows[] = [
+                    $payment->user_id,
+                    $payment->user?->email ?? '',
+                    $payment->id,
+                    $payment->gateway,
+                    $payment->remote_id,
+                    number_format((float) $payment->amount, 2, '.', ''),
+                    $payment->created_at->toDateTimeString(),
+                ];
             });
+
+        $this->table(['User ID', 'Email', 'Payment ID', 'Gateway', 'Remote ID', 'Top Up', 'Created At'], $rows);
 
         if ($execute && $credited_count > 0) {
             GenerateClashProfileLink::dispatch();

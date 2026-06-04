@@ -12,6 +12,11 @@ use Illuminate\Support\Str;
 
 class CreditActivityCashbackCommand extends Command
 {
+    private const BILLING_DESCRIPTIONS = [
+        'Traffic deduction',
+        'Daily deduction',
+    ];
+
     protected $signature = 'app:credit-activity-cashback-command {date : Consumption date to reward, formatted as YYYY-MM-DD} {--ratio=1 : Cashback ratio, use 1 for 100% cashback} {--description= : Balance detail description, supports {date}} {--execute : Actually credit balances instead of previewing}';
 
     protected $description = 'Credit promotional cashback for user balance consumed on a day';
@@ -31,26 +36,50 @@ class CreditActivityCashbackCommand extends Command
         $credited_count = 0;
         $credited_amount = '0.00';
 
-        BalanceDetail::query()
+        $rows = [];
+
+        $user_totals = BalanceDetail::query()
             ->select('user_id')
-            ->selectRaw('SUM(ABS(amount)) as consumed_amount')
+            ->selectRaw('SUM(ABS(amount)) as source_amount')
             ->where('amount', '<', 0)
+            ->whereIn('description', self::BILLING_DESCRIPTIONS)
             ->whereBetween('created_at', [$target_date->startOfDay(), $target_date->endOfDay()])
             ->groupBy('user_id')
             ->orderBy('user_id')
-            ->chunk(100, function ($rows) use ($ratio, $description, $execute, &$credited_count, &$credited_amount): void {
-                foreach ($rows as $row) {
-                    $cashback_amount = number_format(round((float) $row->consumed_amount * $ratio, 2), 2, '.', '');
-                    if ((float) $cashback_amount <= 0) {
-                        continue;
-                    }
+            ->get();
 
-                    if ($this->handleUser((int) $row->user_id, $cashback_amount, $description, $execute)) {
-                        $credited_count++;
-                        $credited_amount = bcadd($credited_amount, $cashback_amount, 2);
-                    }
-                }
+        foreach ($user_totals as $user_total) {
+            $cashback_amount = number_format(round((float) $user_total->source_amount * $ratio, 2), 2, '.', '');
+            if ((float) $cashback_amount <= 0) {
+                continue;
+            }
+
+            if ($this->handleUser((int) $user_total->user_id, $cashback_amount, $description, $execute)) {
+                $credited_count++;
+                $credited_amount = bcadd($credited_amount, $cashback_amount, 2);
+            }
+        }
+
+        BalanceDetail::query()
+            ->with('user:id,email')
+            ->where('amount', '<', 0)
+            ->whereIn('description', self::BILLING_DESCRIPTIONS)
+            ->whereBetween('created_at', [$target_date->startOfDay(), $target_date->endOfDay()])
+            ->orderBy('user_id')
+            ->orderBy('created_at')
+            ->get()
+            ->each(function (BalanceDetail $balance_detail) use (&$rows): void {
+                $rows[] = [
+                    $balance_detail->user_id,
+                    $balance_detail->user?->email ?? '',
+                    $balance_detail->id,
+                    $balance_detail->description,
+                    number_format(abs((float) $balance_detail->amount), 2, '.', ''),
+                    $balance_detail->created_at->toDateTimeString(),
+                ];
             });
+
+        $this->table(['User ID', 'Email', 'Balance Detail ID', 'Description', 'Consumed', 'Created At'], $rows);
 
         if ($execute && $credited_count > 0) {
             GenerateClashProfileLink::dispatch();
