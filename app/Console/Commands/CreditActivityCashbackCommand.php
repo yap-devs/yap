@@ -12,11 +12,6 @@ use Illuminate\Support\Str;
 
 class CreditActivityCashbackCommand extends Command
 {
-    private const BILLING_DESCRIPTIONS = [
-        'Traffic deduction',
-        'Daily deduction',
-    ];
-
     protected $signature = 'app:credit-activity-cashback-command {date : Consumption date to reward, formatted as YYYY-MM-DD} {--ratio=1 : Cashback ratio, use 1 for 100% cashback} {--description= : Balance detail description, supports {date}} {--execute : Actually credit balances instead of previewing}';
 
     protected $description = 'Credit promotional cashback for user balance consumed on a day';
@@ -42,7 +37,7 @@ class CreditActivityCashbackCommand extends Command
             ->select('user_id')
             ->selectRaw('SUM(ABS(amount)) as source_amount')
             ->where('amount', '<', 0)
-            ->whereIn('description', self::BILLING_DESCRIPTIONS)
+            ->where('description', 'not like', 'Bought package %')
             ->whereBetween('created_at', [$target_date->startOfDay(), $target_date->endOfDay()])
             ->groupBy('user_id')
             ->orderBy('user_id')
@@ -63,7 +58,7 @@ class CreditActivityCashbackCommand extends Command
         BalanceDetail::query()
             ->with('user:id,email')
             ->where('amount', '<', 0)
-            ->whereIn('description', self::BILLING_DESCRIPTIONS)
+            ->where('description', 'not like', 'Bought package %')
             ->whereBetween('created_at', [$target_date->startOfDay(), $target_date->endOfDay()])
             ->orderBy('user_id')
             ->orderBy('created_at')

@@ -4,7 +4,7 @@ use App\Jobs\GenerateClashProfileLink;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
 
-test('it credits cashback for billing balance consumed on the target date', function () {
+test('it credits cashback for non-package balance consumed on the target date', function () {
     Bus::fake();
 
     $user = User::factory()->create(['balance' => 5]);
@@ -21,6 +21,12 @@ test('it credits cashback for billing balance consumed on the target date', func
         'description' => 'Bought package Basic',
         'created_at' => '2026-06-03 23:59:59',
         'updated_at' => '2026-06-03 23:59:59',
+    ]);
+    $user->balanceDetails()->create([
+        'amount' => -0.50,
+        'description' => 'Subscription URL reset',
+        'created_at' => '2026-06-03 13:30:00',
+        'updated_at' => '2026-06-03 13:30:00',
     ]);
     $user->balanceDetails()->create([
         'amount' => 10,
@@ -47,12 +53,12 @@ test('it credits cashback for billing balance consumed on the target date', func
     ])
         ->assertSuccessful();
 
-    expect((float) $user->refresh()->balance)->toBe(7.25)
+    expect((float) $user->refresh()->balance)->toBe(7.75)
         ->and((float) $other_user->refresh()->balance)->toBe(1.99);
 
     $this->assertDatabaseHas('balance_details', [
         'user_id' => $user->id,
-        'amount' => 2.25,
+        'amount' => 2.75,
         'description' => 'Activity cashback for 2026-06-03',
     ]);
     $this->assertDatabaseHas('balance_details', [
@@ -152,7 +158,7 @@ test('it previews cashback without crediting by default', function () {
     Bus::assertNotDispatched(GenerateClashProfileLink::class);
 });
 
-test('it excludes package purchases and other balance deductions from consumption cashback', function () {
+test('it excludes package purchases from consumption cashback', function () {
     $user = User::factory()->create(['balance' => 0]);
     $user->balanceDetails()->create([
         'amount' => -2,
@@ -177,12 +183,13 @@ test('it excludes package purchases and other balance deductions from consumptio
         'date' => '2026-06-03',
         '--execute' => true,
     ])
-        ->expectsOutput('Credited 0 users with 0.00 activity cashback for 2026-06-03.')
+        ->expectsOutput('Credited 1 users with 4.00 activity cashback for 2026-06-03.')
         ->assertSuccessful();
 
-    expect((float) $user->refresh()->balance)->toBe(0.0);
-    $this->assertDatabaseMissing('balance_details', [
+    expect((float) $user->refresh()->balance)->toBe(4.0);
+    $this->assertDatabaseHas('balance_details', [
         'user_id' => $user->id,
+        'amount' => 4,
         'description' => 'Activity cashback for 2026-06-03',
     ]);
 });
