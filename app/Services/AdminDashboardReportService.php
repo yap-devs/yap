@@ -37,6 +37,7 @@ class AdminDashboardReportService
             $active_package_query = $this->getActiveUserPackagesQuery();
             $remaining_package_traffic = (float) $active_package_query->sum('remaining_traffic');
             $access_health = $this->getAccessHealthBreakdown();
+            $package_profit = $this->getPackageProfitStats();
 
             return [
                 'today_traffic_gb' => $today_stats['traffic_gb'],
@@ -52,6 +53,11 @@ class AdminDashboardReportService
                 'outstanding_balance' => round((float) $this->getReportableUsersQuery()->where('balance', '>', 0)->sum('balance'), 2),
                 'active_package_count' => (clone $active_package_query)->count(),
                 'remaining_package_traffic_gb' => $this->bytesToGigabytes($remaining_package_traffic),
+                'package_revenue' => $package_profit['revenue'],
+                'package_consumed_cost' => $package_profit['consumed_cost'],
+                'package_realized_profit' => $package_profit['realized_profit'],
+                'package_outstanding_liability' => $package_profit['outstanding_liability'],
+                'package_expected_profit' => $package_profit['expected_profit'],
                 'package_backed_user_count' => (int) $access_health->get('Package-backed', 0),
                 'access_at_risk_user_count' => (int) $access_health->get('Low balance', 0) + (int) $access_health->get('Negative balance', 0),
                 'paid_order_count' => $this->getReportablePaymentsQuery()
@@ -350,6 +356,34 @@ class AdminDashboardReportService
         });
     }
 
+    public function getPackageProfitStats(): array
+    {
+        return $this->remember('package_profit_stats', [], function (): array {
+            $unit_price = (float) config('yap.unit_price');
+            $revenue = (float) $this->getReportablePackagePurchaseQuery()
+                ->selectRaw('ABS(SUM(amount)) as total_revenue')
+                ->value('total_revenue');
+
+            $traffic = UserPackage::query()
+                ->join('packages', 'packages.id', '=', 'user_packages.package_id')
+                ->where('user_packages.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
+                ->selectRaw('SUM(CASE WHEN packages.traffic_limit > user_packages.remaining_traffic THEN packages.traffic_limit - user_packages.remaining_traffic ELSE 0 END) as consumed_traffic')
+                ->selectRaw('SUM(CASE WHEN user_packages.status = ? THEN user_packages.remaining_traffic ELSE 0 END) as remaining_traffic', [UserPackage::STATUS_ACTIVE])
+                ->first();
+
+            $consumed_cost = $this->bytesToGigabytes((float) ($traffic?->consumed_traffic ?? 0)) * $unit_price;
+            $outstanding_liability = $this->bytesToGigabytes((float) ($traffic?->remaining_traffic ?? 0)) * $unit_price;
+
+            return [
+                'revenue' => round($revenue, 2),
+                'consumed_cost' => round($consumed_cost, 2),
+                'realized_profit' => round($revenue - $consumed_cost, 2),
+                'outstanding_liability' => round($outstanding_liability, 2),
+                'expected_profit' => round($revenue - $consumed_cost - $outstanding_liability, 2),
+            ];
+        });
+    }
+
     public function clearDashboardCache(): void
     {
         Cache::forever(self::CACHE_VERSION_KEY, (string) now()->getTimestampMs());
@@ -595,6 +629,12 @@ class AdminDashboardReportService
         return BalanceDetail::query()
             ->where('amount', '<', 0)
             ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
+    }
+
+    private function getReportablePackagePurchaseQuery(): Builder
+    {
+        return $this->getReportableUsageQuery()
+            ->where('description', 'like', 'Bought package %');
     }
 
     private function getReportableUsersQuery(): Builder

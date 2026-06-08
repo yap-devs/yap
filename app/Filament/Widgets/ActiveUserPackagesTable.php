@@ -66,12 +66,57 @@ class ActiveUserPackagesTable extends TableWidget
                     ->label('Total')
                     ->alignEnd()
                     ->formatStateUsing(fn (mixed $state): string => $this->formatGigabytes((float) $state)),
+                TextColumn::make('package.price')
+                    ->label('Revenue')
+                    ->alignEnd()
+                    ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state)),
+                TextColumn::make('consumed_cost')
+                    ->label('Consumed Cost')
+                    ->alignEnd()
+                    ->state(fn (UserPackage $record): float => $this->getConsumedCost($record))
+                    ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state)),
+                TextColumn::make('expected_profit')
+                    ->label('Expected Profit')
+                    ->alignEnd()
+                    ->badge()
+                    ->color(fn (UserPackage $record): string => $this->getExpectedProfit($record) >= 0 ? 'success' : 'danger')
+                    ->description(fn (UserPackage $record): string => 'Liability '.$this->formatCurrency($this->getOutstandingLiability($record)))
+                    ->state(fn (UserPackage $record): float => $this->getExpectedProfit($record))
+                    ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state)),
             ]);
     }
 
     private function formatGigabytes(float $bytes): string
     {
         return number_format($bytes / 1024 / 1024 / 1024, 2).' GB';
+    }
+
+    private function formatCurrency(float $amount): string
+    {
+        return number_format($amount, 2).' USD';
+    }
+
+    private function getConsumedCost(UserPackage $user_package): float
+    {
+        $traffic_limit = (float) ($user_package->package?->traffic_limit ?? 0);
+        $consumed_traffic = max($traffic_limit - (float) $user_package->remaining_traffic, 0);
+
+        return $this->bytesToCost($consumed_traffic);
+    }
+
+    private function getOutstandingLiability(UserPackage $user_package): float
+    {
+        return $this->bytesToCost((float) $user_package->remaining_traffic);
+    }
+
+    private function getExpectedProfit(UserPackage $user_package): float
+    {
+        return (float) ($user_package->package?->price ?? 0) - $this->getConsumedCost($user_package) - $this->getOutstandingLiability($user_package);
+    }
+
+    private function bytesToCost(float $bytes): float
+    {
+        return round($bytes / 1024 / 1024 / 1024 * (float) config('yap.unit_price'), 2);
     }
 
     private function formatRemainingTrafficRatio(UserPackage $user_package): string
