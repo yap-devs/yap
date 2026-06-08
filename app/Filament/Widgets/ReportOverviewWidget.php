@@ -56,10 +56,6 @@ class ReportOverviewWidget extends StatsOverviewWidget
                 ->description('Today top-up orders: '.number_format($report['today_top_up_orders']))
                 ->descriptionIcon('heroicon-m-cube', IconPosition::Before)
                 ->color('gray'),
-            Stat::make('Package Profit', $this->formatCurrency($report['package_expected_profit']))
-                ->description('Realized '.$this->formatCurrency($report['package_realized_profit']).' | Liability '.$this->formatCurrency($report['package_outstanding_liability']))
-                ->descriptionIcon('heroicon-m-scale', IconPosition::Before)
-                ->color($report['package_expected_profit'] >= 0 ? 'success' : 'danger'),
         ];
     }
 

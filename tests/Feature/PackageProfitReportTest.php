@@ -4,7 +4,6 @@ use App\Models\Package;
 use App\Models\User;
 use App\Models\UserPackage;
 use App\Services\AdminDashboardReportService;
-use Illuminate\Support\Facades\Cache;
 
 test('package profit stats only account for ended packages', function () {
     config(['yap.unit_price' => 0.02]);
@@ -77,17 +76,48 @@ test('package profit stats only account for ended packages', function () {
     ]);
 });
 
-test('overview stats tolerate cached values without package profit keys', function () {
-    Cache::forever('admin_dashboard_report_version', '1');
-    Cache::put('admin_dashboard_report:1:overview_stats:'.md5(serialize([12])), [
-        'today_traffic_gb' => 0.0,
-        'today_top_up' => 0.0,
-        'today_usage' => 0.0,
-    ], 60);
+test('user package overview stats follow status filters', function () {
+    config(['yap.unit_price' => 0.02]);
 
-    $stats = app(AdminDashboardReportService::class)->getOverviewStats();
+    $user = User::factory()->create(['id' => 6]);
 
-    expect($stats['package_expected_profit'])->toBe(0.0)
-        ->and($stats['package_realized_profit'])->toBe(0.0)
-        ->and($stats['package_outstanding_liability'])->toBe(0.0);
+    $package = Package::query()->create([
+        'name' => 'Filtered Package',
+        'status' => Package::STATUS_ACTIVE,
+        'price' => 4,
+        'duration_days' => 30,
+        'traffic_limit' => 100 * 1024 * 1024 * 1024,
+    ]);
+
+    UserPackage::query()->create([
+        'user_id' => $user->id,
+        'package_id' => $package->id,
+        'remaining_traffic' => 25 * 1024 * 1024 * 1024,
+        'status' => UserPackage::STATUS_USED,
+    ]);
+
+    UserPackage::query()->create([
+        'user_id' => $user->id,
+        'package_id' => $package->id,
+        'remaining_traffic' => 90 * 1024 * 1024 * 1024,
+        'status' => UserPackage::STATUS_ACTIVE,
+    ]);
+
+    $ended_stats = app(AdminDashboardReportService::class)->getUserPackagesOverviewStats('ended');
+    $active_stats = app(AdminDashboardReportService::class)->getUserPackagesOverviewStats('active');
+
+    expect($ended_stats)->toMatchArray([
+        'package_count' => 1,
+        'active_count' => 0,
+        'revenue' => 4.0,
+        'consumed_cost' => 1.5,
+        'expected_profit' => 2.5,
+    ])->and($active_stats)->toMatchArray([
+        'package_count' => 1,
+        'active_count' => 1,
+        'revenue' => 0.0,
+        'consumed_cost' => 0.0,
+        'expected_profit' => 0.0,
+        'remaining_traffic_gb' => 90.0,
+    ]);
 });

@@ -37,7 +37,6 @@ class AdminDashboardReportService
             $active_package_query = $this->getActiveUserPackagesQuery();
             $remaining_package_traffic = (float) $active_package_query->sum('remaining_traffic');
             $access_health = $this->getAccessHealthBreakdown();
-            $package_profit = $this->getPackageProfitStats();
 
             return [
                 'today_traffic_gb' => $today_stats['traffic_gb'],
@@ -53,11 +52,6 @@ class AdminDashboardReportService
                 'outstanding_balance' => round((float) $this->getReportableUsersQuery()->where('balance', '>', 0)->sum('balance'), 2),
                 'active_package_count' => (clone $active_package_query)->count(),
                 'remaining_package_traffic_gb' => $this->bytesToGigabytes($remaining_package_traffic),
-                'package_revenue' => $package_profit['revenue'],
-                'package_consumed_cost' => $package_profit['consumed_cost'],
-                'package_realized_profit' => $package_profit['realized_profit'],
-                'package_outstanding_liability' => $package_profit['outstanding_liability'],
-                'package_expected_profit' => $package_profit['expected_profit'],
                 'package_backed_user_count' => (int) $access_health->get('Package-backed', 0),
                 'access_at_risk_user_count' => (int) $access_health->get('Low balance', 0) + (int) $access_health->get('Negative balance', 0),
                 'paid_order_count' => $this->getReportablePaymentsQuery()
@@ -71,7 +65,7 @@ class AdminDashboardReportService
             ];
         });
 
-        return $this->withPackageProfitDefaults($stats);
+        return $stats;
     }
 
     public function getTodayStats(): array
@@ -361,26 +355,33 @@ class AdminDashboardReportService
     public function getPackageProfitStats(): array
     {
         return $this->remember('package_profit_stats', [], function (): array {
-            $unit_price = (float) config('yap.unit_price');
-            $traffic = UserPackage::query()
-                ->join('packages', 'packages.id', '=', 'user_packages.package_id')
-                ->where('user_packages.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
-                ->whereIn('user_packages.status', [UserPackage::STATUS_EXPIRED, UserPackage::STATUS_USED])
-                ->selectRaw('SUM(packages.price) as total_revenue')
-                ->selectRaw('SUM(CASE WHEN packages.traffic_limit > user_packages.remaining_traffic THEN packages.traffic_limit - user_packages.remaining_traffic ELSE 0 END) as consumed_traffic')
-                ->first();
-
-            $revenue = (float) ($traffic?->total_revenue ?? 0);
-            $consumed_cost = $this->bytesToGigabytes((float) ($traffic?->consumed_traffic ?? 0)) * $unit_price;
-
-            return [
-                'revenue' => round($revenue, 2),
-                'consumed_cost' => round($consumed_cost, 2),
-                'realized_profit' => round($revenue - $consumed_cost, 2),
-                'outstanding_liability' => 0.0,
-                'expected_profit' => round($revenue - $consumed_cost, 2),
-            ];
+            return $this->calculateUserPackageProfitStats(
+                $this->getUserPackagesQuery()
+                    ->whereIn('user_packages.status', [UserPackage::STATUS_EXPIRED, UserPackage::STATUS_USED]),
+            );
         });
+    }
+
+    public function getUserPackagesOverviewStats(?string $status = null): array
+    {
+        $status = $this->normalizeUserPackageStatus($status);
+        $query = $this->applyUserPackageStatus($this->getUserPackagesQuery(), $status);
+        $profit = $this->calculateUserPackageProfitStats(
+            $this->applyEndedUserPackageScope(clone $query),
+        );
+
+        $traffic = (clone $query)
+            ->selectRaw('COUNT(*) as package_count')
+            ->selectRaw('SUM(CASE WHEN user_packages.status = ? THEN 1 ELSE 0 END) as active_count', [UserPackage::STATUS_ACTIVE])
+            ->selectRaw('SUM(user_packages.remaining_traffic) as remaining_traffic')
+            ->first();
+
+        return [
+            ...$profit,
+            'package_count' => (int) ($traffic?->package_count ?? 0),
+            'active_count' => (int) ($traffic?->active_count ?? 0),
+            'remaining_traffic_gb' => $this->bytesToGigabytes((float) ($traffic?->remaining_traffic ?? 0)),
+        ];
     }
 
     public function clearDashboardCache(): void
@@ -417,11 +418,39 @@ class AdminDashboardReportService
 
     public function getActiveUserPackagesQuery(): Builder
     {
+        return $this->getUserPackagesQuery()
+            ->where('user_packages.status', UserPackage::STATUS_ACTIVE)
+            ->orderBy('user_packages.ended_at');
+    }
+
+    public function getUserPackagesQuery(): Builder
+    {
         return UserPackage::query()
             ->with(['package', 'user'])
-            ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
-            ->where('status', UserPackage::STATUS_ACTIVE)
-            ->orderBy('ended_at');
+            ->where('user_packages.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
+    }
+
+    public function normalizeUserPackageStatus(?string $status): ?string
+    {
+        return in_array($status, [
+            UserPackage::STATUS_ACTIVE,
+            UserPackage::STATUS_EXPIRED,
+            UserPackage::STATUS_USED,
+            UserPackage::STATUS_DISABLED,
+            'ended',
+        ], true) ? $status : null;
+    }
+
+    public function applyUserPackageStatus(Builder $query, ?string $status): Builder
+    {
+        return match ($this->normalizeUserPackageStatus($status)) {
+            'ended' => $this->applyEndedUserPackageScope($query),
+            UserPackage::STATUS_ACTIVE,
+            UserPackage::STATUS_EXPIRED,
+            UserPackage::STATUS_USED,
+            UserPackage::STATUS_DISABLED => $query->where('user_packages.status', $status),
+            default => $query,
+        };
     }
 
     public function getPaymentTopUpRankingQuery(): Builder
@@ -630,6 +659,31 @@ class AdminDashboardReportService
             ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
     }
 
+    private function applyEndedUserPackageScope(Builder $query): Builder
+    {
+        return $query->whereIn('user_packages.status', [UserPackage::STATUS_EXPIRED, UserPackage::STATUS_USED]);
+    }
+
+    private function calculateUserPackageProfitStats(Builder $query): array
+    {
+        $traffic = $query
+            ->join('packages', 'packages.id', '=', 'user_packages.package_id')
+            ->selectRaw('SUM(packages.price) as total_revenue')
+            ->selectRaw('SUM(CASE WHEN packages.traffic_limit > user_packages.remaining_traffic THEN packages.traffic_limit - user_packages.remaining_traffic ELSE 0 END) as consumed_traffic')
+            ->first();
+
+        $revenue = (float) ($traffic?->total_revenue ?? 0);
+        $consumed_cost = $this->bytesToGigabytes((float) ($traffic?->consumed_traffic ?? 0)) * (float) config('yap.unit_price');
+
+        return [
+            'revenue' => round($revenue, 2),
+            'consumed_cost' => round($consumed_cost, 2),
+            'realized_profit' => round($revenue - $consumed_cost, 2),
+            'outstanding_liability' => 0.0,
+            'expected_profit' => round($revenue - $consumed_cost, 2),
+        ];
+    }
+
     private function getReportableUsersQuery(): Builder
     {
         return User::query()->where('id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
@@ -690,17 +744,6 @@ class AdminDashboardReportService
         $key = 'admin_dashboard_report:'.$version.':'.$name.':'.md5(serialize($arguments));
 
         return Cache::remember($key, self::CACHE_TTL_SECONDS, $callback);
-    }
-
-    private function withPackageProfitDefaults(array $stats): array
-    {
-        return $stats + [
-            'package_revenue' => 0.0,
-            'package_consumed_cost' => 0.0,
-            'package_realized_profit' => 0.0,
-            'package_outstanding_liability' => 0.0,
-            'package_expected_profit' => 0.0,
-        ];
     }
 
     private function bytesToGigabytes(float $bytes): float

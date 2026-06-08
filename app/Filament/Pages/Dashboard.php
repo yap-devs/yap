@@ -2,7 +2,6 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Widgets\ActiveUserPackagesTable;
 use App\Filament\Widgets\DailyTrafficRankingTable;
 use App\Filament\Widgets\GatewayTopUpShareChart;
 use App\Filament\Widgets\LastSevenDayTrafficChart;
@@ -70,7 +69,6 @@ class Dashboard extends BaseDashboard
             PaymentTopUpRankingTable::class,
             DailyTrafficRankingTable::class,
             TotalTrafficLeaderboardTable::class,
-            ActiveUserPackagesTable::class,
         ];
     }
 

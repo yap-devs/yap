@@ -2,35 +2,45 @@
 
 namespace App\Filament\Widgets;
 
-use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Models\UserPackage;
 use App\Services\AdminDashboardReportService;
 use Carbon\CarbonImmutable;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 
-class ActiveUserPackagesTable extends TableWidget
+class UserPackagesTable extends TableWidget
 {
-    use InteractsWithDashboardControls;
+    use InteractsWithPageFilters;
 
     protected static bool $isLazy = false;
+
+    protected ?string $pollingInterval = '60s';
 
     protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
+        $report_service = app(AdminDashboardReportService::class);
+
         return $table
-            ->heading('Active User Packages')
-            ->description('Current active subscriptions with remaining traffic and expiration windows.')
-            ->query(app(AdminDashboardReportService::class)->getActiveUserPackagesQuery())
-            ->poll(fn (): ?string => $this->getPollingInterval())
-            ->defaultPaginationPageOption(10)
-            ->paginationPageOptions([10, 25, 50])
+            ->heading('User Packages')
+            ->description('Package subscriptions with usage, expiration status, and ended-package profit details.')
+            ->query(
+                $report_service
+                    ->applyUserPackageStatus(
+                        $report_service->getUserPackagesQuery(),
+                        $this->pageFilters['status'] ?? 'ended',
+                    )
+                    ->orderByDesc('user_packages.id'),
+            )
+            ->defaultPaginationPageOption(25)
+            ->paginationPageOptions([10, 25, 50, 100])
             ->striped()
             ->recordClasses(fn (UserPackage $record): array => [
-                'bg-rose-50/70 dark:bg-rose-950/20' => $this->getRemainingTrafficRatio($record) < 0.1 || $this->isPackageEndingSoon($record),
-                'bg-amber-50/70 dark:bg-amber-950/20' => $this->getRemainingTrafficRatio($record) >= 0.1 && $this->getRemainingTrafficRatio($record) < 0.3,
+                'bg-rose-50/70 dark:bg-rose-950/20' => $record->status === UserPackage::STATUS_ACTIVE && ($this->getRemainingTrafficRatio($record) < 0.1 || $this->isPackageEndingSoon($record)),
+                'bg-amber-50/70 dark:bg-amber-950/20' => $record->status === UserPackage::STATUS_ACTIVE && $this->getRemainingTrafficRatio($record) >= 0.1 && $this->getRemainingTrafficRatio($record) < 0.3,
             ])
             ->columns([
                 TextColumn::make('user.name')
@@ -43,7 +53,7 @@ class ActiveUserPackagesTable extends TableWidget
                     ->searchable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color('success'),
+                    ->color(fn (UserPackage $record): string => $this->getStatusTone($record)),
                 TextColumn::make('started_at')
                     ->label('Started')
                     ->dateTime('Y-m-d H:i')
@@ -76,11 +86,11 @@ class ActiveUserPackagesTable extends TableWidget
                     ->state(fn (UserPackage $record): float => $this->getConsumedCost($record))
                     ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state)),
                 TextColumn::make('expected_profit')
-                    ->label('Expected Profit')
+                    ->label('Profit')
                     ->alignEnd()
                     ->badge()
                     ->color(fn (UserPackage $record): string => $this->getExpectedProfit($record) >= 0 ? 'success' : 'danger')
-                    ->description(fn (UserPackage $record): string => 'Liability '.$this->formatCurrency($this->getOutstandingLiability($record)))
+                    ->description(fn (UserPackage $record): string => $this->formatProfitDescription($record))
                     ->state(fn (UserPackage $record): float => $this->getExpectedProfit($record))
                     ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state)),
             ]);
@@ -104,14 +114,22 @@ class ActiveUserPackagesTable extends TableWidget
         return $this->bytesToCost($consumed_traffic);
     }
 
-    private function getOutstandingLiability(UserPackage $user_package): float
-    {
-        return $this->bytesToCost((float) $user_package->remaining_traffic);
-    }
-
     private function getExpectedProfit(UserPackage $user_package): float
     {
-        return (float) ($user_package->package?->price ?? 0) - $this->getConsumedCost($user_package) - $this->getOutstandingLiability($user_package);
+        if (! $this->isEndedPackage($user_package)) {
+            return 0.0;
+        }
+
+        return (float) ($user_package->package?->price ?? 0) - $this->getConsumedCost($user_package);
+    }
+
+    private function formatProfitDescription(UserPackage $user_package): string
+    {
+        if ($this->isEndedPackage($user_package)) {
+            return 'Ended package profit';
+        }
+
+        return 'Unsettled package';
     }
 
     private function bytesToCost(float $bytes): float
@@ -138,6 +156,22 @@ class ActiveUserPackagesTable extends TableWidget
             $this->getRemainingTrafficRatio($user_package) < 0.3 => 'warning',
             default => 'success',
         };
+    }
+
+    private function getStatusTone(UserPackage $user_package): string
+    {
+        return match ($user_package->status) {
+            UserPackage::STATUS_ACTIVE => 'success',
+            UserPackage::STATUS_EXPIRED => 'warning',
+            UserPackage::STATUS_USED => 'danger',
+            UserPackage::STATUS_DISABLED => 'gray',
+            default => 'gray',
+        };
+    }
+
+    private function isEndedPackage(UserPackage $user_package): bool
+    {
+        return in_array($user_package->status, [UserPackage::STATUS_EXPIRED, UserPackage::STATUS_USED], true);
     }
 
     private function isPackageEndingSoon(UserPackage $user_package): bool
