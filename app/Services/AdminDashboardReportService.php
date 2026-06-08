@@ -26,7 +26,7 @@ class AdminDashboardReportService
 
     public function getOverviewStats(int $months = 12): array
     {
-        return $this->remember('overview_stats', [$months], function () use ($months): array {
+        $stats = $this->remember('overview_stats', [$months], function () use ($months): array {
             $monthly_traffic = $this->getMonthlyTrafficSeries($months);
             $monthly_top_up = $this->getMonthlyTopUpSeries($months);
             $monthly_usage = $this->getMonthlyUsageSeries($months);
@@ -70,6 +70,8 @@ class AdminDashboardReportService
                 'daily_traffic_trend' => $daily_traffic->values()->all(),
             ];
         });
+
+        return $this->withPackageProfitDefaults($stats);
     }
 
     public function getTodayStats(): array
@@ -697,6 +699,17 @@ class AdminDashboardReportService
         $key = 'admin_dashboard_report:'.$version.':'.$name.':'.md5(serialize($arguments));
 
         return Cache::remember($key, self::CACHE_TTL_SECONDS, $callback);
+    }
+
+    private function withPackageProfitDefaults(array $stats): array
+    {
+        return $stats + [
+            'package_revenue' => 0.0,
+            'package_consumed_cost' => 0.0,
+            'package_realized_profit' => 0.0,
+            'package_outstanding_liability' => 0.0,
+            'package_expected_profit' => 0.0,
+        ];
     }
 
     private function bytesToGigabytes(float $bytes): float

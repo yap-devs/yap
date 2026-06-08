@@ -4,6 +4,7 @@ use App\Models\Package;
 use App\Models\User;
 use App\Models\UserPackage;
 use App\Services\AdminDashboardReportService;
+use Illuminate\Support\Facades\Cache;
 
 test('package profit stats account for consumed traffic and remaining liability', function () {
     config(['yap.unit_price' => 0.02]);
@@ -104,4 +105,19 @@ test('package profit stats account for consumed traffic and remaining liability'
         'outstanding_liability' => 5.2,
         'expected_profit' => 3.2,
     ]);
+});
+
+test('overview stats tolerate cached values without package profit keys', function () {
+    Cache::forever('admin_dashboard_report_version', '1');
+    Cache::put('admin_dashboard_report:1:overview_stats:'.md5(serialize([12])), [
+        'today_traffic_gb' => 0.0,
+        'today_top_up' => 0.0,
+        'today_usage' => 0.0,
+    ], 60);
+
+    $stats = app(AdminDashboardReportService::class)->getOverviewStats();
+
+    expect($stats['package_expected_profit'])->toBe(0.0)
+        ->and($stats['package_realized_profit'])->toBe(0.0)
+        ->and($stats['package_outstanding_liability'])->toBe(0.0);
 });
