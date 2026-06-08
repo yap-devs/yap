@@ -362,26 +362,23 @@ class AdminDashboardReportService
     {
         return $this->remember('package_profit_stats', [], function (): array {
             $unit_price = (float) config('yap.unit_price');
-            $revenue = (float) $this->getReportablePackagePurchaseQuery()
-                ->selectRaw('ABS(SUM(amount)) as total_revenue')
-                ->value('total_revenue');
-
             $traffic = UserPackage::query()
                 ->join('packages', 'packages.id', '=', 'user_packages.package_id')
                 ->where('user_packages.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
+                ->whereIn('user_packages.status', [UserPackage::STATUS_EXPIRED, UserPackage::STATUS_USED])
+                ->selectRaw('SUM(packages.price) as total_revenue')
                 ->selectRaw('SUM(CASE WHEN packages.traffic_limit > user_packages.remaining_traffic THEN packages.traffic_limit - user_packages.remaining_traffic ELSE 0 END) as consumed_traffic')
-                ->selectRaw('SUM(CASE WHEN user_packages.status = ? THEN user_packages.remaining_traffic ELSE 0 END) as remaining_traffic', [UserPackage::STATUS_ACTIVE])
                 ->first();
 
+            $revenue = (float) ($traffic?->total_revenue ?? 0);
             $consumed_cost = $this->bytesToGigabytes((float) ($traffic?->consumed_traffic ?? 0)) * $unit_price;
-            $outstanding_liability = $this->bytesToGigabytes((float) ($traffic?->remaining_traffic ?? 0)) * $unit_price;
 
             return [
                 'revenue' => round($revenue, 2),
                 'consumed_cost' => round($consumed_cost, 2),
                 'realized_profit' => round($revenue - $consumed_cost, 2),
-                'outstanding_liability' => round($outstanding_liability, 2),
-                'expected_profit' => round($revenue - $consumed_cost - $outstanding_liability, 2),
+                'outstanding_liability' => 0.0,
+                'expected_profit' => round($revenue - $consumed_cost, 2),
             ];
         });
     }
@@ -631,12 +628,6 @@ class AdminDashboardReportService
         return BalanceDetail::query()
             ->where('amount', '<', 0)
             ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
-    }
-
-    private function getReportablePackagePurchaseQuery(): Builder
-    {
-        return $this->getReportableUsageQuery()
-            ->where('description', 'like', 'Bought package %');
     }
 
     private function getReportableUsersQuery(): Builder

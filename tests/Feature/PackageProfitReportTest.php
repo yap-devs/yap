@@ -6,7 +6,7 @@ use App\Models\UserPackage;
 use App\Services\AdminDashboardReportService;
 use Illuminate\Support\Facades\Cache;
 
-test('package profit stats account for consumed traffic and remaining liability', function () {
+test('package profit stats only account for ended packages', function () {
     config(['yap.unit_price' => 0.02]);
 
     $ignored_admin_user = User::factory()->create(['id' => 5]);
@@ -66,44 +66,14 @@ test('package profit stats account for consumed traffic and remaining liability'
         'status' => UserPackage::STATUS_ACTIVE,
     ]);
 
-    $first_user->balanceDetails()->create([
-        'amount' => -1,
-        'description' => 'Bought package Small Package',
-    ]);
-
-    $second_user->balanceDetails()->create([
-        'amount' => -5,
-        'description' => 'Bought package Large Package',
-    ]);
-
-    $third_user->balanceDetails()->create([
-        'amount' => -3,
-        'description' => 'Bought package Large Package',
-    ]);
-
-    $fourth_user->balanceDetails()->create([
-        'amount' => -1,
-        'description' => 'Bought package Small Package',
-    ]);
-
-    $first_user->balanceDetails()->create([
-        'amount' => -10,
-        'description' => 'Traffic deduction',
-    ]);
-
-    $ignored_admin_user->balanceDetails()->create([
-        'amount' => -100,
-        'description' => 'Bought package Large Package',
-    ]);
-
     $stats = app(AdminDashboardReportService::class)->getPackageProfitStats();
 
     expect($stats)->toMatchArray([
-        'revenue' => 10.0,
-        'consumed_cost' => 1.6,
-        'realized_profit' => 8.4,
-        'outstanding_liability' => 5.2,
-        'expected_profit' => 3.2,
+        'revenue' => 5.0,
+        'consumed_cost' => 0.4,
+        'realized_profit' => 4.6,
+        'outstanding_liability' => 0.0,
+        'expected_profit' => 4.6,
     ]);
 });
 
