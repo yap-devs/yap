@@ -4,8 +4,9 @@ namespace App\Filament\Widgets;
 
 use App\Models\Payment;
 use App\Services\AdminDashboardReportService;
+use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
@@ -24,27 +25,28 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
 
         return $table
             ->heading('User Top-Up Ranking')
-            ->description('Paid payment orders ranked by selected reporting period.')
+            ->description('Paid payment orders ranked by the selected date range. Defaults to the current month.')
             ->query($report_service->getPaymentTopUpRankingBaseQuery())
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
             ->striped()
             ->filters([
-                SelectFilter::make('period')
-                    ->label('Period')
-                    ->options([
-                        'day' => 'Today',
-                        'month' => 'This month',
-                        'quarter' => 'This quarter',
-                        'half_year' => 'This half-year',
+                Filter::make('date_range')
+                    ->label('Date Range')
+                    ->schema([
+                        DatePicker::make('start_date')
+                            ->label('Start date')
+                            ->default(now()->startOfMonth()),
+                        DatePicker::make('end_date')
+                            ->label('End date')
+                            ->default(now()),
                     ])
-                    ->default('day')
-                    ->native(false)
-                    ->selectablePlaceholder(false)
                     ->query(function (Builder $query, array $data) use ($report_service): Builder {
-                        $period = $report_service->normalizePaymentTopUpRankingPeriod($data['value'] ?? null);
-
-                        return $report_service->applyPaymentTopUpRankingPeriod($query, $period);
+                        return $report_service->applyPaymentTopUpRankingDateRange(
+                            $query,
+                            $data['start_date'] ?? null,
+                            $data['end_date'] ?? null,
+                        );
                     }),
             ])
             ->columns([

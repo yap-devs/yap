@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use InvalidArgumentException;
+use Throwable;
 
 class AdminDashboardReportService
 {
@@ -480,6 +481,22 @@ class AdminDashboardReportService
             ->where('payments.created_at', '<', $end_at);
     }
 
+    public function applyPaymentTopUpRankingDateRange(Builder $query, mixed $start_date, mixed $end_date): Builder
+    {
+        $start_at = $this->parsePaymentTopUpRankingDate($start_date)?->startOfDay();
+        $end_at = $this->parsePaymentTopUpRankingDate($end_date)?->startOfDay();
+
+        if ($start_at !== null && $end_at !== null && $start_at->greaterThan($end_at)) {
+            [$start_at, $end_at] = [$end_at, $start_at];
+        }
+
+        $exclusive_end_at = $end_at?->addDay()->startOfDay();
+
+        return $query
+            ->when($start_at, fn (Builder $query): Builder => $query->where('payments.created_at', '>=', $start_at))
+            ->when($exclusive_end_at, fn (Builder $query): Builder => $query->where('payments.created_at', '<', $exclusive_end_at));
+    }
+
     public function normalizePaymentTopUpRankingPeriod(?string $period): string
     {
         return in_array($period, ['day', 'month', 'quarter', 'half_year'], true) ? $period : 'day';
@@ -724,6 +741,19 @@ class AdminDashboardReportService
             ],
             default => throw new InvalidArgumentException('Unsupported payment top-up ranking period.'),
         };
+    }
+
+    private function parsePaymentTopUpRankingDate(mixed $date): ?CarbonImmutable
+    {
+        if (blank($date)) {
+            return null;
+        }
+
+        try {
+            return CarbonImmutable::parse((string) $date);
+        } catch (Throwable) {
+            return null;
+        }
     }
 
     private function buildDailySeries(int $days, Collection $values): Collection

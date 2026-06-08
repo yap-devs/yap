@@ -104,3 +104,80 @@ test('payment top up ranking period falls back to day for invalid values', funct
         ->and($report_service->normalizePaymentTopUpRankingPeriod(null))->toBe('day')
         ->and($report_service->normalizePaymentTopUpRankingPeriod('quarter'))->toBe('quarter');
 });
+
+test('payment top up ranking supports custom date ranges', function () {
+    $user = User::factory()->create(['id' => 6]);
+
+    foreach ([
+        ['amount' => 10, 'created_at' => '2026-03-01 00:00:00'],
+        ['amount' => 20, 'created_at' => '2026-03-31 23:59:59'],
+        ['amount' => 30, 'created_at' => '2026-04-01 00:00:00'],
+    ] as $payment) {
+        $user->payments()->create([
+            'gateway' => Payment::GATEWAY_ALIPAY,
+            'status' => Payment::STATUS_PAID,
+            'amount' => $payment['amount'],
+            'created_at' => $payment['created_at'],
+        ]);
+    }
+
+    $row = app(AdminDashboardReportService::class)
+        ->applyPaymentTopUpRankingDateRange(
+            app(AdminDashboardReportService::class)->getPaymentTopUpRankingBaseQuery(),
+            '2026-03-01',
+            '2026-03-31',
+        )
+        ->first();
+
+    expect((float) $row->total_top_up)->toBe(30.0)
+        ->and((int) $row->top_up_count)->toBe(2);
+});
+
+test('payment top up ranking custom date range ignores invalid dates', function () {
+    $user = User::factory()->create(['id' => 6]);
+
+    $user->payments()->create([
+        'gateway' => Payment::GATEWAY_ALIPAY,
+        'status' => Payment::STATUS_PAID,
+        'amount' => 10,
+        'created_at' => '2026-03-01 00:00:00',
+    ]);
+
+    $row = app(AdminDashboardReportService::class)
+        ->applyPaymentTopUpRankingDateRange(
+            app(AdminDashboardReportService::class)->getPaymentTopUpRankingBaseQuery(),
+            'not-a-date',
+            null,
+        )
+        ->first();
+
+    expect((float) $row->total_top_up)->toBe(10.0);
+});
+
+test('payment top up ranking swaps reversed custom date ranges', function () {
+    $user = User::factory()->create(['id' => 6]);
+
+    foreach ([
+        ['amount' => 10, 'created_at' => '2026-03-30 00:00:00'],
+        ['amount' => 20, 'created_at' => '2026-03-31 23:59:59'],
+        ['amount' => 30, 'created_at' => '2026-04-01 00:00:00'],
+    ] as $payment) {
+        $user->payments()->create([
+            'gateway' => Payment::GATEWAY_ALIPAY,
+            'status' => Payment::STATUS_PAID,
+            'amount' => $payment['amount'],
+            'created_at' => $payment['created_at'],
+        ]);
+    }
+
+    $row = app(AdminDashboardReportService::class)
+        ->applyPaymentTopUpRankingDateRange(
+            app(AdminDashboardReportService::class)->getPaymentTopUpRankingBaseQuery(),
+            '2026-03-31',
+            '2026-03-30',
+        )
+        ->first();
+
+    expect((float) $row->total_top_up)->toBe(30.0)
+        ->and((int) $row->top_up_count)->toBe(2);
+});
