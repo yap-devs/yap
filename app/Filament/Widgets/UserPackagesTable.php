@@ -32,9 +32,9 @@ class UserPackagesTable extends TableWidget
                     ->applyUserPackageStatus(
                         $report_service->getUserPackagesQuery(),
                         $this->pageFilters['status'] ?? 'ended',
-                    )
-                    ->orderByDesc('user_packages.id'),
+                    ),
             )
+            ->defaultSort('user_packages.id', 'desc')
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
             ->striped()
@@ -53,11 +53,13 @@ class UserPackagesTable extends TableWidget
                     ->searchable(),
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn (UserPackage $record): string => $this->getStatusTone($record)),
+                    ->color(fn (UserPackage $record): string => $this->getStatusTone($record))
+                    ->sortable(),
                 TextColumn::make('started_at')
                     ->label('Started')
                     ->dateTime('Y-m-d H:i')
-                    ->since(),
+                    ->since()
+                    ->sortable(),
                 TextColumn::make('ended_at')
                     ->label('Ends')
                     ->dateTime('Y-m-d H:i')
@@ -71,15 +73,18 @@ class UserPackagesTable extends TableWidget
                     ->badge()
                     ->color(fn (UserPackage $record): string => $this->getRemainingTrafficTone($record))
                     ->description(fn (UserPackage $record): string => $this->formatRemainingTrafficRatio($record))
-                    ->formatStateUsing(fn (mixed $state): string => $this->formatGigabytes((float) $state)),
+                    ->formatStateUsing(fn (mixed $state): string => $this->formatGigabytes((float) $state))
+                    ->sortable(),
                 TextColumn::make('package.traffic_limit')
                     ->label('Total')
                     ->alignEnd()
-                    ->formatStateUsing(fn (mixed $state): string => $this->formatGigabytes((float) $state)),
+                    ->formatStateUsing(fn (mixed $state): string => $this->formatGigabytes((float) $state))
+                    ->sortable(),
                 TextColumn::make('package.price')
                     ->label('Revenue')
                     ->alignEnd()
-                    ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state)),
+                    ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state))
+                    ->sortable(),
                 TextColumn::make('consumed_cost')
                     ->label('Consumed Cost')
                     ->alignEnd()

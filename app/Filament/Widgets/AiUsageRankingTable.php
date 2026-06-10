@@ -24,7 +24,8 @@ class AiUsageRankingTable extends TableWidget
         return $table
             ->heading('Today AI Usage Ranking')
             ->description('Top AI spenders today by total cost.')
-            ->query(app(AdminDashboardReportService::class)->getAiUsageRankingQuery())
+            ->query(app(AdminDashboardReportService::class)->getAiUsageRankingQuery()->reorder())
+            ->defaultSort('total_cost', 'desc')
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
             ->striped()

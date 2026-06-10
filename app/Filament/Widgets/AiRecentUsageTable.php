@@ -21,7 +21,8 @@ class AiRecentUsageTable extends TableWidget
         return $table
             ->heading('Recent AI Requests')
             ->description('Latest individual AI API calls across all users.')
-            ->query(app(AdminDashboardReportService::class)->getAiRecentUsageQuery())
+            ->query(app(AdminDashboardReportService::class)->getAiRecentUsageQuery()->reorder())
+            ->defaultSort('sub2api_usage_records.id', 'desc')
             ->defaultPaginationPageOption(10)
             ->paginationPageOptions([10, 25, 50])
             ->striped()

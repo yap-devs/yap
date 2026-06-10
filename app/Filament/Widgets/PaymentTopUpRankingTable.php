@@ -54,13 +54,11 @@ class PaymentTopUpRankingTable extends TableWidget
                     ->alignEnd()
                     ->badge()
                     ->color('success')
-                    ->sortable()
                     ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state)),
                 TextColumn::make('last_top_up_at')
                     ->label('Last Top-Up')
                     ->dateTime('Y-m-d H:i')
-                    ->since()
-                    ->sortable(),
+                    ->since(),
             ]);
     }
 

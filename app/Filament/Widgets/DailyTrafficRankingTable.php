@@ -9,6 +9,7 @@ use Carbon\CarbonImmutable;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Database\Eloquent\Builder;
 
 class DailyTrafficRankingTable extends TableWidget
 {
@@ -26,8 +27,11 @@ class DailyTrafficRankingTable extends TableWidget
         return $table
             ->heading('Today / Yesterday Traffic')
             ->description('Top traffic consumers from the latest two daily windows.')
-            ->query(app(AdminDashboardReportService::class)->getDailyTrafficRankingQuery())
+            ->query(app(AdminDashboardReportService::class)->getDailyTrafficRankingQuery()->reorder())
             ->poll(fn (): ?string => $this->getPollingInterval())
+            ->defaultSort(fn (Builder $query): Builder => $query
+                ->orderByDesc('day')
+                ->orderByDesc('daily_traffic_bytes'))
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
             ->striped()

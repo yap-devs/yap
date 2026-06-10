@@ -25,8 +25,9 @@ class TotalTrafficLeaderboardTable extends TableWidget
         return $table
             ->heading('User Total Traffic Report')
             ->description('Lifetime traffic leaderboard for all reportable users.')
-            ->query(app(AdminDashboardReportService::class)->getTotalTrafficLeaderboardQuery())
+            ->query(app(AdminDashboardReportService::class)->getTotalTrafficLeaderboardQuery()->reorder())
             ->poll(fn (): ?string => $this->getPollingInterval())
+            ->defaultSort('total_traffic_bytes', 'desc')
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
             ->striped()

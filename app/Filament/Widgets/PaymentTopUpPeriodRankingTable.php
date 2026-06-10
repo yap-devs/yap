@@ -26,7 +26,8 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
         return $table
             ->heading('User Top-Up Ranking')
             ->description('Paid payment orders ranked by the selected date range. Defaults to the current month.')
-            ->query($report_service->getPaymentTopUpRankingBaseQuery())
+            ->query($report_service->getPaymentTopUpRankingBaseQuery()->reorder())
+            ->defaultSort('total_top_up', 'desc')
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
             ->striped()
