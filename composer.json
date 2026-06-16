@@ -55,7 +55,7 @@
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force",
-            "@php artisan boost:update --ansi"
+            "@php -r \"if (! file_exists('vendor/laravel/boost/composer.json')) { exit; } passthru(escapeshellarg(PHP_BINARY).' artisan boost:update --ansi', $status); exit($status);\""
         ],
         "pre-package-uninstall": [
             "Illuminate\\Foundation\\ComposerScripts::prePackageUninstall"
