@@ -46,7 +46,9 @@ test('client download targets can be configured', function () {
             ['name' => 'custom-release.zip'],
         ], $service->targets()['custom-client'])['name'])->toBe('custom-release.zip')
         ->and($service->downloads())->toHaveCount(1)
-        ->and($service->downloads()[0]['key'])->toBe('custom-client');
+        ->and($service->downloads()[0]['key'])->toBe('custom-client')
+        ->and($service->downloads()[0]['label'])->toBe('Custom Client')
+        ->and($service->downloads()[0]['repo'])->toBe('example/project');
 });
 
 test('downloads skips invalid configured targets', function () {

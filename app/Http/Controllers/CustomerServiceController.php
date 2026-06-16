@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
+use RuntimeException;
 
 class CustomerServiceController extends Controller
 {
@@ -28,9 +29,12 @@ class CustomerServiceController extends Controller
 
         abort_if(! array_key_exists($client, $download_mirror_service->targets()), 404);
         abort_if(! $user->is_valid, 403);
-        abort_if(! $download_mirror_service->hasMirroredDownload($client), 404);
 
-        return redirect()->away($download_mirror_service->temporaryDownloadUrl($client));
+        try {
+            return redirect()->away($download_mirror_service->temporaryDownloadUrl($client));
+        } catch (RuntimeException) {
+            return redirect()->away($download_mirror_service->githubReleaseUrl($client));
+        }
     }
 
     public function resetSubscription(Request $request)

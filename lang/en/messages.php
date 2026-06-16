@@ -169,28 +169,8 @@ return [
         'telegram_body' => 'Join our Telegram channel to get the latest updates and support!',
         'client_download' => 'Client Download',
         'client_download_body' => 'Download the latest version of the client software.',
-        'windows_macos_linux' => 'For Windows && MacOS && Linux',
-        'android' => 'For Android',
         'download_primary' => 'Download',
         'download_github' => 'GitHub backup',
-        'downloads' => [
-            'clash-meta-android-universal' => [
-                'label' => 'Android universal APK',
-                'description' => 'Clash Meta for Android universal package for most Android devices.',
-            ],
-            'clash-verge-windows-x64-webview2' => [
-                'label' => 'Windows x64 with WebView2',
-                'description' => 'Clash Verge Rev 64-bit installer with bundled WebView2 runtime.',
-            ],
-            'clash-verge-macos-apple-silicon' => [
-                'label' => 'macOS Apple Silicon',
-                'description' => 'Clash Verge Rev DMG for Mac devices with M-series chips.',
-            ],
-            'clash-verge-macos-intel' => [
-                'label' => 'macOS Intel',
-                'description' => 'Clash Verge Rev DMG for Intel-based Mac devices.',
-            ],
-        ],
         'reset_subscription_url' => 'Reset Subscription URL',
         'reset_body' => 'If you need to reset your subscription URL, please click the button below.',
         'reset_ai_note' => 'Resetting the subscription UUID will also rotate your AI key.',

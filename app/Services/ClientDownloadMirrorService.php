@@ -74,27 +74,34 @@ class ClientDownloadMirrorService
     public function downloads(): array
     {
         $downloads = [];
-        $manifest_assets = $this->manifestAssets();
 
         foreach ($this->targets() as $key => $target) {
             if (! $this->isValidTarget($key, $target)) {
                 continue;
             }
 
-            $is_available = is_array($manifest_assets[$key] ?? null)
-                && $this->hasMirroredDownload($key);
-
             $downloads[] = [
                 'key' => $key,
-                'label_key' => 'customer_service.downloads.'.$key.'.label',
-                'description_key' => 'customer_service.downloads.'.$key.'.description',
-                'available' => $is_available,
-                'url' => $is_available ? route('customer.service.download', ['client' => $key]) : null,
+                'label' => $target['label'],
+                'repo' => $target['repo'],
+                'url' => route('customer.service.download', ['client' => $key]),
                 'github_url' => 'https://github.com/'.$target['repo'].'/releases/latest',
             ];
         }
 
         return $downloads;
+    }
+
+    public function githubReleaseUrl(string $key): string
+    {
+        $target = $this->targets()[$key] ?? null;
+        if ($target === null) {
+            throw new InvalidArgumentException('Unknown client download: '.$key);
+        }
+
+        $this->validateTarget($key, $target);
+
+        return 'https://github.com/'.$target['repo'].'/releases/latest';
     }
 
     public function temporaryDownloadUrl(string $key): string
