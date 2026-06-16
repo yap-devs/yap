@@ -5,13 +5,7 @@
     ],
     "mcp": {
         "laravel-boost": {
-            "type": "local",
-            "enabled": false,
-            "command": [
-                "php",
-                "artisan",
-                "boost:mcp"
-            ]
+            "enabled": false
         },
         "sentry": {
             "type": "remote",
