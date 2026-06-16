@@ -6,7 +6,7 @@ import SecondaryButton from "@/Components/SecondaryButton.jsx";
 import PrimaryButton from "@/Components/PrimaryButton.jsx";
 import {trans} from '@/Utils/i18n';
 
-export default function Index({auth, resetSubscriptionPrice}) {
+export default function Index({auth, resetSubscriptionPrice, clientDownloads}) {
   const [confirmingResetSubscriptionUrl, setConfirmingResetSubscriptionUrl] = useState(false);
   const closeModal = () => {
     setConfirmingResetSubscriptionUrl(false);
@@ -48,15 +48,33 @@ export default function Index({auth, resetSubscriptionPrice}) {
               <p className="text-sm text-gray-700 mt-2">
                 {trans('customer_service.client_download_body')}
               </p>
-              <div className="underline mt-2 space-x-4">
-                <a href="https://github.com/clash-verge-rev/clash-verge-rev/releases/latest" target="_blank"
-                   rel="noreferrer noopener">
-                  {trans('customer_service.windows_macos_linux')}
-                </a>
-                <a href="https://github.com/MetaCubeX/ClashMetaForAndroid/releases/latest" target="_blank"
-                   rel="noreferrer noopener">
-                  {trans('customer_service.android')}
-                </a>
+              <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
+                {clientDownloads.map((download) => (
+                  <div key={download.key} className="rounded border border-blue-200 bg-white p-4 shadow-sm">
+                    <h3 className="font-semibold text-gray-800">{trans(download.label_key)}</h3>
+                    <p className="mt-1 text-sm text-gray-600">{trans(download.description_key)}</p>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-sm">
+                      {download.available && (
+                        <a
+                          href={download.url}
+                          className="rounded bg-blue-600 px-3 py-1.5 font-semibold text-white hover:bg-blue-700"
+                          target="_blank"
+                          rel="noreferrer noopener"
+                        >
+                          {trans('customer_service.download_primary')}
+                        </a>
+                      )}
+                      <a
+                        href={download.github_url}
+                        className="text-blue-600 underline hover:text-blue-800"
+                        target="_blank"
+                        rel="noreferrer noopener"
+                      >
+                        {trans('customer_service.download_github')}
+                      </a>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
 

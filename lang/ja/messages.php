@@ -171,6 +171,26 @@ return [
         'client_download_body' => '対応クライアントの最新版はこちらからダウンロードできます。',
         'windows_macos_linux' => 'Windows / macOS / Linux 向け',
         'android' => 'Android 向け',
+        'download_primary' => 'ダウンロード',
+        'download_github' => 'GitHub 予備リンク',
+        'downloads' => [
+            'clash-meta-android-universal' => [
+                'label' => 'Android universal APK',
+                'description' => '多くのAndroid端末で利用できるClash Meta for Androidの汎用パッケージです。',
+            ],
+            'clash-verge-windows-x64-webview2' => [
+                'label' => 'Windows x64 WebView2同梱版',
+                'description' => 'WebView2ランタイムを同梱したClash Verge Rev 64ビットインストーラーです。',
+            ],
+            'clash-verge-macos-apple-silicon' => [
+                'label' => 'macOS Apple Silicon',
+                'description' => 'Mシリーズチップ搭載Mac向けのClash Verge Rev DMGです。',
+            ],
+            'clash-verge-macos-intel' => [
+                'label' => 'macOS Intel',
+                'description' => 'Intel搭載Mac向けのClash Verge Rev DMGです。',
+            ],
+        ],
         'reset_subscription_url' => 'サブスクリプションURLをリセット',
         'reset_body' => 'サブスクリプションURLをリセットする場合は、下のボタンをクリックしてください。',
         'reset_ai_note' => 'サブスクリプションUUIDをリセットすると、AIキーもあわせて更新されます。',

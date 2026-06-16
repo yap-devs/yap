@@ -171,6 +171,26 @@ return [
         'client_download_body' => '下载最新版本的客户端软件。',
         'windows_macos_linux' => '适用于 Windows && MacOS && Linux',
         'android' => '适用于 Android',
+        'download_primary' => '下载',
+        'download_github' => 'GitHub 备用',
+        'downloads' => [
+            'clash-meta-android-universal' => [
+                'label' => 'Android universal APK',
+                'description' => 'Clash Meta for Android 通用安装包，适用于大多数 Android 设备。',
+            ],
+            'clash-verge-windows-x64-webview2' => [
+                'label' => 'Windows x64 内置 WebView2',
+                'description' => 'Clash Verge Rev 64 位安装包，内置 WebView2 运行时。',
+            ],
+            'clash-verge-macos-apple-silicon' => [
+                'label' => 'macOS Apple 芯片',
+                'description' => '适用于 M 系列芯片 Mac 的 Clash Verge Rev DMG。',
+            ],
+            'clash-verge-macos-intel' => [
+                'label' => 'macOS Intel 芯片',
+                'description' => '适用于 Intel 芯片 Mac 的 Clash Verge Rev DMG。',
+            ],
+        ],
         'reset_subscription_url' => '重置订阅 URL',
         'reset_body' => '如需重置订阅 URL，请点击下方按钮。',
         'reset_ai_note' => '重置订阅 UUID 也会轮换您的 AI 密钥。',

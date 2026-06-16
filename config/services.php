@@ -51,4 +51,37 @@ return [
         'min_balance_to_create_key' => (float) env('SUB2API_MIN_BALANCE_TO_CREATE_KEY', 5),
         'min_balance_to_keep_active' => (float) env('SUB2API_MIN_BALANCE_TO_KEEP_ACTIVE', 2),
     ],
+
+    'client_downloads' => [
+        'disk' => env('CLIENT_DOWNLOADS_DISK', 'r2_downloads'),
+        'prefix' => env('CLIENT_DOWNLOADS_PREFIX', 'clients'),
+        'github_token' => env('CLIENT_DOWNLOADS_GITHUB_TOKEN'),
+        'signed_url_ttl_minutes' => (int) env('CLIENT_DOWNLOADS_SIGNED_URL_TTL_MINUTES', 10),
+        'targets' => [
+            'clash-meta-android-universal' => [
+                'repo' => 'MetaCubeX/ClashMetaForAndroid',
+                'label' => 'Clash Meta for Android Universal',
+                'patterns' => ['/meta-universal-release\.apk$/i'],
+                'latest_name' => 'clash-meta-android-universal.apk',
+            ],
+            'clash-verge-windows-x64-webview2' => [
+                'repo' => 'clash-verge-rev/clash-verge-rev',
+                'label' => 'Clash Verge Rev Windows x64 WebView2',
+                'patterns' => ['/x64_fixed_webview2-setup\.exe$/i'],
+                'latest_name' => 'clash-verge-windows-x64-webview2.exe',
+            ],
+            'clash-verge-macos-apple-silicon' => [
+                'repo' => 'clash-verge-rev/clash-verge-rev',
+                'label' => 'Clash Verge Rev macOS Apple Silicon',
+                'patterns' => ['/aarch64\.dmg$/i'],
+                'latest_name' => 'clash-verge-macos-apple-silicon.dmg',
+            ],
+            'clash-verge-macos-intel' => [
+                'repo' => 'clash-verge-rev/clash-verge-rev',
+                'label' => 'Clash Verge Rev macOS Intel',
+                'patterns' => ['/x64\.dmg$/i'],
+                'latest_name' => 'clash-verge-macos-intel.dmg',
+            ],
+        ],
+    ],
 ];

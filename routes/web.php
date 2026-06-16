@@ -112,6 +112,9 @@ Route::group(['prefix' => 'ai', 'middleware' => ['auth']], function () {
 
 Route::group(['prefix' => 'customer/service', 'middleware' => ['auth']], function () {
     Route::get('/', [CustomerServiceController::class, 'index'])->name('customer.service');
+    Route::get('/download/{client}', [CustomerServiceController::class, 'download'])
+        ->middleware('throttle:20,1')
+        ->name('customer.service.download');
     Route::post('/resetSubscription', [CustomerServiceController::class, 'resetSubscription'])
         ->middleware('throttle:subscription-reset')
         ->name('customer.service.resetSubscription');

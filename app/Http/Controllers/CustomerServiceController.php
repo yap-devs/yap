@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\UpdateUserUuid;
 use App\Models\User;
+use App\Services\ClientDownloadMirrorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
@@ -12,11 +13,24 @@ use Inertia\Inertia;
 
 class CustomerServiceController extends Controller
 {
-    public function index()
+    public function index(ClientDownloadMirrorService $download_mirror_service)
     {
         $resetSubscriptionPrice = config('yap.reset_subscription_price');
+        $clientDownloads = $download_mirror_service->downloads();
 
-        return Inertia::render('CustomerService/Index', compact('resetSubscriptionPrice'));
+        return Inertia::render('CustomerService/Index', compact('resetSubscriptionPrice', 'clientDownloads'));
+    }
+
+    public function download(Request $request, string $client, ClientDownloadMirrorService $download_mirror_service)
+    {
+        /** @var User $user */
+        $user = $request->user();
+
+        abort_if(! array_key_exists($client, $download_mirror_service->targets()), 404);
+        abort_if(! $user->is_valid, 403);
+        abort_if(! $download_mirror_service->hasMirroredDownload($client), 404);
+
+        return redirect()->away($download_mirror_service->temporaryDownloadUrl($client));
     }
 
     public function resetSubscription(Request $request)
