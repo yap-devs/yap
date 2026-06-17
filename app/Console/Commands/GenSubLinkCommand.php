@@ -20,7 +20,7 @@ class GenSubLinkCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Generate subscription link for all users.';
+    protected $description = 'Rebuild subscription cache and sync users.';
 
     /**
      * Execute the console command.
@@ -30,5 +30,7 @@ class GenSubLinkCommand extends Command
     public function handle()
     {
         GenerateClashProfileLink::dispatchSync();
+
+        $this->info('Rebuilt subscription cache and synced users.');
     }
 }

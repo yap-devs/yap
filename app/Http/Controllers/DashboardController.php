@@ -14,7 +14,8 @@ class DashboardController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        $clashUrl = route('clash', ['uuid' => $user->uuid]);
+        $clashUrl = route('subscription.clash', ['uuid' => $user->uuid]);
+        $universalSubscriptionUrl = route('subscription.universal', ['uuid' => $user->uuid]);
         $unitPrice = config('yap.unit_price');
         $servers = VmessServer::where('enabled', true)->get();
         $todayTraffic = Cache::remember('today_traffic_'.$user->id, 60 * 30, function () use ($user) {
@@ -25,6 +26,6 @@ class DashboardController extends Controller
                 ->first()->traffic ?? 0;
         });
 
-        return Inertia::render('Dashboard', compact('clashUrl', 'unitPrice', 'servers', 'todayTraffic'));
+        return Inertia::render('Dashboard', compact('clashUrl', 'universalSubscriptionUrl', 'unitPrice', 'servers', 'todayTraffic'));
     }
 }

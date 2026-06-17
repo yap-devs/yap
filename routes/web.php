@@ -5,7 +5,6 @@ use App\Http\Controllers\AiController;
 use App\Http\Controllers\AlipayController;
 use App\Http\Controllers\BalanceDetailController;
 use App\Http\Controllers\BepusdtController;
-use App\Http\Controllers\ClashController;
 use App\Http\Controllers\CustomerServiceController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\GithubController;
@@ -16,6 +15,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\RechargeController;
 use App\Http\Controllers\StatController;
 use App\Http\Controllers\StripeController;
+use App\Http\Controllers\SubscriptionController;
 use App\Http\Middleware\ThrottleByDistinctIp;
 use App\Http\Middleware\ValidateGithubWebhook;
 use Illuminate\Foundation\Application;
@@ -58,9 +58,12 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__.'/auth.php';
 
-Route::get('/clash/{uuid}/yap.yaml', [ClashController::class, 'index'])
+Route::get('/clash/{uuid}/yap.yaml', [SubscriptionController::class, 'clash'])
     ->middleware(ThrottleByDistinctIp::class.':7,120')  // Allow max 7 distinct IPs per 120 seconds for the same subscription
-    ->name('clash');
+    ->name('subscription.clash');
+Route::get('/sub/{uuid}/yap.txt', [SubscriptionController::class, 'universal'])
+    ->middleware(ThrottleByDistinctIp::class.':7,120')
+    ->name('subscription.universal');
 
 Route::group(['prefix' => 'dashboard', 'middleware' => ['auth', 'verified']], function () {
     Route::get('/', [DashboardController::class, 'index'])->name('dashboard');

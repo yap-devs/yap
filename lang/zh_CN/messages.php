@@ -120,6 +120,8 @@ return [
         'low_priority_body' => '部分服务器受限。',
         'low_priority_suffix' => '即可升级。',
         'import_clash' => '导入 Clash',
+        'copy_clash' => '复制 Clash',
+        'copy_universal' => '复制 V2RayN/Merlin Base64',
         'import_shadowrocket' => '导入 Shadowrocket',
         'import_stash' => '导入 Stash',
         'no_servers' => '当前暂无可用服务器。',

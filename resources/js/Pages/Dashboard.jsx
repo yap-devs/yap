@@ -4,25 +4,37 @@ import {useState} from "react";
 import {formatBytes} from "@/Utils/formatBytes";
 import {trans} from '@/Utils/i18n';
 
-export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraffic}) {
-  const [copyButton, setCopyButton] = useState(trans('dashboard.copy_url'));
-  const [showTooltip, setShowTooltip] = useState(false);
+export default function Dashboard({auth, clashUrl, universalSubscriptionUrl, unitPrice, servers, todayTraffic}) {
+  const [copiedSubscription, setCopiedSubscription] = useState(null);
   const [showGuide, setShowGuide] = useState(() => {
     return localStorage.getItem('dashboard_guide_dismissed') !== 'true';
   });
 
   const copyToClipboard = async text => {
     try {
+      if (!navigator.clipboard) {
+        return false;
+      }
+
       await navigator.clipboard.writeText(text);
-      setCopyButton(trans('dashboard.copied'));
-      setShowTooltip(true);
-      setTimeout(() => {
-        setCopyButton(trans('dashboard.copy_url'));
-        setShowTooltip(false);
-      }, 2000);
+
+      return true;
     } catch (err) {
       console.error('Failed to copy: ', err);
+
+      return false;
     }
+  }
+
+  const copySubscriptionUrl = async (key, url) => {
+    const copied = await copyToClipboard(url);
+
+    if (!copied) {
+      return;
+    }
+
+    setCopiedSubscription(key);
+    setTimeout(() => setCopiedSubscription(null), 2000);
   }
 
   const totalBytes = auth.user.traffic_downlink + auth.user.traffic_uplink;
@@ -150,7 +162,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
                 </button>
               )}
               <button
-                onClick={() => copyToClipboard(clashUrl)}
+                onClick={() => copySubscriptionUrl('clash', clashUrl)}
                 disabled={needsRecharge}
                 className={`inline-flex items-center justify-center rounded-lg px-5 py-3 text-sm font-semibold transition duration-200 ${
                   needsRecharge
@@ -158,7 +170,7 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
                     : 'border border-gray-300 bg-white text-gray-700 hover:bg-gray-50'
                 }`}
               >
-                {copyButton}
+                {copiedSubscription === 'clash' ? trans('dashboard.copied') : trans('dashboard.copy_clash')}
               </button>
               <Link
                 href={route('customer.service')}
@@ -291,20 +303,24 @@ export default function Dashboard({auth, clashUrl, unitPrice, servers, todayTraf
           </div>
         )}
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           <button
-            onClick={() => copyToClipboard(clashUrl)}
-            className="relative flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white font-medium py-3 px-4 rounded-lg shadow-sm transition duration-200"
+            onClick={() => copySubscriptionUrl('clash', clashUrl)}
+            className="flex items-center justify-center bg-gray-800 hover:bg-gray-900 text-white font-medium py-3 px-4 rounded-lg shadow-sm transition duration-200"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"/>
             </svg>
-            {copyButton}
-            {showTooltip && (
-              <span className="absolute -top-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-2 py-1 rounded">
-                {trans('dashboard.copied')}
-              </span>
-            )}
+            {copiedSubscription === 'clash' ? trans('dashboard.copied') : trans('dashboard.copy_clash')}
+          </button>
+          <button
+            onClick={() => copySubscriptionUrl('universal', universalSubscriptionUrl)}
+            className="flex items-center justify-center bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-3 px-4 rounded-lg shadow-sm transition duration-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            </svg>
+            {copiedSubscription === 'universal' ? trans('dashboard.copied') : trans('dashboard.copy_universal')}
           </button>
           <button
             onClick={() => window.location.href = 'clash://install-config?url=' + encodeURIComponent(clashUrl)}

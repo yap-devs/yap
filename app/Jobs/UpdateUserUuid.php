@@ -5,6 +5,7 @@ namespace App\Jobs;
 use App\Models\User;
 use App\Notifications\UuidUpdated;
 use App\Services\Sub2apiKeyService;
+use App\Services\SubscriptionService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -41,7 +42,7 @@ class UpdateUserUuid implements ShouldQueue
      *
      * Updates the user's UUID in the database and dispatches a job to generate a new Clash profile link.
      */
-    public function handle(): void
+    public function handle(SubscriptionService $subscription_service): void
     {
         $old_key_id = $this->old_key_id ?? $this->user->sub2api_key_id;
         $old_uuid = $this->old_uuid ?? $this->user->uuid;
@@ -61,6 +62,7 @@ class UpdateUserUuid implements ShouldQueue
 
             $this->user->update(['uuid' => $new_uuid]);
             $this->user->refresh();
+            $subscription_service->forgetCache($this->user);
         }
 
         Log::channel('job')->info(

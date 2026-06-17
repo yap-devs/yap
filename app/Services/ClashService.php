@@ -6,6 +6,7 @@ use App\Models\RelayServer;
 use App\Models\User;
 use App\Models\VmessServer;
 use Illuminate\Support\Facades\File;
+use Throwable;
 
 readonly class ClashService
 {
@@ -13,10 +14,42 @@ readonly class ClashService
         private User $user,
     ) {}
 
-    public function genConf($vmess_servers = null)
+    public function genConf(?iterable $vmess_servers = null): string
     {
         $template = yaml_parse_file(resource_path('clash-conf-template.yaml'));
-        $vmess_servers = $vmess_servers ?: VmessServer::where('enabled', true)->get();
+        $proxies = $this->proxies($vmess_servers);
+
+        $template['proxies'] = $proxies;
+        $proxy_names = array_column($proxies, 'name');
+        $proxy_names_with_auto = array_merge(['Auto', 'Fallback'], $proxy_names);
+        $template['proxy-groups'] = [
+            [
+                'proxies' => $proxy_names_with_auto,
+                'name' => 'Proxy',
+                'type' => 'select',
+            ],
+            [
+                'proxies' => $proxy_names,
+                'name' => 'Auto',
+                'type' => 'url-test',
+                'url' => 'https://www.gstatic.com/generate_204',
+                'interval' => 3600,
+            ],
+            [
+                'proxies' => $proxy_names,
+                'name' => 'Fallback',
+                'type' => 'fallback',
+                'url' => 'https://www.gstatic.com/generate_204',
+                'interval' => 3600,
+            ],
+        ];
+
+        return $this->customizeYaml(yaml_emit($template));
+    }
+
+    public function proxies(?iterable $vmess_servers = null): array
+    {
+        $vmess_servers = $vmess_servers ?? VmessServer::where('enabled', true)->with('relays')->get();
 
         $proxies = [];
         /** @var VmessServer $vmess_server */
@@ -51,51 +84,36 @@ readonly class ClashService
             }
         }
 
-        $template['proxies'] = $proxies;
-        $proxy_names = array_column($proxies, 'name');
-        $proxy_names_with_auto = array_merge(['Auto', 'Fallback'], $proxy_names);
-        $template['proxy-groups'] = [
-            [
-                'proxies' => $proxy_names_with_auto,
-                'name' => 'Proxy',
-                'type' => 'select',
-            ],
-            [
-                'proxies' => $proxy_names,
-                'name' => 'Auto',
-                'type' => 'url-test',
-                'url' => 'https://www.gstatic.com/generate_204',
-                'interval' => 3600,
-            ],
-            [
-                'proxies' => $proxy_names,
-                'name' => 'Fallback',
-                'type' => 'fallback',
-                'url' => 'https://www.gstatic.com/generate_204',
-                'interval' => 3600,
-            ],
-        ];
+        return $proxies;
+    }
 
-        $path = storage_path("clash-config/{$this->user->uuid}.yaml");
-        yaml_emit_file($path, $template);
+    private function customizeYaml(string $yaml): string
+    {
         if (file_exists(app_path('ClashYamlCustomizer.php'))) {
+            $path = tempnam(sys_get_temp_dir(), 'yap-clash-');
+
+            if ($path === false) {
+                return $yaml;
+            }
+
+            File::put($path, $yaml);
             $customizer = require app_path('ClashYamlCustomizer.php');
 
-            if (is_callable($customizer)) {
-                $customizer($path);
+            try {
+                if (is_callable($customizer)) {
+                    $customizer($path);
+                }
+
+                return File::get($path);
+            } catch (Throwable $exception) {
+                report($exception);
+
+                return $yaml;
+            } finally {
+                File::delete($path);
             }
         }
-    }
 
-    public function delConf()
-    {
-        if (File::exists(storage_path("clash-config/{$this->user->uuid}.yaml"))) {
-            File::delete(storage_path("clash-config/{$this->user->uuid}.yaml"));
-        }
-    }
-
-    public function confExists()
-    {
-        return File::exists(storage_path("clash-config/{$this->user->uuid}.yaml"));
+        return $yaml;
     }
 }

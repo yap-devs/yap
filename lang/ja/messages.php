@@ -120,6 +120,8 @@ return [
         'low_priority_body' => '一部のサーバーはご利用いただけません。',
         'low_priority_suffix' => 'するとアップグレードできます。',
         'import_clash' => 'Clashにインポート',
+        'copy_clash' => 'Clashをコピー',
+        'copy_universal' => 'V2RayN/Merlin Base64をコピー',
         'import_shadowrocket' => 'Shadowrocketにインポート',
         'import_stash' => 'Stashにインポート',
         'no_servers' => '現在、利用可能なサーバーはありません。',

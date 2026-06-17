@@ -5,7 +5,7 @@ namespace App\Jobs;
 use App\Models\User;
 use App\Models\UserPackage;
 use App\Models\VmessServer;
-use App\Services\ClashService;
+use App\Services\SubscriptionService;
 use App\Services\V2rayService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -31,28 +31,26 @@ class GenerateClashProfileLink implements ShouldQueue
     /**
      * Execute the job.
      */
-    public function handle()
+    public function handle(SubscriptionService $subscription_service)
     {
         $this->vmess_servers = VmessServer::where('enabled', true)->with('relays')->get();
 
         $result = [];
         $users = User::withTrashed()->with('packages')->get();
         foreach ($users as $user) {
-            $result[] = $this->preProcessUser($user);
+            $result[] = $this->preProcessUser($user, $subscription_service);
         }
         $this->processV2Ray($result);
     }
 
     /**
-     * Processes a user for V2ray and Clash services.
+     * Processes a user for V2ray services.
      *
      * @param  User  $user  The user entity to be processed
      * @return array [$user, array] [$user, servers belonging to the user]
      */
-    private function preProcessUser(User $user): array
+    private function preProcessUser(User $user, SubscriptionService $subscription_service): array
     {
-        $clash = new ClashService($user);
-
         if (
             // user deleted
             $user->deleted_at
@@ -62,28 +60,15 @@ class GenerateClashProfileLink implements ShouldQueue
                 && $user->packages->where('status', UserPackage::STATUS_ACTIVE)->isEmpty()
             )
         ) {
-            if (! $clash->confExists()) {
-                return [$user, []];
-            }
-
-            $clash->delConf();
+            $subscription_service->forgetCache($user);
 
             return [$user, []];
         }
 
-        $servers = [];
-        /** @var VmessServer $vmess_server */
-        foreach ($this->vmess_servers as $vmess_server) {
-            if ($user->is_low_priority && ! $vmess_server->for_low_priority) {
-                continue;
-            }
+        $servers = $subscription_service->serversFor($user, $this->vmess_servers);
+        $subscription_service->warmCache($user, $servers);
 
-            $servers[] = $vmess_server;
-        }
-
-        $clash->genConf($servers);
-
-        return [$user, $servers];
+        return [$user, $servers->all()];
     }
 
     private function processV2Ray(array $result)
@@ -101,6 +86,10 @@ class GenerateClashProfileLink implements ShouldQueue
             }
 
             foreach ($servers as $server) {
+                if (empty($server->internal_server)) {
+                    continue;
+                }
+
                 $server_user_map[$server->internal_server][$user->uuid] = [
                     'id' => $user->uuid,
                     'email' => $user->email,

@@ -120,6 +120,8 @@ return [
         'low_priority_body' => 'Some servers are restricted.',
         'low_priority_suffix' => 'to upgrade.',
         'import_clash' => 'Import to Clash',
+        'copy_clash' => 'Copy Clash',
+        'copy_universal' => 'Copy V2RayN/Merlin Base64',
         'import_shadowrocket' => 'Import to Shadowrocket',
         'import_stash' => 'Import to Stash',
         'no_servers' => 'No servers available at the moment.',
