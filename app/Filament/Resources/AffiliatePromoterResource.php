@@ -24,25 +24,30 @@ class AffiliatePromoterResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            TextInput::make('user_id')->required()->numeric(),
-            TextInput::make('code')->required()->maxLength(255),
-            Select::make('status')->required()->options([
-                AffiliatePromoter::STATUS_ACTIVE => 'Active',
-                AffiliatePromoter::STATUS_BLOCKED => 'Blocked',
-            ]),
-            TextInput::make('custom_commission_rate')->numeric()->helperText('Optional. 0.25 means 25%.'),
-            TextInput::make('total_valid_referrals')->required()->numeric(),
-            TextInput::make('total_commission_amount')->required()->numeric()->prefix('$'),
-        ]);
+        return $schema
+            ->columns([
+                'md' => 2,
+                'xl' => 3,
+            ])
+            ->components([
+                TextInput::make('user_id')->required()->numeric(),
+                TextInput::make('code')->required()->maxLength(255),
+                Select::make('status')->required()->options([
+                    AffiliatePromoter::STATUS_ACTIVE => 'Active',
+                    AffiliatePromoter::STATUS_BLOCKED => 'Blocked',
+                ]),
+                TextInput::make('custom_commission_rate')->numeric()->helperText('Optional. 0.25 means 25%.'),
+                TextInput::make('total_valid_referrals')->required()->numeric(),
+                TextInput::make('total_commission_amount')->required()->numeric()->prefix('$'),
+            ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('user.email')->searchable(),
-                TextColumn::make('code')->searchable(),
+                TextColumn::make('user.email')->wrap()->searchable(),
+                TextColumn::make('code')->wrap()->searchable(),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('custom_commission_rate')->formatStateUsing(fn ($state): string => $state === null ? '-' : ((float) $state * 100).'%'),
                 TextColumn::make('total_valid_referrals')->numeric()->sortable(),
@@ -50,8 +55,12 @@ class AffiliatePromoterResource extends Resource
                 TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('deleted_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->stackedOnMobile()
             ->filters([TrashedFilter::make()])
-            ->recordActions([EditAction::make()]);
+            ->recordActions([
+                EditAction::make()
+                    ->labeledFrom('sm'),
+            ]);
     }
 
     public static function getPages(): array

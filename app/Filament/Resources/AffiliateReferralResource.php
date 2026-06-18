@@ -25,23 +25,28 @@ class AffiliateReferralResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            TextInput::make('promoter_id')->required()->numeric(),
-            TextInput::make('referrer_user_id')->required()->numeric(),
-            TextInput::make('referred_user_id')->required()->numeric(),
-            TextInput::make('code')->required()->maxLength(255),
-            Select::make('status')->required()->options([
-                AffiliateReferral::STATUS_REGISTERED => 'Registered',
-                AffiliateReferral::STATUS_QUALIFIED => 'Qualified',
-                AffiliateReferral::STATUS_EARNING => 'Earning',
-                AffiliateReferral::STATUS_EXPIRED => 'Expired',
-                AffiliateReferral::STATUS_REJECTED => 'Rejected',
-                AffiliateReferral::STATUS_BLOCKED => 'Blocked',
-            ]),
-            DateTimePicker::make('registered_at'),
-            DateTimePicker::make('qualified_at'),
-            DateTimePicker::make('commission_expires_at'),
-        ]);
+        return $schema
+            ->columns([
+                'md' => 2,
+                'xl' => 3,
+            ])
+            ->components([
+                TextInput::make('promoter_id')->required()->numeric(),
+                TextInput::make('referrer_user_id')->required()->numeric(),
+                TextInput::make('referred_user_id')->required()->numeric(),
+                TextInput::make('code')->required()->maxLength(255),
+                Select::make('status')->required()->options([
+                    AffiliateReferral::STATUS_REGISTERED => 'Registered',
+                    AffiliateReferral::STATUS_QUALIFIED => 'Qualified',
+                    AffiliateReferral::STATUS_EARNING => 'Earning',
+                    AffiliateReferral::STATUS_EXPIRED => 'Expired',
+                    AffiliateReferral::STATUS_REJECTED => 'Rejected',
+                    AffiliateReferral::STATUS_BLOCKED => 'Blocked',
+                ]),
+                DateTimePicker::make('registered_at'),
+                DateTimePicker::make('qualified_at'),
+                DateTimePicker::make('commission_expires_at'),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -50,21 +55,27 @@ class AffiliateReferralResource extends Resource
             ->columns([
                 TextColumn::make('referrer.email')
                     ->label('Referrer')
+                    ->wrap()
                     ->searchable()
                     ->url(fn (AffiliateReferral $record): string => UserResource::getUrl('edit', ['record' => $record->referrer_user_id])),
                 TextColumn::make('referred.email')
                     ->label('Referred')
+                    ->wrap()
                     ->searchable()
                     ->url(fn (AffiliateReferral $record): string => UserResource::getUrl('edit', ['record' => $record->referred_user_id])),
-                TextColumn::make('code')->searchable(),
+                TextColumn::make('code')->wrap()->searchable(),
                 TextColumn::make('status')->badge()->sortable(),
                 TextColumn::make('first_qualified_payment_amount')->money()->sortable(),
                 TextColumn::make('commission_expires_at')->dateTime()->sortable(),
                 TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('deleted_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->stackedOnMobile()
             ->filters([TrashedFilter::make()])
-            ->recordActions([EditAction::make()]);
+            ->recordActions([
+                EditAction::make()
+                    ->labeledFrom('sm'),
+            ]);
     }
 
     public static function getPages(): array

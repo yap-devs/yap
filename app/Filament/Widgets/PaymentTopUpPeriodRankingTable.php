@@ -34,6 +34,9 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
             ->filters([
                 Filter::make('date_range')
                     ->label('Date Range')
+                    ->columns([
+                        'md' => 2,
+                    ])
                     ->schema([
                         DatePicker::make('start_date')
                             ->label('Start date')
@@ -57,6 +60,7 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
                 TextColumn::make('user_name')
                     ->label('User')
                     ->description(fn (Payment $record): string => (string) $record->user_email)
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('top_up_count')
                     ->label('Orders')
@@ -88,7 +92,8 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
                     ->dateTime('Y-m-d H:i')
                     ->since()
                     ->sortable(),
-            ]);
+            ])
+            ->stackedOnMobile();
     }
 
     private function formatCurrency(float $amount): string

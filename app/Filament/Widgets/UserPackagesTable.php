@@ -46,10 +46,12 @@ class UserPackagesTable extends TableWidget
                 TextColumn::make('user.name')
                     ->label('User')
                     ->description(fn (UserPackage $record): string => 'Package #'.$record->id)
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('package.name')
                     ->label('Package')
                     ->description(fn (UserPackage $record): string => $this->formatGigabytes((float) ($record->package?->traffic_limit ?? 0)).' total allowance')
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('status')
                     ->badge()
@@ -98,7 +100,8 @@ class UserPackagesTable extends TableWidget
                     ->description(fn (UserPackage $record): string => $this->formatProfitDescription($record))
                     ->state(fn (UserPackage $record): float => $this->getExpectedProfit($record))
                     ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state)),
-            ]);
+            ])
+            ->stackedOnMobile();
     }
 
     private function formatGigabytes(float $bytes): string

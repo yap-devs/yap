@@ -51,6 +51,7 @@ class DailyTrafficRankingTable extends TableWidget
                 TextColumn::make('user_name')
                     ->label('User')
                     ->description(fn (UserStat $record): string => 'User #'.$record->user_id)
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('daily_traffic_bytes')
                     ->label('Traffic')
@@ -59,7 +60,8 @@ class DailyTrafficRankingTable extends TableWidget
                     ->color(fn (mixed $state): string => $this->getTrafficTone((float) $state))
                     ->sortable()
                     ->formatStateUsing(fn (mixed $state): string => $this->formatGigabytes((float) $state)),
-            ]);
+            ])
+            ->stackedOnMobile();
     }
 
     private function formatGigabytes(float $bytes): string

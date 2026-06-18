@@ -36,6 +36,7 @@ class PaymentTopUpRankingTable extends TableWidget
                 TextColumn::make('user_name')
                     ->label('User')
                     ->description(fn (Payment $record): string => (string) $record->user_email)
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('top_up_count')
                     ->label('Orders')
@@ -59,7 +60,8 @@ class PaymentTopUpRankingTable extends TableWidget
                     ->label('Last Top-Up')
                     ->dateTime('Y-m-d H:i')
                     ->since(),
-            ]);
+            ])
+            ->stackedOnMobile();
     }
 
     private function formatCurrency(float $amount): string

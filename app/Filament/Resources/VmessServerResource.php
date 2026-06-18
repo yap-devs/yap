@@ -31,6 +31,10 @@ class VmessServerResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'md' => 2,
+                'xl' => 3,
+            ])
             ->components([
                 TextInput::make('name')
                     ->required()
@@ -61,8 +65,10 @@ class VmessServerResource extends Resource
             ->columns([
                 TextColumn::make('relays_count')->counts('relays'),
                 TextColumn::make('name')
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('server')
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('port')
                     ->numeric(thousandsSeparator: false)
@@ -71,6 +77,7 @@ class VmessServerResource extends Resource
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('internal_server')
+                    ->wrap()
                     ->searchable(),
                 ToggleColumn::make('enabled'),
                 ToggleColumn::make('for_low_priority'),
@@ -87,11 +94,13 @@ class VmessServerResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->stackedOnMobile()
             ->filters([
                 TrashedFilter::make(),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->labeledFrom('sm'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

@@ -25,37 +25,42 @@ class AffiliateCommissionResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            TextInput::make('referral_id')->required()->numeric(),
-            TextInput::make('promoter_id')->required()->numeric(),
-            TextInput::make('referrer_user_id')->required()->numeric(),
-            TextInput::make('referred_user_id')->required()->numeric(),
-            TextInput::make('source_type')->required()->maxLength(255),
-            TextInput::make('source_id')->required()->numeric(),
-            TextInput::make('affiliate_level')->required()->numeric(),
-            TextInput::make('base_amount')->required()->numeric()->prefix('$'),
-            TextInput::make('commission_rate')->required()->numeric(),
-            TextInput::make('amount')->required()->numeric()->prefix('$'),
-            Select::make('status')->required()->options([
-                AffiliateCommission::STATUS_PENDING => 'Pending',
-                AffiliateCommission::STATUS_CREDITED => 'Credited',
-                AffiliateCommission::STATUS_REJECTED => 'Rejected',
-                AffiliateCommission::STATUS_REVERSED => 'Reversed',
-            ]),
-            DateTimePicker::make('hold_until'),
-            DateTimePicker::make('credited_at'),
-            DateTimePicker::make('reversed_at'),
-            TextInput::make('reason')->maxLength(255),
-        ]);
+        return $schema
+            ->columns([
+                'md' => 2,
+                'xl' => 3,
+            ])
+            ->components([
+                TextInput::make('referral_id')->required()->numeric(),
+                TextInput::make('promoter_id')->required()->numeric(),
+                TextInput::make('referrer_user_id')->required()->numeric(),
+                TextInput::make('referred_user_id')->required()->numeric(),
+                TextInput::make('source_type')->required()->maxLength(255),
+                TextInput::make('source_id')->required()->numeric(),
+                TextInput::make('affiliate_level')->required()->numeric(),
+                TextInput::make('base_amount')->required()->numeric()->prefix('$'),
+                TextInput::make('commission_rate')->required()->numeric(),
+                TextInput::make('amount')->required()->numeric()->prefix('$'),
+                Select::make('status')->required()->options([
+                    AffiliateCommission::STATUS_PENDING => 'Pending',
+                    AffiliateCommission::STATUS_CREDITED => 'Credited',
+                    AffiliateCommission::STATUS_REJECTED => 'Rejected',
+                    AffiliateCommission::STATUS_REVERSED => 'Reversed',
+                ]),
+                DateTimePicker::make('hold_until'),
+                DateTimePicker::make('credited_at'),
+                DateTimePicker::make('reversed_at'),
+                TextInput::make('reason')->maxLength(255),
+            ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
-                TextColumn::make('referrer.email')->label('Referrer')->searchable(),
-                TextColumn::make('referred.email')->label('Referred')->searchable(),
-                TextColumn::make('source_type')->searchable(),
+                TextColumn::make('referrer.email')->label('Referrer')->wrap()->searchable(),
+                TextColumn::make('referred.email')->label('Referred')->wrap()->searchable(),
+                TextColumn::make('source_type')->wrap()->searchable(),
                 TextColumn::make('source_id')->numeric()->sortable(),
                 TextColumn::make('base_amount')->money()->sortable(),
                 TextColumn::make('commission_rate')->formatStateUsing(fn ($state): string => ((float) $state * 100).'%'),
@@ -66,8 +71,12 @@ class AffiliateCommissionResource extends Resource
                 TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('deleted_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->stackedOnMobile()
             ->filters([TrashedFilter::make()])
-            ->recordActions([EditAction::make()]);
+            ->recordActions([
+                EditAction::make()
+                    ->labeledFrom('sm'),
+            ]);
     }
 
     public static function getPages(): array

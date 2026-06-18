@@ -34,6 +34,10 @@ class UserResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'md' => 2,
+                'xl' => 3,
+            ])
             ->components([
                 TextInput::make('name')
                     ->required()
@@ -86,20 +90,25 @@ class UserResource extends Resource
                 TextColumn::make('name')
                     ->searchable(),
                 TextColumn::make('email')
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('balance')
                     ->money()
                     ->sortable(),
                 TextColumn::make('traffic_downlink')
+                    ->label('Downlink')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('traffic_uplink')
+                    ->label('Uplink')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('traffic_unpaid')
+                    ->label('Unpaid')
                     ->numeric()
                     ->sortable(),
                 TextColumn::make('last_settled_at')
+                    ->label('Settled')
                     ->dateTime()
                     ->sortable(),
                 TextColumn::make('sub2api_key_status')
@@ -125,11 +134,13 @@ class UserResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->stackedOnMobile()
             ->filters([
                 TrashedFilter::make(),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->labeledFrom('sm'),
                 static::adjustBalanceAction(),
             ])
             ->toolbarActions([
@@ -146,6 +157,7 @@ class UserResource extends Resource
         return Action::make('adjustBalance')
             ->label('Adjust Balance')
             ->icon('heroicon-m-banknotes')
+            ->labeledFrom('sm')
             ->schema([
                 Select::make('operation')
                     ->label('Operation')

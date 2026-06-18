@@ -29,17 +29,22 @@ class AffiliateLevelResource extends Resource
 
     public static function form(Schema $schema): Schema
     {
-        return $schema->components([
-            TextInput::make('level')->required()->numeric(),
-            TextInput::make('name')->required()->maxLength(255),
-            TextInput::make('minimum_self_paid_amount')->required()->numeric()->prefix('$'),
-            TextInput::make('minimum_valid_referrals')->required()->numeric(),
-            TextInput::make('commission_rate')->required()->numeric()->helperText('0.10 means 10%'),
-            Select::make('status')->required()->options([
-                AffiliateLevel::STATUS_ACTIVE => 'Active',
-                AffiliateLevel::STATUS_DISABLED => 'Disabled',
-            ]),
-        ]);
+        return $schema
+            ->columns([
+                'md' => 2,
+                'xl' => 3,
+            ])
+            ->components([
+                TextInput::make('level')->required()->numeric(),
+                TextInput::make('name')->required()->maxLength(255),
+                TextInput::make('minimum_self_paid_amount')->required()->numeric()->prefix('$'),
+                TextInput::make('minimum_valid_referrals')->required()->numeric(),
+                TextInput::make('commission_rate')->required()->numeric()->helperText('0.10 means 10%'),
+                Select::make('status')->required()->options([
+                    AffiliateLevel::STATUS_ACTIVE => 'Active',
+                    AffiliateLevel::STATUS_DISABLED => 'Disabled',
+                ]),
+            ]);
     }
 
     public static function table(Table $table): Table
@@ -47,7 +52,7 @@ class AffiliateLevelResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('level')->sortable(),
-                TextColumn::make('name')->searchable(),
+                TextColumn::make('name')->wrap()->searchable(),
                 TextColumn::make('minimum_self_paid_amount')->money()->sortable(),
                 TextColumn::make('minimum_valid_referrals')->numeric()->sortable(),
                 TextColumn::make('commission_rate')->formatStateUsing(fn ($state): string => ((float) $state * 100).'%'),
@@ -56,8 +61,12 @@ class AffiliateLevelResource extends Resource
                 TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('deleted_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->stackedOnMobile()
             ->filters([TrashedFilter::make()])
-            ->recordActions([EditAction::make()])
+            ->recordActions([
+                EditAction::make()
+                    ->labeledFrom('sm'),
+            ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),

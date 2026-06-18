@@ -52,21 +52,25 @@ class UserPackages extends BaseDashboard
 
     public function filtersForm(Schema $schema): Schema
     {
-        return $schema->components([
-            Select::make('status')
-                ->label('Status')
-                ->options([
-                    'ended' => 'Ended (expired + used)',
-                    UserPackage::STATUS_ACTIVE => 'Active',
-                    UserPackage::STATUS_EXPIRED => 'Expired',
-                    UserPackage::STATUS_USED => 'Used',
-                    UserPackage::STATUS_DISABLED => 'Disabled',
-                    'all' => 'All packages',
-                ])
-                ->default('ended')
-                ->native(false)
-                ->selectablePlaceholder(false)
-                ->helperText('Stats and package table use this same status filter.'),
-        ]);
+        return $schema
+            ->columns([
+                'md' => 2,
+            ])
+            ->components([
+                Select::make('status')
+                    ->label('Status')
+                    ->options([
+                        'ended' => 'Ended (expired + used)',
+                        UserPackage::STATUS_ACTIVE => 'Active',
+                        UserPackage::STATUS_EXPIRED => 'Expired',
+                        UserPackage::STATUS_USED => 'Used',
+                        UserPackage::STATUS_DISABLED => 'Disabled',
+                        'all' => 'All packages',
+                    ])
+                    ->default('ended')
+                    ->native(false)
+                    ->selectablePlaceholder(false)
+                    ->helperText('Stats and package table use this same status filter.'),
+            ]);
     }
 }

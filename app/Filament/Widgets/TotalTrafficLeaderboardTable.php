@@ -41,6 +41,7 @@ class TotalTrafficLeaderboardTable extends TableWidget
                     ->rowIndex(),
                 TextColumn::make('name')
                     ->description(fn (User $record): string => $record->is_valid ? 'Access healthy' : 'Needs attention')
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('balance')
                     ->label('Balance')
@@ -55,7 +56,8 @@ class TotalTrafficLeaderboardTable extends TableWidget
                     ->color(fn (mixed $state): string => $this->getLifetimeTrafficTone((float) $state))
                     ->sortable()
                     ->formatStateUsing(fn (mixed $state): string => $this->formatGigabytes((float) $state)),
-            ]);
+            ])
+            ->stackedOnMobile();
     }
 
     private function formatCurrency(float $amount): string

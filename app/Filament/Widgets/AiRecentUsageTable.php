@@ -30,9 +30,11 @@ class AiRecentUsageTable extends TableWidget
                 TextColumn::make('user_name')
                     ->label('User')
                     ->description(fn (Sub2apiUsageRecord $record): string => $record->user_email ?? '')
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('model')
                     ->label('Model')
+                    ->wrap()
                     ->badge()
                     ->color('info'),
                 TextColumn::make('amount')
@@ -44,6 +46,7 @@ class AiRecentUsageTable extends TableWidget
                     ->label('Time')
                     ->dateTime()
                     ->sortable(),
-            ]);
+            ])
+            ->stackedOnMobile();
     }
 }

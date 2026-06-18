@@ -36,6 +36,7 @@ class AiUsageRankingTable extends TableWidget
                 TextColumn::make('user_name')
                     ->label('User')
                     ->description(fn (Sub2apiUsageRecord $record): string => $record->user_email)
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('request_count')
                     ->label('Requests')
@@ -48,7 +49,8 @@ class AiUsageRankingTable extends TableWidget
                     ->color(fn (mixed $state): string => $this->getCostTone((float) $state))
                     ->sortable()
                     ->formatStateUsing(fn (mixed $state): string => '$'.number_format((float) $state, 2)),
-            ]);
+            ])
+            ->stackedOnMobile();
     }
 
     private function getCostTone(float $cost): string

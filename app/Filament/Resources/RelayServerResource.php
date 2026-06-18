@@ -30,6 +30,10 @@ class RelayServerResource extends Resource
     public static function form(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'md' => 2,
+                'xl' => 3,
+            ])
             ->components([
                 TextInput::make('vmess_server_id')
                     ->required()
@@ -55,10 +59,13 @@ class RelayServerResource extends Resource
     {
         return $table
             ->columns([
-                TextColumn::make('vmessServer.name'),
+                TextColumn::make('vmessServer.name')
+                    ->wrap(),
                 TextColumn::make('name')
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('server')
+                    ->wrap()
                     ->searchable(),
                 TextColumn::make('port')->numeric(thousandsSeparator: false),
                 ToggleColumn::make('enabled'),
@@ -75,11 +82,13 @@ class RelayServerResource extends Resource
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+            ->stackedOnMobile()
             ->filters([
                 TrashedFilter::make(),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()
+                    ->labeledFrom('sm'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

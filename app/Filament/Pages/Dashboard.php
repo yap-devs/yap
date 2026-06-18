@@ -74,26 +74,30 @@ class Dashboard extends BaseDashboard
 
     public function filtersForm(Schema $schema): Schema
     {
-        return $schema->components([
-            Select::make('trend_window')
-                ->label('Trend Window')
-                ->options([
-                    '6' => 'Last 6 months',
-                    '12' => 'Last 12 months',
-                    '24' => 'Last 24 months',
-                ])
-                ->default('12')
-                ->native(false)
-                ->selectablePlaceholder(false)
-                ->helperText('Monthly trend charts and breakdown charts use this reporting window.'),
-            Select::make('polling_interval')
-                ->label('Auto Refresh')
-                ->options(static::getPollingIntervalOptions())
-                ->default('60s')
-                ->native(false)
-                ->selectablePlaceholder(false)
-                ->helperText('This setting controls how often all dashboard widgets refresh.'),
-        ]);
+        return $schema
+            ->columns([
+                'md' => 2,
+            ])
+            ->components([
+                Select::make('trend_window')
+                    ->label('Trend Window')
+                    ->options([
+                        '6' => 'Last 6 months',
+                        '12' => 'Last 12 months',
+                        '24' => 'Last 24 months',
+                    ])
+                    ->default('12')
+                    ->native(false)
+                    ->selectablePlaceholder(false)
+                    ->helperText('Monthly trend charts and breakdown charts use this reporting window.'),
+                Select::make('polling_interval')
+                    ->label('Auto Refresh')
+                    ->options(static::getPollingIntervalOptions())
+                    ->default('60s')
+                    ->native(false)
+                    ->selectablePlaceholder(false)
+                    ->helperText('This setting controls how often all dashboard widgets refresh.'),
+            ]);
     }
 
     protected function getHeaderActions(): array
@@ -102,6 +106,7 @@ class Dashboard extends BaseDashboard
             Action::make('refreshDashboard')
                 ->label('Refresh now')
                 ->icon('heroicon-m-arrow-path')
+                ->labeledFrom('sm')
                 ->color('primary')
                 ->action('refreshDashboard'),
         ];
