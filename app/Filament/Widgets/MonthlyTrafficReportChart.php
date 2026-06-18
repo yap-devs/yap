@@ -2,17 +2,20 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\HasMobileFriendlyChart;
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Widgets\ChartWidget;
 
 class MonthlyTrafficReportChart extends ChartWidget
 {
+    use HasMobileFriendlyChart;
     use InteractsWithDashboardControls;
 
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
+        'default' => 'full',
         'md' => 8,
         'xl' => 8,
     ];
@@ -47,7 +50,7 @@ class MonthlyTrafficReportChart extends ChartWidget
 
     protected function getOptions(): array
     {
-        return [
+        return $this->getMobileFriendlyOptions([
             'plugins' => [
                 'legend' => [
                     'display' => false,
@@ -66,7 +69,7 @@ class MonthlyTrafficReportChart extends ChartWidget
                     ],
                 ],
             ],
-        ];
+        ]);
     }
 
     protected function getType(): string

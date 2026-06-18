@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\HasMobileFriendlyChart;
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Carbon\CarbonImmutable;
@@ -9,11 +10,13 @@ use Filament\Widgets\ChartWidget;
 
 class LastSevenDayTrafficChart extends ChartWidget
 {
+    use HasMobileFriendlyChart;
     use InteractsWithDashboardControls;
 
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
+        'default' => 'full',
         'md' => 4,
         'xl' => 4,
     ];
@@ -50,7 +53,7 @@ class LastSevenDayTrafficChart extends ChartWidget
 
     protected function getOptions(): array
     {
-        return [
+        return $this->getMobileFriendlyOptions([
             'plugins' => [
                 'legend' => [
                     'display' => false,
@@ -66,7 +69,7 @@ class LastSevenDayTrafficChart extends ChartWidget
                     'beginAtZero' => true,
                 ],
             ],
-        ];
+        ]);
     }
 
     protected function getType(): string

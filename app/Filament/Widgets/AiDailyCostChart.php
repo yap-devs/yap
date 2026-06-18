@@ -2,17 +2,21 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\HasMobileFriendlyChart;
 use App\Services\AdminDashboardReportService;
 use Carbon\CarbonImmutable;
 use Filament\Widgets\ChartWidget;
 
 class AiDailyCostChart extends ChartWidget
 {
+    use HasMobileFriendlyChart;
+
     protected static bool $isLazy = false;
 
     protected ?string $pollingInterval = '30s';
 
     protected int|string|array $columnSpan = [
+        'default' => 'full',
         'md' => 6,
         'xl' => 6,
     ];
@@ -47,13 +51,13 @@ class AiDailyCostChart extends ChartWidget
 
     protected function getOptions(): array
     {
-        return [
+        return $this->getMobileFriendlyOptions([
             'plugins' => ['legend' => ['display' => false]],
             'scales' => [
                 'x' => ['grid' => ['display' => false]],
                 'y' => ['beginAtZero' => true],
             ],
-        ];
+        ]);
     }
 
     protected function getType(): string

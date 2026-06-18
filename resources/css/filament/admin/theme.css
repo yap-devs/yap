@@ -1,0 +1,22 @@
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/**/*';
+@source '../../../../resources/views/filament/**/*';
+
+.fi-wi-chart .fi-wi-chart-canvas-ctn-no-aspect-ratio {
+    min-height: 18rem;
+}
+
+.fi-wi-chart .fi-wi-chart-canvas-ctn-no-aspect-ratio canvas {
+    height: 18rem !important;
+}
+
+@media (min-width: 640px) {
+    .fi-wi-chart .fi-wi-chart-canvas-ctn-no-aspect-ratio {
+        min-height: 20rem;
+    }
+
+    .fi-wi-chart .fi-wi-chart-canvas-ctn-no-aspect-ratio canvas {
+        height: 20rem !important;
+    }
+}

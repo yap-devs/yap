@@ -7,12 +7,25 @@ use App\Filament\Resources\AffiliateReferralResource;
 use App\Filament\Resources\RelayServerResource;
 use App\Filament\Resources\UserResource;
 use App\Filament\Resources\VmessServerResource;
+use App\Filament\Widgets\AiDailyCostChart;
+use App\Filament\Widgets\AiDailyRequestsChart;
+use App\Filament\Widgets\AiModelBreakdownChart;
+use App\Filament\Widgets\AiMonthlyCostChart;
 use App\Filament\Widgets\AiRecentUsageTable;
 use App\Filament\Widgets\AiUsageRankingTable;
 use App\Filament\Widgets\DailyTrafficRankingTable;
+use App\Filament\Widgets\GatewayTopUpShareChart;
+use App\Filament\Widgets\LastSevenDayTrafficChart;
+use App\Filament\Widgets\LastSevenDayUsageChart;
+use App\Filament\Widgets\MonthlyTopUpAndUsageChart;
+use App\Filament\Widgets\MonthlyTrafficReportChart;
+use App\Filament\Widgets\PackageUtilizationHealthChart;
 use App\Filament\Widgets\PaymentTopUpPeriodRankingTable;
 use App\Filament\Widgets\PaymentTopUpRankingTable;
+use App\Filament\Widgets\TodaySnapshotChart;
 use App\Filament\Widgets\TotalTrafficLeaderboardTable;
+use App\Filament\Widgets\UsageCompositionChart;
+use App\Filament\Widgets\UserAccessHealthChart;
 use App\Filament\Widgets\UserPackagesTable;
 use Filament\Actions\Action;
 use Filament\Schemas\Schema;
@@ -59,6 +72,44 @@ test('widget table is stacked on mobile for :dataset', function (string $widget)
     'payment top up ranking' => [PaymentTopUpRankingTable::class],
     'payment top up period ranking' => [PaymentTopUpPeriodRankingTable::class],
 ]);
+
+test('chart widget has mobile visible canvas options for :dataset', function (string $widget): void {
+    $instance = app($widget);
+    $instance->pageFilters = [];
+    $options = invokeProtectedMethod($instance, 'getOptions');
+
+    expect($instance->getColumnSpan())->toHaveKey('default', 'full')
+        ->and($options['responsive'])->toBeTrue()
+        ->and($options['maintainAspectRatio'])->toBeFalse();
+})->with([
+    'monthly top up and usage' => [MonthlyTopUpAndUsageChart::class],
+    'monthly traffic report' => [MonthlyTrafficReportChart::class],
+    'today snapshot' => [TodaySnapshotChart::class],
+    'last seven day traffic' => [LastSevenDayTrafficChart::class],
+    'last seven day usage' => [LastSevenDayUsageChart::class],
+    'gateway top up share' => [GatewayTopUpShareChart::class],
+    'usage composition' => [UsageCompositionChart::class],
+    'user access health' => [UserAccessHealthChart::class],
+    'package utilization health' => [PackageUtilizationHealthChart::class],
+    'ai daily cost' => [AiDailyCostChart::class],
+    'ai daily requests' => [AiDailyRequestsChart::class],
+    'ai monthly cost' => [AiMonthlyCostChart::class],
+    'ai model breakdown' => [AiModelBreakdownChart::class],
+]);
+
+test('filament admin theme includes mobile chart height overrides', function (): void {
+    expect(file_get_contents(resource_path('css/filament/admin/theme.css')))
+        ->toContain("@import '../../../../vendor/filament/filament/resources/css/theme.css'")
+        ->toContain('.fi-wi-chart-canvas-ctn-no-aspect-ratio')
+        ->toContain('height: 18rem !important');
+});
+
+function invokeProtectedMethod(object $object, string $method): mixed
+{
+    $reflection = new ReflectionMethod($object, $method);
+
+    return $reflection->invoke($object);
+}
 
 class FilamentTableHarness implements HasTable
 {

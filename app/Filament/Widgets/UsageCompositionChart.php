@@ -2,17 +2,20 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\HasMobileFriendlyChart;
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Widgets\ChartWidget;
 
 class UsageCompositionChart extends ChartWidget
 {
+    use HasMobileFriendlyChart;
     use InteractsWithDashboardControls;
 
     protected static bool $isLazy = false;
 
     protected int|string|array $columnSpan = [
+        'default' => 'full',
         'md' => 4,
         'xl' => 4,
     ];
@@ -47,14 +50,14 @@ class UsageCompositionChart extends ChartWidget
 
     protected function getOptions(): array
     {
-        return [
+        return $this->getMobileFriendlyOptions([
             'cutout' => '62%',
             'plugins' => [
                 'legend' => [
                     'position' => 'bottom',
                 ],
             ],
-        ];
+        ]);
     }
 
     protected function getType(): string
