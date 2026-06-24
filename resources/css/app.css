@@ -42,6 +42,20 @@
     -webkit-background-clip: text;
   }
 
+  .yap-gradient-highlight {
+    background-image:
+      linear-gradient(to right, var(--color-yap-accent), var(--color-yap-accent-secondary)),
+      linear-gradient(to right, rgb(0 82 255 / 0.16), rgb(77 124 255 / 0.09));
+    background-position: 0 0, 0 88%;
+    background-repeat: no-repeat;
+    background-size: 100% 100%, 100% 0.32em;
+    box-decoration-break: clone;
+    color: transparent;
+    -webkit-background-clip: text, padding-box;
+    background-clip: text, padding-box;
+    -webkit-box-decoration-break: clone;
+  }
+
   .yap-gradient-underline {
     background-image: linear-gradient(to right, rgb(0 82 255 / 0.16), rgb(77 124 255 / 0.09));
   }

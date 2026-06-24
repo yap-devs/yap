@@ -51,24 +51,46 @@ function SectionBadge({children, dark = false}) {
   );
 }
 
-function renderHighlightedText(text) {
+function getHighlightParts(text) {
   const cleanText = text.trim();
-  const words = cleanText.split(/\s+/).filter(Boolean);
-  const highlightStart = words.length > 1 ? words.slice(0, -2).join(' ').length : Math.floor(cleanText.length * 0.55);
-  const lead = cleanText.slice(0, highlightStart).trimEnd();
-  const tail = cleanText.slice(highlightStart).trimStart();
+  const punctuationIndex = cleanText.search(/[，、：；]/u);
 
-  if (!tail) {
-    return cleanText;
+  if (punctuationIndex > 1 && punctuationIndex < cleanText.length - 2) {
+    return {
+      lead: cleanText.slice(0, punctuationIndex + 1),
+      separator: '',
+      highlight: cleanText.slice(punctuationIndex + 1).trimStart(),
+    };
+  }
+
+  const words = cleanText.split(/\s+/).filter(Boolean);
+
+  if (words.length > 2) {
+    return {
+      lead: words.slice(0, -2).join(' '),
+      separator: ' ',
+      highlight: words.slice(-2).join(' '),
+    };
+  }
+
+  return {
+    lead: cleanText,
+    separator: '',
+    highlight: '',
+  };
+}
+
+function renderHighlightedText(text) {
+  const {lead, separator, highlight} = getHighlightParts(text);
+
+  if (!highlight) {
+    return lead;
   }
 
   return (
     <>
-      {lead && `${lead} `}
-      <span className="relative inline-block whitespace-nowrap">
-        <span className="relative z-10 yap-gradient-text">{tail}</span>
-        <span className="yap-gradient-underline absolute -bottom-1 left-0 h-3 w-full rounded-sm md:-bottom-2 md:h-4" aria-hidden="true" />
-      </span>
+      {lead}{separator}
+      <span className="yap-gradient-highlight">{highlight}</span>
     </>
   );
 }
@@ -217,7 +239,7 @@ export default function Welcome({auth, canLogin, canRegister}) {
             <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
               <div>
                 <SectionBadge>{trans('welcome.hero_eyebrow')}</SectionBadge>
-                <h1 className="mt-8 max-w-4xl font-display text-[clamp(3rem,8vw,5.25rem)] leading-[1.04] tracking-[-0.02em] text-yap-foreground">
+                <h1 className="mt-8 max-w-4xl text-balance font-display text-[clamp(3rem,8vw,5.25rem)] leading-[1.04] tracking-[-0.02em] text-yap-foreground">
                   {renderHighlightedText(trans('welcome.hero_title'))}
                 </h1>
                 <p className="mt-7 max-w-2xl text-lg leading-8 text-yap-muted-foreground sm:text-xl sm:leading-9">
