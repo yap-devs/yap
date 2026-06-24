@@ -2,6 +2,154 @@ import {Head, Link} from '@inertiajs/react';
 import LanguageSelector from '@/Components/LanguageSelector';
 import {trans} from '@/Utils/i18n';
 
+const primaryActionClasses = 'group inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yap-accent to-yap-accent-secondary px-6 text-sm font-semibold text-yap-accent-foreground shadow-yap-accent transition duration-200 hover:-translate-y-0.5 hover:shadow-yap-accent-lg hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-background active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:transition-none';
+const secondaryActionClasses = 'group inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-yap-border bg-white px-6 text-sm font-semibold text-yap-foreground shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-yap-accent/30 hover:bg-yap-muted hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-background active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:transition-none';
+const navLinkClasses = 'text-sm font-medium text-yap-muted-foreground transition hover:text-yap-foreground focus:outline-none focus:text-yap-foreground';
+
+function ActionLink({href, className, children}) {
+  const Component = href.startsWith('#') ? 'a' : Link;
+
+  return (
+    <Component href={href} className={className}>
+      {children}
+    </Component>
+  );
+}
+
+function ArrowIcon({className = ''}) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M3 10a.75.75 0 01.75-.75h10.69l-3.22-3.22a.75.75 0 111.06-1.06l4.5 4.5a.75.75 0 010 1.06l-4.5 4.5a.75.75 0 11-1.06-1.06l3.22-3.22H3.75A.75.75 0 013 10z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function CheckIcon({className = ''}) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path
+        fillRule="evenodd"
+        d="M16.704 4.153a.75.75 0 01.143 1.052l-8 10.5a.75.75 0 01-1.127.075l-4.5-4.5a.75.75 0 011.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 011.05-.143z"
+        clipRule="evenodd"
+      />
+    </svg>
+  );
+}
+
+function SectionBadge({children, dark = false}) {
+  return (
+    <div className={`inline-flex items-center gap-3 rounded-full border px-5 py-2 ${dark ? 'border-white/15 bg-white/10' : 'border-yap-accent/30 bg-yap-accent/5'}`}>
+      <span className="h-2 w-2 rounded-full bg-yap-accent motion-safe:animate-yap-pulse" />
+      <span className={`font-mono text-xs uppercase tracking-[0.15em] ${dark ? 'text-white' : 'text-yap-accent'}`}>
+        {children}
+      </span>
+    </div>
+  );
+}
+
+function renderHighlightedText(text) {
+  const cleanText = text.trim();
+  const words = cleanText.split(/\s+/).filter(Boolean);
+  const highlightStart = words.length > 1 ? words.slice(0, -2).join(' ').length : Math.floor(cleanText.length * 0.55);
+  const lead = cleanText.slice(0, highlightStart).trimEnd();
+  const tail = cleanText.slice(highlightStart).trimStart();
+
+  if (!tail) {
+    return cleanText;
+  }
+
+  return (
+    <>
+      {lead && `${lead} `}
+      <span className="relative inline-block whitespace-nowrap">
+        <span className="relative z-10 yap-gradient-text">{tail}</span>
+        <span className="yap-gradient-underline absolute -bottom-1 left-0 h-3 w-full rounded-sm md:-bottom-2 md:h-4" aria-hidden="true" />
+      </span>
+    </>
+  );
+}
+
+function HeroVisual({steps, footer}) {
+  return (
+    <aside className="relative hidden min-h-[620px] lg:block" aria-hidden="true">
+      <div className="absolute inset-10 rounded-[2rem] bg-gradient-to-br from-yap-accent/10 via-white to-yap-muted shadow-2xl shadow-slate-900/10" />
+      <div className="absolute left-3 top-8 h-[500px] w-[500px] rounded-full border border-dashed border-yap-accent/25 motion-safe:animate-yap-spin-slow" />
+      <div className="absolute left-16 top-24 h-72 w-72 rounded-full bg-yap-accent/10 blur-[90px]" />
+      <div className="yap-light-dot-grid absolute bottom-24 right-2 h-44 w-44 rounded-full opacity-70" />
+
+      <div className="absolute right-0 top-16 w-80 rounded-[1.75rem] border border-yap-border bg-white/90 p-5 shadow-2xl shadow-slate-900/12 backdrop-blur motion-safe:animate-yap-float">
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-yap-muted-foreground">YAP ROUTE</p>
+            <p className="mt-2 text-lg font-semibold tracking-tight text-yap-foreground">Japan to China</p>
+          </div>
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-yap-accent to-yap-accent-secondary text-sm font-bold text-white shadow-yap-accent">
+            CN
+          </div>
+        </div>
+        <div className="mt-6 grid grid-cols-[auto_1fr_auto] items-center gap-3">
+          <span className="h-3 w-3 rounded-full bg-yap-accent" />
+          <span className="h-px bg-gradient-to-r from-yap-accent to-yap-accent-secondary" />
+          <span className="h-3 w-3 rounded-full border-2 border-yap-accent bg-white" />
+        </div>
+        <div className="mt-6 grid grid-cols-3 gap-2 text-center">
+          {['Clash', 'Stash', 'QR'].map((item) => (
+            <div key={item} className="rounded-xl border border-yap-border bg-yap-muted/70 px-3 py-2 text-xs font-semibold text-yap-foreground">
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="absolute left-0 top-56 w-72 rounded-[1.5rem] border border-yap-border bg-white p-5 shadow-xl shadow-slate-900/10 motion-safe:animate-yap-float-delayed">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-yap-accent to-yap-accent-secondary text-white shadow-yap-accent">
+            <CheckIcon className="h-5 w-5" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-yap-foreground">{steps[0]?.title}</p>
+            <p className="text-xs text-yap-muted-foreground">{steps[0]?.step} / {steps[2]?.step}</p>
+          </div>
+        </div>
+        <div className="mt-5 space-y-3">
+          {steps.map((step, index) => (
+            <div key={step.step} className="flex items-center gap-3 rounded-xl bg-yap-muted/70 p-3">
+              <span className={`h-2.5 w-2.5 rounded-full ${index === 1 ? 'bg-yap-accent motion-safe:animate-yap-pulse' : 'bg-slate-300'}`} />
+              <span className="text-xs font-medium text-yap-muted-foreground">{step.title}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="absolute bottom-10 right-14 max-w-sm rounded-[1.5rem] bg-yap-foreground p-5 text-white shadow-2xl shadow-slate-900/30">
+        <div className="absolute -right-4 -top-4 h-16 w-16 rounded-tl-[2rem] rounded-br-[2rem] bg-yap-accent shadow-yap-accent-lg" />
+        <p className="relative text-sm leading-6 text-white/78">{footer}</p>
+      </div>
+    </aside>
+  );
+}
+
+function FeatureIcon({index}) {
+  const paths = [
+    'M3.75 4.5h12.5a1.25 1.25 0 011.25 1.25v8.5a1.25 1.25 0 01-1.25 1.25H3.75A1.25 1.25 0 012.5 14.25v-8.5A1.25 1.25 0 013.75 4.5zm2 3.25h8.5m-8.5 3h5.5',
+    'M5 9.5a5 5 0 1110 0c0 3.5-5 7-5 7s-5-3.5-5-7zm5 1.5a1.5 1.5 0 100-3 1.5 1.5 0 000 3z',
+    'M4.75 5.5h10.5A1.25 1.25 0 0116.5 6.75v6.5a1.25 1.25 0 01-1.25 1.25H4.75a1.25 1.25 0 01-1.25-1.25v-6.5A1.25 1.25 0 014.75 5.5zm2.25 11h6m-3-2v2',
+    'M10 3.5l5.25 2.25v3.6c0 3.3-2.1 6.2-5.25 7.15-3.15-.95-5.25-3.85-5.25-7.15v-3.6L10 3.5zm2.5 5.25l-3.1 3.1-1.4-1.4',
+    'M4.5 5.5h11m-11 4h11m-11 4h7',
+    'M5 11.5l3 3 7-9m-8.5 0H5.25A1.25 1.25 0 004 6.75v7.5c0 .69.56 1.25 1.25 1.25h9.5c.69 0 1.25-.56 1.25-1.25v-2.5',
+  ];
+
+  return (
+    <svg className="h-5 w-5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d={paths[index % paths.length]} />
+    </svg>
+  );
+}
+
 export default function Welcome({auth, canLogin, canRegister}) {
   const heroPoints = trans('welcome.hero_points', {}, []);
   const heroPanelSteps = trans('welcome.hero_panel_steps', {}, []);
@@ -23,206 +171,262 @@ export default function Welcome({auth, canLogin, canRegister}) {
   return (
     <>
       <Head title={trans('welcome.title')} />
-      <div className="min-h-screen bg-stone-50 text-stone-950 antialiased">
-        <header className="border-b border-stone-200 bg-white/95">
-          <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-            <Link href="/" className="flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-md border border-stone-300 bg-white text-sm font-bold text-stone-900">Y</span>
-              <span className="text-base font-semibold tracking-tight text-stone-950">YAP</span>
+      <div className="min-h-screen overflow-hidden bg-yap-background font-sans text-yap-foreground antialiased">
+        <div className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[680px] bg-[radial-gradient(circle_at_20%_20%,rgb(0_82_255/0.12),transparent_34%),radial-gradient(circle_at_82%_10%,rgb(77_124_255/0.1),transparent_28%)]" />
+
+        <header className="sticky top-0 z-40 border-b border-yap-border/80 bg-yap-background/86 backdrop-blur-xl">
+          <div className="mx-auto flex h-20 max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
+            <Link href="/" className="group flex items-center gap-3 focus:outline-none">
+              <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-gradient-to-br from-yap-accent to-yap-accent-secondary text-sm font-bold text-white shadow-yap-accent transition group-hover:-translate-y-0.5 group-hover:shadow-yap-accent-lg motion-reduce:transition-none motion-reduce:group-hover:translate-y-0">Y</span>
+              <span className="text-base font-semibold tracking-tight text-yap-foreground">YAP</span>
             </Link>
-            <div className="flex items-center gap-3 sm:gap-5">
+
+            <nav className="hidden items-center gap-8 md:flex" aria-label="Primary navigation">
+              <a href="#features" className={navLinkClasses}>{trans('welcome.learn_more')}</a>
+              <a href="#privacy" className={navLinkClasses}>{trans('welcome.privacy_label')}</a>
+              <a href="#how" className={navLinkClasses}>{trans('welcome.hero_panel_label')}</a>
+            </nav>
+
+            <div className="flex items-center gap-3 sm:gap-4">
+              <LanguageSelector />
               {auth.user ? (
-                <Link href={route('dashboard')} className="text-sm font-medium text-stone-700 hover:text-stone-950">
+                <Link href={route('dashboard')} className="hidden rounded-xl border border-yap-border bg-white px-4 py-2 text-sm font-semibold text-yap-foreground shadow-sm transition hover:border-yap-accent/30 hover:shadow-md sm:inline-flex">
                   {trans('nav.dashboard')}
                 </Link>
               ) : (
                 <>
                   {canLogin && (
-                    <Link href={route('login')} className="text-sm font-medium text-stone-700 hover:text-stone-950">
+                    <Link href={route('login')} className="hidden text-sm font-semibold text-yap-muted-foreground transition hover:text-yap-foreground sm:inline-flex">
                       {trans('auth.login')}
                     </Link>
                   )}
                   {canRegister && (
-                    <Link
-                      href={route('register')}
-                      className="hidden rounded-md bg-stone-900 px-4 py-2 text-sm font-medium text-white hover:bg-stone-700 sm:inline-flex"
-                    >
+                    <Link href={route('register')} className="hidden rounded-xl bg-yap-foreground px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg sm:inline-flex motion-reduce:hover:translate-y-0">
                       {trans('welcome.get_started')}
                     </Link>
                   )}
                 </>
               )}
-              <LanguageSelector />
             </div>
           </div>
         </header>
 
         <main>
-          <section className="border-b border-stone-200 bg-white">
-            <div className="mx-auto grid max-w-6xl gap-10 px-4 py-14 sm:px-6 sm:py-20 lg:grid-cols-[1.15fr_0.85fr] lg:px-8">
+          <section className="relative px-4 py-20 sm:px-6 sm:py-28 lg:px-8 lg:py-32">
+            <div className="absolute left-1/2 top-16 -z-10 h-80 w-80 -translate-x-1/2 rounded-full bg-yap-accent/6 blur-[120px]" />
+            <div className="mx-auto grid max-w-6xl gap-14 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
               <div>
-                <p className="text-sm font-semibold text-stone-600">{trans('welcome.hero_eyebrow')}</p>
-                <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-stone-950 sm:text-5xl">
-                  {trans('welcome.hero_title')}
+                <SectionBadge>{trans('welcome.hero_eyebrow')}</SectionBadge>
+                <h1 className="mt-8 max-w-4xl font-display text-[clamp(3rem,8vw,5.25rem)] leading-[1.04] tracking-[-0.02em] text-yap-foreground">
+                  {renderHighlightedText(trans('welcome.hero_title'))}
                 </h1>
-                <p className="mt-6 max-w-2xl text-base leading-8 text-stone-700 sm:text-lg">
+                <p className="mt-7 max-w-2xl text-lg leading-8 text-yap-muted-foreground sm:text-xl sm:leading-9">
                   {trans('welcome.hero_body')}
                 </p>
-                <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-                  <Link
-                    href={primaryHref}
-                    className="inline-flex items-center justify-center rounded-md bg-stone-900 px-5 py-3 text-sm font-semibold text-white hover:bg-stone-700"
-                  >
+
+                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                  <ActionLink href={primaryHref} className={primaryActionClasses}>
                     {primaryLabel}
-                  </Link>
-                  <a
-                    href="#privacy"
-                    className="inline-flex items-center justify-center rounded-md border border-stone-300 bg-white px-5 py-3 text-sm font-semibold text-stone-800 hover:border-stone-400 hover:bg-stone-50"
-                  >
+                    <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
+                  </ActionLink>
+                  <a href="#privacy" className={secondaryActionClasses}>
                     {trans('welcome.privacy_cta')}
+                    <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
                   </a>
                 </div>
-                <p className="mt-4 text-sm text-stone-500">{trans('welcome.hero_note')}</p>
-              </div>
 
-              <aside className="rounded-xl border border-stone-200 bg-stone-50 p-5">
-                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-stone-500">{trans('welcome.hero_panel_label')}</p>
-                <h2 className="mt-3 text-xl font-semibold text-stone-950">{trans('welcome.hero_panel_title')}</h2>
-                <p className="mt-2 text-sm leading-6 text-stone-600">{trans('welcome.hero_panel_body')}</p>
-                <div className="mt-5 divide-y divide-stone-200 rounded-lg border border-stone-200 bg-white">
-                  {heroPanelSteps.map((item) => (
-                    <div key={item.step} className="flex gap-4 p-4">
-                      <div className="text-sm font-semibold text-stone-400">{item.step}</div>
-                      <div>
-                        <h3 className="text-sm font-semibold text-stone-950">{item.title}</h3>
-                        <p className="mt-1 text-sm leading-6 text-stone-600">{item.desc}</p>
-                      </div>
+                <p className="mt-5 max-w-xl text-sm leading-6 text-yap-muted-foreground">{trans('welcome.hero_note')}</p>
+
+                <div className="mt-10 grid gap-3 sm:grid-cols-2" role="list">
+                  {heroPoints.map((point) => (
+                    <div key={point} className="flex items-center gap-3 rounded-2xl border border-yap-border bg-white/80 p-3 text-sm font-medium text-yap-foreground shadow-sm" role="listitem">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-yap-accent/8 text-yap-accent">
+                        <CheckIcon className="h-4 w-4" />
+                      </span>
+                      <span>{point}</span>
                     </div>
                   ))}
                 </div>
-                <p className="mt-4 rounded-lg border border-stone-200 bg-white p-4 text-sm leading-6 text-stone-700">
-                  {trans('welcome.hero_panel_footer')}
-                </p>
-              </aside>
+              </div>
+
+              <HeroVisual steps={heroPanelSteps} footer={trans('welcome.hero_panel_footer')} />
             </div>
           </section>
 
-          <section className="border-b border-stone-200 bg-stone-50">
-            <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:px-8">
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                {trustItems.map((item) => (
-                  <div key={item.label} className="rounded-lg border border-stone-200 bg-white p-4">
-                    <p className="text-xs font-medium text-stone-500">{item.label}</p>
-                    <p className="mt-1 text-sm font-semibold text-stone-950">{item.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section className="bg-white px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-            <div className="mx-auto max-w-6xl">
-              <div className="max-w-2xl">
-                <p className="text-sm font-semibold text-stone-500">{trans('welcome.use_cases_label')}</p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">{trans('welcome.use_cases_title')}</h2>
-                <p className="mt-4 text-base leading-7 text-stone-600">{trans('welcome.use_cases_body')}</p>
-              </div>
-              <div className="mt-8 grid gap-4 lg:grid-cols-3">
-                {useCases.map((item) => (
-                  <article key={item.title} className="rounded-xl border border-stone-200 bg-white p-5">
-                    <h3 className="text-base font-semibold text-stone-950">{item.title}</h3>
-                    <p className="mt-3 text-sm leading-7 text-stone-600">{item.desc}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-          </section>
-
-          <section id="privacy" className="border-y border-stone-200 bg-stone-50 px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-            <div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[0.85fr_1.15fr]">
+          <section className="relative overflow-hidden bg-yap-foreground px-4 py-20 text-white sm:px-6 sm:py-24 lg:px-8">
+            <div className="yap-dot-grid absolute inset-0 opacity-[0.06]" aria-hidden="true" />
+            <div className="absolute -left-24 top-12 h-72 w-72 rounded-full bg-yap-accent/12 blur-[130px]" aria-hidden="true" />
+            <div className="absolute -right-24 bottom-0 h-80 w-80 rounded-full bg-yap-accent-secondary/10 blur-[140px]" aria-hidden="true" />
+            <div className="relative mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-end">
               <div>
-                <p className="text-sm font-semibold text-stone-500">{trans('welcome.privacy_label')}</p>
-                <h2 className="mt-3 text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">{trans('welcome.privacy_title')}</h2>
-                <p className="mt-4 text-base leading-8 text-stone-700">{trans('welcome.privacy_body')}</p>
+                <SectionBadge dark>{trans('welcome.hero_panel_label')}</SectionBadge>
+                <h2 className="mt-6 max-w-xl font-display text-4xl leading-tight text-white sm:text-5xl">
+                  {trans('welcome.hero_panel_title')}
+                </h2>
+                <p className="mt-5 max-w-2xl text-base leading-8 text-white/70">
+                  {trans('welcome.hero_panel_body')}
+                </p>
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {privacyPoints.map((item) => (
-                  <div key={item.title} className="rounded-xl border border-stone-200 bg-white p-5">
-                    <h3 className="text-sm font-semibold text-stone-950">{item.title}</h3>
-                    <p className="mt-2 text-sm leading-7 text-stone-600">{item.desc}</p>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {trustItems.map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-white/10 bg-white/8 p-5 backdrop-blur transition duration-300 hover:-translate-y-1 hover:bg-white/12 motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+                    <p className="font-mono text-[0.68rem] uppercase tracking-[0.15em] text-white/45">{item.label}</p>
+                    <p className="mt-3 text-lg font-semibold leading-7 text-white">{item.value}</p>
                   </div>
                 ))}
               </div>
             </div>
           </section>
 
-          <section id="features" className="bg-white px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+          <section className="px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
             <div className="mx-auto max-w-6xl">
               <div className="max-w-2xl">
-                <h2 className="text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">{trans('welcome.features_title')}</h2>
-                <p className="mt-4 text-base leading-7 text-stone-600">{trans('welcome.features_body')}</p>
+                <SectionBadge>{trans('welcome.use_cases_label')}</SectionBadge>
+                <h2 className="mt-6 font-display text-4xl leading-tight text-yap-foreground sm:text-5xl">
+                  {renderHighlightedText(trans('welcome.use_cases_title'))}
+                </h2>
+                <p className="mt-5 text-base leading-8 text-yap-muted-foreground">{trans('welcome.use_cases_body')}</p>
               </div>
-              <div className="mt-8 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {features.map((feature) => (
-                  <article key={feature.title} className="rounded-xl border border-stone-200 bg-white p-5">
-                    <h3 className="text-base font-semibold text-stone-950">{feature.title}</h3>
-                    <p className="mt-3 text-sm leading-7 text-stone-600">{feature.desc}</p>
+
+              <div className="mt-12 grid gap-5 lg:grid-cols-3">
+                {useCases.map((item, index) => (
+                  <article key={item.title} className={`group relative overflow-hidden rounded-[1.5rem] border border-yap-border bg-yap-card p-7 shadow-lg shadow-slate-900/5 transition duration-300 hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${index === 1 ? 'lg:translate-y-8 motion-reduce:lg:translate-y-0' : ''}`}>
+                    <div className="absolute inset-0 bg-gradient-to-br from-yap-accent/[0.04] to-transparent opacity-0 transition group-hover:opacity-100" aria-hidden="true" />
+                    <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-yap-accent to-yap-accent-secondary text-white shadow-yap-accent transition group-hover:scale-110 motion-reduce:transition-none motion-reduce:group-hover:scale-100">
+                      <FeatureIcon index={index} />
+                    </div>
+                    <h3 className="relative mt-6 text-xl font-semibold tracking-tight text-yap-foreground">{item.title}</h3>
+                    <p className="relative mt-4 text-sm leading-7 text-yap-muted-foreground">{item.desc}</p>
                   </article>
                 ))}
               </div>
             </div>
           </section>
 
-          <section className="border-y border-stone-200 bg-stone-50 px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-            <div className="mx-auto max-w-6xl">
-              <div className="max-w-2xl">
-                <h2 className="text-2xl font-semibold tracking-tight text-stone-950 sm:text-3xl">{trans('welcome.how_title')}</h2>
-                <p className="mt-4 text-base leading-7 text-stone-600">{trans('welcome.how_body')}</p>
+          <section id="privacy" className="relative overflow-hidden border-y border-yap-border bg-yap-muted/70 px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
+            <div className="absolute right-0 top-0 h-80 w-80 rounded-full bg-yap-accent/8 blur-[130px]" aria-hidden="true" />
+            <div className="mx-auto grid max-w-6xl gap-10 lg:grid-cols-[0.82fr_1.18fr] lg:items-start">
+              <div className="relative rounded-tl-[4rem] rounded-br-[4rem] border border-yap-border bg-white p-8 shadow-xl shadow-slate-900/6">
+                <SectionBadge>{trans('welcome.privacy_label')}</SectionBadge>
+                <h2 className="mt-6 font-display text-4xl leading-tight text-yap-foreground sm:text-5xl">
+                  {renderHighlightedText(trans('welcome.privacy_title'))}
+                </h2>
+                <p className="mt-6 text-base leading-8 text-yap-muted-foreground">{trans('welcome.privacy_body')}</p>
               </div>
-              <div className="mt-8 divide-y divide-stone-200 rounded-xl border border-stone-200 bg-white">
-                {steps.map((item) => (
-                  <div key={item.step} className="grid gap-3 p-5 sm:grid-cols-[5rem_1fr] sm:gap-6">
-                    <div className="text-sm font-semibold text-stone-400">Step {item.step}</div>
-                    <div>
-                      <h3 className="text-base font-semibold text-stone-950">{item.title}</h3>
-                      <p className="mt-2 text-sm leading-7 text-stone-600">{item.desc}</p>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                {privacyPoints.map((item, index) => (
+                  <article key={item.title} className="rounded-[1.35rem] border border-yap-border bg-white p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+                    <div className="flex items-center gap-4">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-yap-foreground font-mono text-xs text-white">
+                        0{index + 1}
+                      </span>
+                      <h3 className="text-base font-semibold tracking-tight text-yap-foreground">{item.title}</h3>
                     </div>
-                  </div>
+                    <p className="mt-4 text-sm leading-7 text-yap-muted-foreground">{item.desc}</p>
+                  </article>
                 ))}
               </div>
             </div>
           </section>
 
-          <section className="bg-white px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
-            <div className="mx-auto max-w-6xl rounded-xl border border-stone-200 bg-stone-50 p-6 sm:p-8">
-              <div className="grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <section id="features" className="px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
+            <div className="mx-auto max-w-6xl">
+              <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-end">
                 <div>
-                  <h2 className="text-2xl font-semibold tracking-tight text-stone-950">{trans('welcome.cta_title')}</h2>
-                  <p className="mt-3 max-w-2xl text-sm leading-7 text-stone-600">{trans('welcome.cta_body')}</p>
+                  <SectionBadge>{trans('welcome.learn_more')}</SectionBadge>
+                  <h2 className="mt-6 font-display text-4xl leading-tight text-yap-foreground sm:text-5xl">
+                    {renderHighlightedText(trans('welcome.features_title'))}
+                  </h2>
                 </div>
-                <Link
-                  href={primaryHref}
-                  className="inline-flex items-center justify-center rounded-md bg-stone-900 px-5 py-3 text-sm font-semibold text-white hover:bg-stone-700"
-                >
+                <p className="text-base leading-8 text-yap-muted-foreground lg:max-w-xl">{trans('welcome.features_body')}</p>
+              </div>
+
+              <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+                {features.map((feature, index) => {
+                  const featured = index === 0;
+
+                  return (
+                    <article key={feature.title} className={featured ? 'rounded-[1.6rem] bg-gradient-to-br from-yap-accent via-yap-accent-secondary to-yap-accent p-[2px] shadow-yap-accent-lg md:col-span-2 lg:col-span-1' : 'rounded-[1.6rem] border border-yap-border bg-white shadow-lg shadow-slate-900/5'}>
+                      <div className={`h-full rounded-[1.45rem] p-6 ${featured ? 'bg-white' : ''}`}>
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-yap-accent to-yap-accent-secondary text-white shadow-yap-accent">
+                          <FeatureIcon index={index} />
+                        </div>
+                        <h3 className="mt-6 text-lg font-semibold tracking-tight text-yap-foreground">{feature.title}</h3>
+                        <p className="mt-3 text-sm leading-7 text-yap-muted-foreground">{feature.desc}</p>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </div>
+          </section>
+
+          <section id="how" className="relative overflow-hidden border-y border-yap-border bg-white px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
+            <div className="yap-light-dot-grid absolute inset-y-0 left-0 w-1/2 opacity-45" aria-hidden="true" />
+            <div className="relative mx-auto max-w-6xl">
+              <div className="max-w-2xl">
+                <SectionBadge>{trans('welcome.hero_panel_label')}</SectionBadge>
+                <h2 className="mt-6 font-display text-4xl leading-tight text-yap-foreground sm:text-5xl">
+                  {renderHighlightedText(trans('welcome.how_title'))}
+                </h2>
+                <p className="mt-5 text-base leading-8 text-yap-muted-foreground">{trans('welcome.how_body')}</p>
+              </div>
+
+              <div className="mt-12 grid gap-5 md:grid-cols-3">
+                {steps.map((item, index) => (
+                  <article key={item.step} className="relative rounded-[1.5rem] border border-yap-border bg-white p-7 shadow-xl shadow-slate-900/6">
+                    {index < steps.length - 1 && (
+                      <div className="absolute left-[calc(100%-1rem)] top-12 z-10 hidden h-8 w-8 items-center justify-center rounded-full bg-yap-accent text-white shadow-yap-accent md:flex" aria-hidden="true">
+                        <ArrowIcon className="h-4 w-4" />
+                      </div>
+                    )}
+                    <p className="font-mono text-4xl text-yap-accent/20">0{item.step}</p>
+                    <h3 className="mt-5 text-xl font-semibold tracking-tight text-yap-foreground">{item.title}</h3>
+                    <p className="mt-4 text-sm leading-7 text-yap-muted-foreground">{item.desc}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="px-4 py-24 sm:px-6 sm:py-32 lg:px-8">
+            <div className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-yap-foreground p-8 text-white shadow-2xl shadow-slate-900/25 sm:p-12 lg:p-14">
+              <div className="yap-dot-grid absolute inset-0 opacity-[0.06]" aria-hidden="true" />
+              <div className="absolute -right-24 -top-24 h-80 w-80 rounded-full bg-yap-accent/18 blur-[120px]" aria-hidden="true" />
+              <div className="relative grid gap-8 lg:grid-cols-[1fr_auto] lg:items-center">
+                <div>
+                  <SectionBadge dark>{trans('welcome.get_started')}</SectionBadge>
+                  <h2 className="mt-6 max-w-3xl font-display text-4xl leading-tight text-white sm:text-5xl">
+                    {trans('welcome.cta_title')}
+                  </h2>
+                  <p className="mt-5 max-w-2xl text-base leading-8 text-white/72">{trans('welcome.cta_body')}</p>
+                </div>
+                <ActionLink href={primaryHref} className={`${primaryActionClasses} bg-white from-white to-white text-yap-accent hover:brightness-100`}>
                   {primaryLabel}
-                </Link>
+                  <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
+                </ActionLink>
               </div>
             </div>
           </section>
         </main>
 
-        <footer className="border-t border-stone-200 bg-white px-4 sm:px-6 lg:px-8">
-          <div className="mx-auto flex max-w-6xl flex-col gap-4 py-8 sm:flex-row sm:items-center sm:justify-between">
+        <footer className="border-t border-yap-border bg-white px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto flex max-w-6xl flex-col gap-6 py-9 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <div className="text-sm font-semibold text-stone-950">YAP</div>
-              <div className="mt-1 text-xs text-stone-500">{trans('welcome.title')}</div>
+              <div className="flex items-center gap-3">
+                <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-yap-foreground text-sm font-bold text-white">Y</span>
+                <span className="text-sm font-semibold text-yap-foreground">YAP</span>
+              </div>
+              <p className="mt-2 max-w-sm text-xs leading-5 text-yap-muted-foreground">{trans('welcome.title')}</p>
             </div>
-            <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-stone-500">
-              <Link href={route('policy')} className="hover:text-stone-950">{trans('common.privacy_policy')}</Link>
-              <Link href={route('tos')} className="hover:text-stone-950">{trans('common.terms_of_service')}</Link>
-              <Link href={route('commercial.disclosure')} className="hover:text-stone-950">{trans('common.commercial_disclosure')}</Link>
-              <a href="https://t.me/yap_devs" target="_blank" rel="noopener noreferrer" className="hover:text-stone-950">Telegram</a>
-              <a href="https://github.com/yap-devs/yap" target="_blank" rel="noopener noreferrer" className="hover:text-stone-950">GitHub</a>
+            <div className="flex flex-wrap items-center gap-4 text-xs font-medium text-yap-muted-foreground">
+              <Link href={route('policy')} className="transition hover:text-yap-foreground">{trans('common.privacy_policy')}</Link>
+              <Link href={route('tos')} className="transition hover:text-yap-foreground">{trans('common.terms_of_service')}</Link>
+              <Link href={route('commercial.disclosure')} className="transition hover:text-yap-foreground">{trans('common.commercial_disclosure')}</Link>
+              <a href="https://t.me/yap_devs" target="_blank" rel="noopener noreferrer" className="transition hover:text-yap-foreground">Telegram</a>
+              <a href="https://github.com/yap-devs/yap" target="_blank" rel="noopener noreferrer" className="transition hover:text-yap-foreground">GitHub</a>
             </div>
           </div>
         </footer>

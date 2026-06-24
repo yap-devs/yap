@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Calistoga&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
 @import 'tailwindcss';
 
 @plugin '@tailwindcss/forms';
@@ -6,10 +8,53 @@
 
 @theme {
   --font-sans:
-    Figtree, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+    Inter, ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
     'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-display: Calistoga, Georgia, serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', monospace;
+
+  --color-yap-background: #fafafa;
+  --color-yap-foreground: #0f172a;
+  --color-yap-muted: #f1f5f9;
+  --color-yap-muted-foreground: #64748b;
+  --color-yap-accent: #0052ff;
+  --color-yap-accent-secondary: #4d7cff;
+  --color-yap-accent-foreground: #ffffff;
+  --color-yap-border: #e2e8f0;
+  --color-yap-card: #ffffff;
+  --color-yap-ring: #0052ff;
+
+  --shadow-yap-accent: 0 4px 14px rgb(0 82 255 / 0.25);
+  --shadow-yap-accent-lg: 0 8px 24px rgb(0 82 255 / 0.35);
 
   --animate-pulse: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-yap-float: yap-float 5s ease-in-out infinite;
+  --animate-yap-float-delayed: yap-float-delayed 4.5s ease-in-out infinite;
+  --animate-yap-spin-slow: yap-spin 60s linear infinite;
+  --animate-yap-pulse: yap-pulse 2s ease-in-out infinite;
+}
+
+@layer components {
+  .yap-gradient-text {
+    background-image: linear-gradient(to right, var(--color-yap-accent), var(--color-yap-accent-secondary));
+    background-clip: text;
+    color: transparent;
+    -webkit-background-clip: text;
+  }
+
+  .yap-gradient-underline {
+    background-image: linear-gradient(to right, rgb(0 82 255 / 0.16), rgb(77 124 255 / 0.09));
+  }
+
+  .yap-dot-grid {
+    background-image: radial-gradient(circle, rgb(255 255 255 / 0.45) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  .yap-light-dot-grid {
+    background-image: radial-gradient(circle, rgb(15 23 42 / 0.08) 1px, transparent 1px);
+    background-size: 28px 28px;
+  }
 }
 
 /*
@@ -35,6 +80,46 @@
     25% { transform: translate(-2px, -2px) rotate(-1deg); }
     50% { transform: translate(2px, 2px) rotate(1deg); }
     75% { transform: translate(-2px, 2px) rotate(-1deg); }
+}
+
+@keyframes yap-float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+}
+
+@keyframes yap-float-delayed {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(10px); }
+}
+
+@keyframes yap-spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes yap-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.3);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .animate-yap-float,
+    .animate-yap-float-delayed,
+    .animate-yap-pulse,
+    .animate-yap-spin-slow,
+    .aurora-bg,
+    .aurora-orb-1,
+    .aurora-orb-2,
+    .aurora-orb-3,
+    .shake {
+        animation: none;
+    }
 }
 
 .shake {
