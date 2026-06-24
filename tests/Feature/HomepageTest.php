@@ -16,6 +16,6 @@ it('keeps the china travel and privacy positioning on the homepage', function ()
         ->assertInertia(fn ($page) => $page
             ->component('Welcome')
             ->where('translations.welcome.hero_points.0', '中国出張・旅行向け')
-            ->where('translations.welcome.privacy_title', 'アクセス履歴への不安を減らす設計')
+            ->where('translations.welcome.privacy_title', 'アクセス履歴に配慮した設計')
         );
 });
