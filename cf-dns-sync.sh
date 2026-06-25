@@ -54,6 +54,7 @@ PROBE_TIMEOUT=5
 SSH_CONNECT_TIMEOUT=8
 LIGHTSAIL_MAX_ATTEMPTS=10
 CREATED_STATIC_IPS=()
+LIGHTSAIL_EXCLUDED_IPV4S=()
 FORCE_ROTATE_IP=false
 LOG_TS_FORMAT='%Y-%m-%d %H:%M:%S%z'
 
@@ -316,6 +317,31 @@ json_add_ipv4_unique() {
     echo "$json" | jq --arg ip "$ip" '.A += [$ip] | .A |= unique'
 }
 
+remember_lightsail_excluded_ip() {
+    local ip=$1
+    local excluded_ip
+
+    [ -z "$ip" ] && return 0
+    [ "$ip" == "None" ] && return 0
+
+    for excluded_ip in "${LIGHTSAIL_EXCLUDED_IPV4S[@]}"; do
+        [ "$excluded_ip" == "$ip" ] && return 0
+    done
+
+    LIGHTSAIL_EXCLUDED_IPV4S+=("$ip")
+}
+
+is_lightsail_excluded_ip() {
+    local ip=$1
+    local excluded_ip
+
+    for excluded_ip in "${LIGHTSAIL_EXCLUDED_IPV4S[@]}"; do
+        [ "$excluded_ip" == "$ip" ] && return 0
+    done
+
+    return 1
+}
+
 instance_matches_tags() {
     local tags_json=$1
     local filters_csv=$2
@@ -466,6 +492,7 @@ ensure_lightsail_instance_reachable() {
     print_info "Checking Lightsail instance ${instance_name} (${region}) IPv4 ${current_ip}" >&2
     if [ "$FORCE_ROTATE_IP" == "true" ]; then
         print_warn "Force rotate enabled; rotating ${instance_name} even if current IPv4 is reachable" >&2
+        remember_lightsail_excluded_ip "$current_ip"
     elif [ -n "$current_ip" ] && [ "$current_ip" != "None" ]; then
         local check_result=0
         if probe_tcp_from_china "$current_ip" "$PROBE_PORT"; then
@@ -483,6 +510,8 @@ ensure_lightsail_instance_reachable() {
             print_err "China probe check failed; aborting before rotating ${instance_name}" >&2
             return 1
         fi
+
+        remember_lightsail_excluded_ip "$current_ip"
     fi
 
     if [ "$DRY_RUN" == "true" ]; then
@@ -505,6 +534,14 @@ ensure_lightsail_instance_reachable() {
         new_ip=$(allocate_and_attach_static_ip "$region" "$instance_name" "$attempt")
 
         if [ -n "$new_ip" ] && [ "$new_ip" != "None" ]; then
+            if is_lightsail_excluded_ip "$new_ip"; then
+                print_warn "Skipping previously used IPv4 for ${instance_name}: ${new_ip}" >&2
+                local skipped_static_ip
+                skipped_static_ip=$(get_attached_static_ip_name "$region" "$instance_name")
+                release_static_ip "$region" "$skipped_static_ip"
+                continue
+            fi
+
             local check_result=0
             if probe_tcp_from_china "$new_ip" "$PROBE_PORT"; then
                 check_result=0
@@ -525,6 +562,8 @@ ensure_lightsail_instance_reachable() {
                 print_err "China probe check failed; aborting before more rotations for ${instance_name}" >&2
                 return 1
             fi
+
+            remember_lightsail_excluded_ip "$new_ip"
         fi
     done
 
@@ -580,6 +619,11 @@ collect_lightsail_ips() {
         instances=$(aws lightsail get-instances --region "$region" --output json 2>/dev/null || echo '{"instances":[]}')
         local rows
         rows=$(echo "$instances" | jq -r '.instances[] | [.name, (.publicIpAddress // ""), (.arn // ""), (.supportCode // ""), (.state.name // ""), ((.tags // []) | @base64)] | @tsv')
+
+        local seeded_row_name seeded_public_ip seeded_arn seeded_support_code seeded_state seeded_tags_base64
+        while IFS=$'\t' read -r seeded_row_name seeded_public_ip seeded_arn seeded_support_code seeded_state seeded_tags_base64; do
+            remember_lightsail_excluded_ip "$seeded_public_ip"
+        done <<< "$rows"
 
         while IFS=$'\t' read -r name public_ip arn support_code state tags_base64; do
             [ -z "$name" ] && continue
