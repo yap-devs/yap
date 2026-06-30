@@ -47,16 +47,51 @@ CHECK_TIMEOUT=3
 SOURCE_MODE="source"
 LIGHTSAIL_IDS=""
 LIGHTSAIL_TAGS=""
-PROBE_PORT=22
-PROBE_SSH_HOSTS=""
-PROBE_MIN_OK=1
-PROBE_TIMEOUT=5
+INSTANCE_SSH_USER="${LIGHTSAIL_SSH_USER:-}"
+INSTANCE_SSH_KEY="${LIGHTSAIL_SSH_KEY:-}"
+PROBE_TIMEOUT=3
 SSH_CONNECT_TIMEOUT=8
+STATIC_IP_READY_TIMEOUT=60
+RETURN_PROBE_ROUNDS=2
+RETURN_PROBE_CARRIER_MIN_OK=2
+RETURN_PROBE_MIN_CARRIERS=2
+RETURN_PROBE_TOTAL_MIN_OK=6
+ALLOW_PROBE_OUTAGE=false
 LIGHTSAIL_MAX_ATTEMPTS=10
 CREATED_STATIC_IPS=()
 LIGHTSAIL_EXCLUDED_IPV4S=()
+COMPLETED_ROTATIONS=()
 FORCE_ROTATE_IP=false
 LOG_TS_FORMAT='%Y-%m-%d %H:%M:%S%z'
+ALLOCATED_STATIC_IP_NAME=""
+ALLOCATED_STATIC_IP_ADDRESS=""
+SELECTED_LIGHTSAIL_IP=""
+COLLECTED_LIGHTSAIL_IPS='{"A":[],"AAAA":[]}'
+LIGHTSAIL_CLEANUP_TRAP_SET=false
+INSTANCE_SSH_HOST_KEY_ALIAS=""
+ROTATION_RESTORE_ACTIVE=false
+ROTATION_RESTORE_REGION=""
+ROTATION_RESTORE_INSTANCE_NAME=""
+ROTATION_RESTORE_STATIC_IP=""
+ROTATION_RESTORE_CANDIDATE_STATIC_IP=""
+
+RETURN_PROBE_TARGETS=(
+    "cm|Beijing Mobile|bj-cm-v4.ip.zstaticcdn.com|80"
+    "cu|Beijing Unicom|bj-cu-v4.ip.zstaticcdn.com|80"
+    "ct|Beijing Telecom|bj-ct-v4.ip.zstaticcdn.com|80"
+    "cm|Shanghai Mobile|sh-cm-v4.ip.zstaticcdn.com|80"
+    "cu|Shanghai Unicom|sh-cu-v4.ip.zstaticcdn.com|80"
+    "ct|Shanghai Telecom|sh-ct-v4.ip.zstaticcdn.com|80"
+    "cm|Guangzhou Mobile|gd-guangzhou-cm-v4.ip.zstaticcdn.com|443"
+    "cu|Guangzhou Unicom|gd-guangzhou-cu-v4.ip.zstaticcdn.com|443"
+    "ct|Guangzhou Telecom|gd-guangzhou-ct-v4.ip.zstaticcdn.com|443"
+    "cm|Nanjing Mobile|js-nanjing-cm-v4.ip.zstaticcdn.com|443"
+    "cu|Nanjing Unicom|js-nanjing-cu-v4.ip.zstaticcdn.com|443"
+    "ct|Nanjing Telecom|js-nanjing-ct-v4.ip.zstaticcdn.com|443"
+    "cm|Chongqing Mobile|cq-cm-v4.ip.zstaticcdn.com|80"
+    "cu|Chongqing Unicom|cq-cu-v4.ip.zstaticcdn.com|80"
+    "ct|Chongqing Telecom|cq-ct-v4.ip.zstaticcdn.com|80"
+)
 
 log_line() {
     local color=$1
@@ -99,12 +134,6 @@ check_deps() {
 
         if ! aws sts get-caller-identity &>/dev/null; then
             print_err "AWS credentials not configured"
-            exit 1
-        fi
-
-        if [ -z "$PROBE_SSH_HOSTS" ]; then
-            print_err "Chinese probe SSH hosts are required for Lightsail mode"
-            print_err "Use: --probe-ssh-hosts aliyun-sh[,other-host]"
             exit 1
         fi
 
@@ -342,6 +371,56 @@ is_lightsail_excluded_ip() {
     return 1
 }
 
+validate_positive_int() {
+    local name=$1
+    local value=$2
+
+    if ! [[ "$value" =~ ^[1-9][0-9]*$ ]]; then
+        print_err "${name} must be a positive integer"
+        exit 1
+    fi
+}
+
+validate_lightsail_probe_options() {
+    [ "$SOURCE_MODE" != "lightsail" ] && return 0
+
+    validate_positive_int "--probe-timeout" "$PROBE_TIMEOUT"
+    validate_positive_int "--probe-rounds" "$RETURN_PROBE_ROUNDS"
+    validate_positive_int "--probe-carrier-min-ok" "$RETURN_PROBE_CARRIER_MIN_OK"
+    validate_positive_int "--probe-min-carriers" "$RETURN_PROBE_MIN_CARRIERS"
+    validate_positive_int "--probe-total-min-ok" "$RETURN_PROBE_TOTAL_MIN_OK"
+    validate_positive_int "--ssh-timeout" "$SSH_CONNECT_TIMEOUT"
+    validate_positive_int "--static-ip-ready-timeout" "$STATIC_IP_READY_TIMEOUT"
+    validate_positive_int "--max-attempts" "$LIGHTSAIL_MAX_ATTEMPTS"
+
+    if [ "$RETURN_PROBE_CARRIER_MIN_OK" -gt 5 ]; then
+        print_err "--probe-carrier-min-ok cannot exceed 5"
+        exit 1
+    fi
+
+    if [ "$RETURN_PROBE_MIN_CARRIERS" -gt 3 ]; then
+        print_err "--probe-min-carriers cannot exceed 3"
+        exit 1
+    fi
+
+    if [ "$RETURN_PROBE_TOTAL_MIN_OK" -gt "${#RETURN_PROBE_TARGETS[@]}" ]; then
+        print_err "--probe-total-min-ok cannot exceed ${#RETURN_PROBE_TARGETS[@]}"
+        exit 1
+    fi
+}
+
+warn_deprecated_probe_option() {
+    local option=$1
+
+    print_warn "${option} is deprecated and ignored; Lightsail mode now probes return-path connectivity from the instance" >&2
+}
+
+warn_ignored_option() {
+    local option=$1
+
+    print_warn "${option} is ignored by the current Lightsail rotation flow" >&2
+}
+
 instance_matches_tags() {
     local tags_json=$1
     local filters_csv=$2
@@ -370,54 +449,119 @@ instance_matches_tags() {
     return 0
 }
 
-probe_tcp_from_ssh() {
-    local host=$1
-    local ip=$2
-    local port=$3
+build_instance_ssh_target() {
+    local ip=$1
 
-    ssh -o BatchMode=yes -o ConnectTimeout="$SSH_CONNECT_TIMEOUT" "$host" \
-        "timeout '$PROBE_TIMEOUT' bash -lc 'echo >/dev/tcp/$ip/$port'" >/dev/null 2>&1
+    if [ -n "$INSTANCE_SSH_USER" ]; then
+        echo "${INSTANCE_SSH_USER}@${ip}"
+    else
+        echo "$ip"
+    fi
 }
 
-# Check if Chinese SSH probe nodes can reach a TCP port.
-# Returns 0 when enough probes pass, 1 when probes work but the IP fails,
-# and 2 when no probe host can be reached.
-probe_tcp_from_china() {
+instance_ssh() {
     local ip=$1
-    local port=$2
-    local ok_count=0
-    local reachable_probes=0
-    local host
+    local command=$2
+    local target
+    target=$(build_instance_ssh_target "$ip")
 
-    while IFS= read -r host; do
-        [ -z "$host" ] && continue
+    local args=(
+        -o BatchMode=yes
+        -o StrictHostKeyChecking=accept-new
+        -o ConnectTimeout="$SSH_CONNECT_TIMEOUT"
+    )
 
-        if ssh -o BatchMode=yes -o ConnectTimeout="$SSH_CONNECT_TIMEOUT" "$host" "printf ok" >/dev/null 2>&1; then
-            reachable_probes=$((reachable_probes + 1))
-        else
-            print_warn "Probe SSH host unreachable: ${host}" >&2
-            continue
-        fi
-
-        if probe_tcp_from_ssh "$host" "$ip" "$port"; then
-            ok_count=$((ok_count + 1))
-            print_ok "Probe ${host}: ${ip}:${port} reachable" >&2
-        else
-            print_warn "Probe ${host}: ${ip}:${port} unreachable" >&2
-        fi
-    done < <(normalize_csv "$PROBE_SSH_HOSTS")
-
-    if [ "$reachable_probes" -eq 0 ]; then
-        print_err "No Chinese SSH probe host is reachable" >&2
-        return 2
+    if [ -n "$INSTANCE_SSH_KEY" ]; then
+        args+=(-i "$INSTANCE_SSH_KEY")
     fi
 
-    if [ "$ok_count" -ge "$PROBE_MIN_OK" ]; then
-        print_ok "China TCP check: ${ok_count}/${reachable_probes} probe(s) passed" >&2
+    if [ -n "$INSTANCE_SSH_HOST_KEY_ALIAS" ]; then
+        args+=(-o HostKeyAlias="$INSTANCE_SSH_HOST_KEY_ALIAS")
+    fi
+
+    ssh "${args[@]}" "$target" "$command"
+}
+
+wait_for_instance_ssh() {
+    local ip=$1
+    local elapsed=0
+
+    while [ "$elapsed" -lt "$STATIC_IP_READY_TIMEOUT" ]; do
+        if instance_ssh "$ip" "printf ok" >/dev/null 2>&1; then
+            return 0
+        fi
+
+        sleep 3
+        elapsed=$((elapsed + 3))
+    done
+
+    return 1
+}
+
+probe_return_target_from_instance() {
+    local ip=$1
+    local host=$2
+    local port=$3
+
+    instance_ssh "$ip" "timeout '$PROBE_TIMEOUT' bash -lc 'echo >/dev/tcp/$host/$port'" >/dev/null 2>&1
+}
+
+probe_return_path_once() {
+    local ip=$1
+    local cm_ok=0
+    local cu_ok=0
+    local ct_ok=0
+    local total_ok=0
+    local target carrier label host port
+
+    for target in "${RETURN_PROBE_TARGETS[@]}"; do
+        IFS='|' read -r carrier label host port <<< "$target"
+
+        if probe_return_target_from_instance "$ip" "$host" "$port"; then
+            total_ok=$((total_ok + 1))
+            case "$carrier" in
+                cm) cm_ok=$((cm_ok + 1)) ;;
+                cu) cu_ok=$((cu_ok + 1)) ;;
+                ct) ct_ok=$((ct_ok + 1)) ;;
+            esac
+            print_ok "Return probe ${label}: ${host}:${port} reachable from ${ip}" >&2
+        else
+            print_warn "Return probe ${label}: ${host}:${port} unreachable from ${ip}" >&2
+        fi
+    done
+
+    local carriers_ok=0
+    [ "$cm_ok" -ge "$RETURN_PROBE_CARRIER_MIN_OK" ] && carriers_ok=$((carriers_ok + 1))
+    [ "$cu_ok" -ge "$RETURN_PROBE_CARRIER_MIN_OK" ] && carriers_ok=$((carriers_ok + 1))
+    [ "$ct_ok" -ge "$RETURN_PROBE_CARRIER_MIN_OK" ] && carriers_ok=$((carriers_ok + 1))
+
+    print_info "Return probe result for ${ip}: total=${total_ok}/15 carriers=${carriers_ok}/3 cm=${cm_ok}/5 cu=${cu_ok}/5 ct=${ct_ok}/5" >&2
+
+    if [ "$carriers_ok" -ge "$RETURN_PROBE_MIN_CARRIERS" ] && [ "$total_ok" -ge "$RETURN_PROBE_TOTAL_MIN_OK" ]; then
         return 0
     fi
 
-    print_warn "China TCP check: ${ok_count}/${reachable_probes} probe(s) passed" >&2
+    return 1
+}
+
+probe_return_path_from_instance() {
+    local ip=$1
+    local round
+
+    if ! wait_for_instance_ssh "$ip"; then
+        print_err "Instance SSH is unreachable after assigning IPv4 ${ip}" >&2
+        return 2
+    fi
+
+    for (( round=1; round<=RETURN_PROBE_ROUNDS; round++ )); do
+        print_info "Return path probe round ${round}/${RETURN_PROBE_ROUNDS} for ${ip}" >&2
+        if probe_return_path_once "$ip"; then
+            print_ok "Return path probe passed for ${ip} on round ${round}" >&2
+            return 0
+        fi
+    done
+
+    print_warn "Return path probe failed for ${ip} after ${RETURN_PROBE_ROUNDS} round(s)" >&2
     return 1
 }
 
@@ -458,7 +602,135 @@ release_static_ip() {
     aws lightsail release-static-ip --region "$region" --static-ip-name "$static_ip_name" &>/dev/null || true
 }
 
-allocate_and_attach_static_ip() {
+release_static_ip_strict() {
+    local region=$1
+    local static_ip_name=$2
+
+    [ -z "$static_ip_name" ] && return 0
+
+    if [ "$DRY_RUN" == "true" ]; then
+        print_warn "[DRY-RUN] Would detach and release static IP: ${static_ip_name} (${region})" >&2
+        return 0
+    fi
+
+    print_info "Releasing static IP: ${static_ip_name} (${region})" >&2
+    aws lightsail detach-static-ip --region "$region" --static-ip-name "$static_ip_name" &>/dev/null || true
+    if ! aws lightsail release-static-ip --region "$region" --static-ip-name "$static_ip_name" &>/dev/null; then
+        return 1
+    fi
+}
+
+remember_completed_rotation() {
+    local region=$1
+    local instance_name=$2
+    local previous_static_ip=$3
+    local new_static_ip=$4
+
+    COMPLETED_ROTATIONS+=("${region}|${instance_name}|${previous_static_ip}|${new_static_ip}")
+}
+
+rollback_completed_rotations() {
+    local index
+
+    for (( index=${#COMPLETED_ROTATIONS[@]}-1; index>=0; index-- )); do
+        local entry=${COMPLETED_ROTATIONS[$index]}
+        local region instance_name previous_static_ip new_static_ip
+        IFS='|' read -r region instance_name previous_static_ip new_static_ip <<< "$entry"
+
+        print_warn "Rolling back ${instance_name}: restoring ${previous_static_ip}" >&2
+        release_static_ip "$region" "$new_static_ip"
+        if [ -n "$previous_static_ip" ]; then
+            attach_static_ip "$region" "$instance_name" "$previous_static_ip" || true
+        fi
+    done
+
+    COMPLETED_ROTATIONS=()
+}
+
+finalize_completed_rotations() {
+    local entry
+
+    for entry in "${COMPLETED_ROTATIONS[@]}"; do
+        local region instance_name previous_static_ip new_static_ip
+        IFS='|' read -r region instance_name previous_static_ip new_static_ip <<< "$entry"
+
+        [ -n "$previous_static_ip" ] && release_static_ip "$region" "$previous_static_ip"
+    done
+
+    COMPLETED_ROTATIONS=()
+}
+
+clear_rotation_restore() {
+    ROTATION_RESTORE_ACTIVE=false
+    ROTATION_RESTORE_REGION=""
+    ROTATION_RESTORE_INSTANCE_NAME=""
+    ROTATION_RESTORE_STATIC_IP=""
+    ROTATION_RESTORE_CANDIDATE_STATIC_IP=""
+}
+
+set_rotation_restore() {
+    local region=$1
+    local instance_name=$2
+    local static_ip_name=$3
+
+    ROTATION_RESTORE_ACTIVE=true
+    ROTATION_RESTORE_REGION="$region"
+    ROTATION_RESTORE_INSTANCE_NAME="$instance_name"
+    ROTATION_RESTORE_STATIC_IP="$static_ip_name"
+    ROTATION_RESTORE_CANDIDATE_STATIC_IP=""
+}
+
+set_rotation_candidate_restore() {
+    local region=$1
+    local instance_name=$2
+    local static_ip_name=$3
+
+    ROTATION_RESTORE_ACTIVE=true
+    ROTATION_RESTORE_REGION="$region"
+    ROTATION_RESTORE_INSTANCE_NAME="$instance_name"
+    ROTATION_RESTORE_CANDIDATE_STATIC_IP="$static_ip_name"
+}
+
+restore_previous_static_ip_if_needed() {
+    [ "$ROTATION_RESTORE_ACTIVE" != "true" ] && return 0
+
+    if [ -n "$ROTATION_RESTORE_CANDIDATE_STATIC_IP" ]; then
+        print_warn "Releasing interrupted candidate static IP ${ROTATION_RESTORE_CANDIDATE_STATIC_IP}" >&2
+        release_static_ip "$ROTATION_RESTORE_REGION" "$ROTATION_RESTORE_CANDIDATE_STATIC_IP"
+    fi
+
+    if [ -z "$ROTATION_RESTORE_STATIC_IP" ]; then
+        clear_rotation_restore
+        return 0
+    fi
+
+    print_warn "Restoring previous static IP ${ROTATION_RESTORE_STATIC_IP} to ${ROTATION_RESTORE_INSTANCE_NAME}" >&2
+    if ! attach_static_ip "$ROTATION_RESTORE_REGION" "$ROTATION_RESTORE_INSTANCE_NAME" "$ROTATION_RESTORE_STATIC_IP"; then
+        print_err "Failed to restore previous static IP ${ROTATION_RESTORE_STATIC_IP} to ${ROTATION_RESTORE_INSTANCE_NAME}" >&2
+        return 1
+    fi
+
+    clear_rotation_restore
+}
+
+detach_static_ip() {
+    local region=$1
+    local static_ip_name=$2
+
+    [ -z "$static_ip_name" ] && return 0
+
+    if [ "$DRY_RUN" == "true" ]; then
+        print_warn "[DRY-RUN] Would detach static IP: ${static_ip_name} (${region})" >&2
+        return 0
+    fi
+
+    print_info "Detaching static IP: ${static_ip_name} (${region})" >&2
+    if ! aws lightsail detach-static-ip --region "$region" --static-ip-name "$static_ip_name" --output json >/dev/null; then
+        return 1
+    fi
+}
+
+allocate_static_ip() {
     local region=$1
     local instance_name=$2
     local attempt=$3
@@ -466,28 +738,53 @@ allocate_and_attach_static_ip() {
     safe_name=$(echo "$instance_name" | tr -c 'A-Za-z0-9-' '-')
     safe_name="${safe_name:0:40}"
     local static_ip_name="cf-dns-sync-${safe_name}-$(date +%s)-${attempt}"
+    ALLOCATED_STATIC_IP_NAME=""
+    ALLOCATED_STATIC_IP_ADDRESS=""
 
     if [ "$DRY_RUN" == "true" ]; then
-        print_warn "[DRY-RUN] Would allocate and attach static IP: ${static_ip_name} -> ${instance_name} (${region})" >&2
-        echo ""
+        print_warn "[DRY-RUN] Would allocate static IP: ${static_ip_name} (${region})" >&2
         return 0
     fi
 
     print_info "Allocating static IP: ${static_ip_name} (${region})" >&2
-    aws lightsail allocate-static-ip --region "$region" --static-ip-name "$static_ip_name" --output json >/dev/null
+    if ! aws lightsail allocate-static-ip --region "$region" --static-ip-name "$static_ip_name" --output json >/dev/null; then
+        return 1
+    fi
+
     CREATED_STATIC_IPS+=("${region}:${static_ip_name}")
 
-    print_info "Attaching static IP to ${instance_name}" >&2
-    aws lightsail attach-static-ip --region "$region" --static-ip-name "$static_ip_name" --instance-name "$instance_name" --output json >/dev/null
-    sleep 3
+    ALLOCATED_STATIC_IP_NAME="$static_ip_name"
+    if ! ALLOCATED_STATIC_IP_ADDRESS=$(get_static_ip_address "$region" "$static_ip_name"); then
+        return 1
+    fi
+}
 
-    get_static_ip_address "$region" "$static_ip_name"
+attach_static_ip() {
+    local region=$1
+    local instance_name=$2
+    local static_ip_name=$3
+
+    [ -z "$static_ip_name" ] && return 1
+
+    if [ "$DRY_RUN" == "true" ]; then
+        print_warn "[DRY-RUN] Would attach static IP: ${static_ip_name} -> ${instance_name} (${region})" >&2
+        return 0
+    fi
+
+    print_info "Attaching static IP to ${instance_name}" >&2
+    if ! aws lightsail attach-static-ip --region "$region" --static-ip-name "$static_ip_name" --instance-name "$instance_name" --output json >/dev/null; then
+        return 1
+    fi
+
+    sleep 3
 }
 
 ensure_lightsail_instance_reachable() {
     local region=$1
     local instance_name=$2
     local current_ip=$3
+    SELECTED_LIGHTSAIL_IP=""
+    INSTANCE_SSH_HOST_KEY_ALIAS="lightsail-${region}-${instance_name}"
 
     print_info "Checking Lightsail instance ${instance_name} (${region}) IPv4 ${current_ip}" >&2
     if [ "$FORCE_ROTATE_IP" == "true" ]; then
@@ -495,19 +792,19 @@ ensure_lightsail_instance_reachable() {
         remember_lightsail_excluded_ip "$current_ip"
     elif [ -n "$current_ip" ] && [ "$current_ip" != "None" ]; then
         local check_result=0
-        if probe_tcp_from_china "$current_ip" "$PROBE_PORT"; then
+        if probe_return_path_from_instance "$current_ip"; then
             check_result=0
         else
             check_result=$?
         fi
 
         if [ "$check_result" -eq 0 ]; then
-            echo "$current_ip"
+            SELECTED_LIGHTSAIL_IP="$current_ip"
             return 0
         fi
 
         if [ "$check_result" -eq 2 ]; then
-            print_err "China probe check failed; aborting before rotating ${instance_name}" >&2
+            print_err "Return path probe could not SSH into ${instance_name}; aborting before rotating" >&2
             return 1
         fi
 
@@ -515,59 +812,129 @@ ensure_lightsail_instance_reachable() {
     fi
 
     if [ "$DRY_RUN" == "true" ]; then
-        print_warn "[DRY-RUN] Would rotate ${instance_name} until Chinese probe check passes" >&2
-        echo "$current_ip"
+        print_warn "[DRY-RUN] Would rotate ${instance_name} until return path probe passes" >&2
+        SELECTED_LIGHTSAIL_IP="$current_ip"
         return 0
+    fi
+
+    local active_static_ip
+    active_static_ip=$(get_attached_static_ip_name "$region" "$instance_name")
+
+    if [ -n "$current_ip" ] && [ "$current_ip" != "None" ] && [ "$ALLOW_PROBE_OUTAGE" != "true" ]; then
+        print_err "Rotating ${instance_name} changes the currently published IPv4 during probes" >&2
+        print_err "Re-run with --allow-probe-outage to allow that short outage window, or keep the current IP" >&2
+        return 1
+    fi
+
+    if [ -z "$active_static_ip" ] && [ -n "$current_ip" ] && [ "$current_ip" != "None" ]; then
+        print_warn "No attached static IP found for ${instance_name}; rollback cannot restore current dynamic IPv4 ${current_ip}" >&2
     fi
 
     local attempt
     for (( attempt=1; attempt<=LIGHTSAIL_MAX_ATTEMPTS; attempt++ )); do
-        print_info "Rotating ${instance_name} static IP, attempt ${attempt}/${LIGHTSAIL_MAX_ATTEMPTS}" >&2
+        print_info "Allocating Lightsail static IP candidate ${attempt}/${LIGHTSAIL_MAX_ATTEMPTS} for ${instance_name}" >&2
 
-        local old_static_ip
-        old_static_ip=$(get_attached_static_ip_name "$region" "$instance_name")
-        if [ -n "$old_static_ip" ]; then
-            release_static_ip "$region" "$old_static_ip"
+        if ! allocate_static_ip "$region" "$instance_name" "$attempt"; then
+            print_warn "Failed to allocate static IP candidate for ${instance_name}" >&2
+            continue
         fi
 
-        local new_ip
-        new_ip=$(allocate_and_attach_static_ip "$region" "$instance_name" "$attempt")
+        local new_static_ip=$ALLOCATED_STATIC_IP_NAME
+        local new_ip=$ALLOCATED_STATIC_IP_ADDRESS
 
-        if [ -n "$new_ip" ] && [ "$new_ip" != "None" ]; then
-            if is_lightsail_excluded_ip "$new_ip"; then
-                print_warn "Skipping previously used IPv4 for ${instance_name}: ${new_ip}" >&2
-                local skipped_static_ip
-                skipped_static_ip=$(get_attached_static_ip_name "$region" "$instance_name")
-                release_static_ip "$region" "$skipped_static_ip"
+        if [ -z "$new_static_ip" ] || [ -z "$new_ip" ] || [ "$new_ip" == "None" ]; then
+            print_warn "Allocated static IP candidate has no IPv4 address; skipping" >&2
+            release_static_ip "$region" "$new_static_ip"
+            continue
+        fi
+
+        if is_lightsail_excluded_ip "$new_ip"; then
+            print_warn "Skipping previously used IPv4 for ${instance_name}: ${new_ip}" >&2
+            release_static_ip "$region" "$new_static_ip"
+            continue
+        fi
+
+        local previous_static_ip=$active_static_ip
+
+        print_info "Testing static IP candidate ${attempt}/${LIGHTSAIL_MAX_ATTEMPTS} for ${instance_name}: ${new_ip}" >&2
+
+        if [ -n "$previous_static_ip" ]; then
+            if ! detach_static_ip "$region" "$previous_static_ip"; then
+                print_err "Failed to detach current static IP ${previous_static_ip} before testing ${new_ip}" >&2
+                release_static_ip "$region" "$new_static_ip"
                 continue
             fi
+            active_static_ip=""
+            set_rotation_restore "$region" "$instance_name" "$previous_static_ip"
+        fi
 
-            local check_result=0
-            if probe_tcp_from_china "$new_ip" "$PROBE_PORT"; then
-                check_result=0
-            else
-                check_result=$?
-            fi
-
-            if [ "$check_result" -eq 0 ]; then
-                print_ok "Selected IPv4 for ${instance_name}: ${new_ip}" >&2
-                if [ -n "$current_ip" ] && [ "$current_ip" != "None" ] && [ "$current_ip" != "$new_ip" ]; then
-                    print_result "Rotated ${instance_name}: ${current_ip} -> ${new_ip}" >&2
+        if ! attach_static_ip "$region" "$instance_name" "$new_static_ip"; then
+            print_err "Failed to attach static IP candidate ${new_static_ip} (${new_ip}) to ${instance_name}" >&2
+            release_static_ip "$region" "$new_static_ip"
+            if [ -n "$previous_static_ip" ]; then
+                if attach_static_ip "$region" "$instance_name" "$previous_static_ip"; then
+                    active_static_ip="$previous_static_ip"
+                    clear_rotation_restore
+                else
+                    print_err "Failed to restore previous static IP ${previous_static_ip} on ${instance_name}" >&2
+                    return 1
                 fi
-                echo "$new_ip"
-                return 0
             fi
+            continue
+        fi
 
-            if [ "$check_result" -eq 2 ]; then
-                print_err "China probe check failed; aborting before more rotations for ${instance_name}" >&2
+        active_static_ip="$new_static_ip"
+        set_rotation_candidate_restore "$region" "$instance_name" "$new_static_ip"
+
+        local check_result=0
+        if probe_return_path_from_instance "$new_ip"; then
+            check_result=0
+        else
+            check_result=$?
+        fi
+
+        if [ "$check_result" -eq 0 ]; then
+            print_ok "Selected IPv4 for ${instance_name}: ${new_ip}" >&2
+            remember_completed_rotation "$region" "$instance_name" "$previous_static_ip" "$new_static_ip"
+            clear_rotation_restore
+            if [ -n "$current_ip" ] && [ "$current_ip" != "None" ] && [ "$current_ip" != "$new_ip" ]; then
+                print_result "Rotated ${instance_name}: ${current_ip} -> ${new_ip}" >&2
+            fi
+            SELECTED_LIGHTSAIL_IP="$new_ip"
+            return 0
+        fi
+
+        remember_lightsail_excluded_ip "$new_ip"
+        if ! release_static_ip_strict "$region" "$new_static_ip"; then
+            print_err "Failed to release rejected static IP candidate ${new_static_ip}" >&2
+            active_static_ip="$new_static_ip"
+            if [ -n "$previous_static_ip" ]; then
+                if attach_static_ip "$region" "$instance_name" "$previous_static_ip"; then
+                    active_static_ip="$previous_static_ip"
+                    clear_rotation_restore
+                else
+                    print_err "Failed to restore previous static IP ${previous_static_ip} on ${instance_name}" >&2
+                fi
+            fi
+            return 1
+        fi
+        set_rotation_candidate_restore "$region" "$instance_name" ""
+        active_static_ip=""
+
+        if [ -n "$previous_static_ip" ]; then
+            if attach_static_ip "$region" "$instance_name" "$previous_static_ip"; then
+                active_static_ip="$previous_static_ip"
+                clear_rotation_restore
+            else
+                print_err "Failed to restore previous static IP ${previous_static_ip} on ${instance_name}" >&2
                 return 1
             fi
-
-            remember_lightsail_excluded_ip "$new_ip"
+        else
+            clear_rotation_restore
         fi
     done
 
-    print_err "No China-reachable IPv4 found for ${instance_name} after ${LIGHTSAIL_MAX_ATTEMPTS} attempts" >&2
+    print_err "No return-path reachable IPv4 found for ${instance_name} after ${LIGHTSAIL_MAX_ATTEMPTS} allocated candidate(s)" >&2
     return 1
 }
 
@@ -596,13 +963,53 @@ cleanup_unattached_static_ips() {
     done
 }
 
+cleanup_created_static_ips() {
+    restore_previous_static_ip_if_needed || true
+    rollback_completed_rotations
+
+    [ "${#CREATED_STATIC_IPS[@]}" -eq 0 ] && return 0
+
+    local regions=()
+    local item
+
+    for item in "${CREATED_STATIC_IPS[@]}"; do
+        local item_region="${item%%:*}"
+        regions+=("$item_region")
+    done
+
+    local cleaned_regions
+    cleaned_regions=$(printf '%s\n' "${regions[@]}" | sort -u)
+    while IFS= read -r region; do
+        [ -n "$region" ] && cleanup_unattached_static_ips "$region"
+    done <<< "$cleaned_regions"
+
+    CREATED_STATIC_IPS=()
+}
+
+register_lightsail_cleanup_trap() {
+    [ "$LIGHTSAIL_CLEANUP_TRAP_SET" == "true" ] && return 0
+
+    trap cleanup_created_static_ips EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+    LIGHTSAIL_CLEANUP_TRAP_SET=true
+}
+
+clear_lightsail_cleanup_trap() {
+    [ "$LIGHTSAIL_CLEANUP_TRAP_SET" != "true" ] && return 0
+
+    trap - EXIT INT TERM
+    LIGHTSAIL_CLEANUP_TRAP_SET=false
+}
+
 collect_lightsail_ips() {
     local ids_csv=$1
     local tags_csv=$2
     local resolved='{"A":[],"AAAA":[]}'
     local ids=()
-    local regions_touched=()
     local found=0
+
+    register_lightsail_cleanup_trap
 
     while IFS= read -r id; do
         ids+=("$id")
@@ -657,14 +1064,17 @@ collect_lightsail_ips() {
             [ "$tag_result" -ne 0 ] && continue
 
             found=$((found + 1))
-            regions_touched+=("$region")
 
             if [ "$state" != "running" ]; then
-                print_warn "Instance ${name} is ${state}; Chinese probe TCP check may fail" >&2
+                print_warn "Instance ${name} is ${state}; return path TCP check may fail" >&2
             fi
 
             local selected_ip
-            selected_ip=$(ensure_lightsail_instance_reachable "$region" "$name" "$public_ip") || exit 1
+            if ! ensure_lightsail_instance_reachable "$region" "$name" "$public_ip"; then
+                rollback_completed_rotations
+                exit 1
+            fi
+            selected_ip="$SELECTED_LIGHTSAIL_IP"
             if [ -n "$selected_ip" ] && [ "$selected_ip" != "None" ]; then
                 resolved=$(json_add_ipv4_unique "$resolved" "$selected_ip")
             fi
@@ -673,16 +1083,11 @@ collect_lightsail_ips() {
 
     if [ "$found" -eq 0 ]; then
         print_err "No matching Lightsail instances found for IDs '${ids_csv}' and tags '${tags_csv}'" >&2
+        rollback_completed_rotations
         exit 1
     fi
 
-    local cleaned_regions
-    cleaned_regions=$(printf '%s\n' "${regions_touched[@]}" | sort -u)
-    while IFS= read -r region; do
-        [ -n "$region" ] && cleanup_unattached_static_ips "$region"
-    done <<< "$cleaned_regions"
-
-    echo "$resolved"
+    COLLECTED_LIGHTSAIL_IPS="$resolved"
 }
 
 # Get existing DNS records for the target domain
@@ -714,13 +1119,23 @@ sync_records() {
     local record_type=$3
     shift 3
     local desired_ips=("$@")
+    local failed=false
+    local created_ids=()
+    local created_ips=()
+    local deleted_ips=()
+    local deleted_ttls=()
+    local deleted_proxied=()
 
     local existing
-    existing=$(get_existing_records "$zone_id" "$target_domain" "$record_type")
+    if ! existing=$(get_existing_records "$zone_id" "$target_domain" "$record_type"); then
+        return 1
+    fi
 
     # Build arrays of existing IPs and their record IDs
     local existing_ips=()
     local existing_ids=()
+    local existing_ttls=()
+    local existing_proxied=()
     local count
     count=$(echo "$existing" | jq 'length')
 
@@ -729,42 +1144,17 @@ sync_records() {
         ip=$(echo "$existing" | jq -r ".[$i].content")
         local id
         id=$(echo "$existing" | jq -r ".[$i].id")
+        local ttl
+        ttl=$(echo "$existing" | jq -r ".[$i].ttl")
+        local proxied
+        proxied=$(echo "$existing" | jq -r ".[$i].proxied // false")
         existing_ips+=("$ip")
         existing_ids+=("$id")
+        existing_ttls+=("$ttl")
+        existing_proxied+=("$proxied")
     done
 
-    # Delete records whose IP is not in desired list
-    for (( i=0; i<${#existing_ips[@]}; i++ )); do
-        local ip="${existing_ips[$i]}"
-        local id="${existing_ids[$i]}"
-        local found=false
-
-        for desired in "${desired_ips[@]}"; do
-            if [ "$ip" == "$desired" ]; then
-                found=true
-                break
-            fi
-        done
-
-        if [ "$found" == "false" ]; then
-            if [ "$DRY_RUN" == "true" ]; then
-                print_warn "[DRY-RUN] Would delete ${record_type} record: ${ip} (id: ${id})"
-            else
-                print_info "Deleting ${record_type} record: ${ip}"
-                local del_result
-                del_result=$(cf_api DELETE "/zones/${zone_id}/dns_records/${id}")
-                local del_ok
-                del_ok=$(echo "$del_result" | jq -r '.success')
-                if [ "$del_ok" == "true" ]; then
-                    print_ok "Deleted ${record_type} ${ip}"
-                else
-                    print_err "Failed to delete ${record_type} ${ip}"
-                fi
-            fi
-        fi
-    done
-
-    # Create records for IPs not yet present
+    # Create records for IPs not yet present before deleting old records.
     for desired in "${desired_ips[@]}"; do
         local found=false
 
@@ -795,16 +1185,105 @@ sync_records() {
                 create_ok=$(echo "$create_result" | jq -r '.success')
                 if [ "$create_ok" == "true" ]; then
                     print_ok "Created ${record_type} ${desired}"
+                    local created_id
+                    created_id=$(echo "$create_result" | jq -r '.result.id // empty')
+                    if [ -n "$created_id" ]; then
+                        created_ids+=("$created_id")
+                        created_ips+=("$desired")
+                    fi
                 else
                     local err_msg
                     err_msg=$(echo "$create_result" | jq -r '.errors[]?.message // "Unknown error"')
                     print_err "Failed to create ${record_type} ${desired}: ${err_msg}"
+                    failed=true
                 fi
             fi
         else
             print_info "Already exists ${record_type}: ${desired} (skipped)"
         fi
     done
+
+    if [ "$failed" == "true" ]; then
+        if [ "$DRY_RUN" != "true" ]; then
+            for (( i=0; i<${#created_ids[@]}; i++ )); do
+                local created_id="${created_ids[$i]}"
+                local created_ip="${created_ips[$i]}"
+
+                print_warn "Rolling back created ${record_type} record: ${created_ip}" >&2
+                cf_api DELETE "/zones/${zone_id}/dns_records/${created_id}" >/dev/null || true
+            done
+        fi
+
+        return 1
+    fi
+
+    # Delete records whose IP is not in desired list only after creates pass.
+    for (( i=0; i<${#existing_ips[@]}; i++ )); do
+        local ip="${existing_ips[$i]}"
+        local id="${existing_ids[$i]}"
+        local ttl="${existing_ttls[$i]}"
+        local proxied="${existing_proxied[$i]}"
+        local found=false
+
+        for desired in "${desired_ips[@]}"; do
+            if [ "$ip" == "$desired" ]; then
+                found=true
+                break
+            fi
+        done
+
+        if [ "$found" == "false" ]; then
+            if [ "$DRY_RUN" == "true" ]; then
+                print_warn "[DRY-RUN] Would delete ${record_type} record: ${ip} (id: ${id})"
+            else
+                print_info "Deleting ${record_type} record: ${ip}"
+                local del_result
+                del_result=$(cf_api DELETE "/zones/${zone_id}/dns_records/${id}")
+                local del_ok
+                del_ok=$(echo "$del_result" | jq -r '.success')
+                if [ "$del_ok" == "true" ]; then
+                    print_ok "Deleted ${record_type} ${ip}"
+                    deleted_ips+=("$ip")
+                    deleted_ttls+=("$ttl")
+                    deleted_proxied+=("$proxied")
+                else
+                    local err_msg
+                    err_msg=$(echo "$del_result" | jq -r '.errors[]?.message // "Unknown error"')
+                    print_err "Failed to delete ${record_type} ${ip}: ${err_msg}"
+                    failed=true
+                fi
+            fi
+        fi
+    done
+
+    if [ "$failed" == "true" ] && [ "$DRY_RUN" != "true" ]; then
+        for (( i=0; i<${#deleted_ips[@]}; i++ )); do
+            local deleted_ip="${deleted_ips[$i]}"
+            local deleted_ttl="${deleted_ttls[$i]}"
+            local deleted_proxied="${deleted_proxied[$i]}"
+            local restore_payload
+            restore_payload=$(jq -n \
+                --arg type "$record_type" \
+                --arg name "$target_domain" \
+                --arg content "$deleted_ip" \
+                --argjson ttl "$deleted_ttl" \
+                --argjson proxied "$deleted_proxied" \
+                '{type: $type, name: $name, content: $content, ttl: $ttl, proxied: $proxied}')
+
+            print_warn "Restoring deleted ${record_type} record: ${deleted_ip}" >&2
+            cf_api POST "/zones/${zone_id}/dns_records" "$restore_payload" >/dev/null || true
+        done
+
+        for (( i=0; i<${#created_ids[@]}; i++ )); do
+            local created_id="${created_ids[$i]}"
+            local created_ip="${created_ips[$i]}"
+
+            print_warn "Rolling back created ${record_type} record: ${created_ip}" >&2
+            cf_api DELETE "/zones/${zone_id}/dns_records/${created_id}" >/dev/null || true
+        done
+    fi
+
+    [ "$failed" == "false" ]
 }
 
 show_help() {
@@ -828,13 +1307,19 @@ show_help() {
     echo "Options:"
     echo "  --check-port PORT  Filter out IPs where TCP port is unreachable"
     echo "  --check-timeout N  Health check timeout in seconds (default: 3)"
-    echo "  --probe-ssh-hosts H  Chinese SSH probe hosts, comma-separated"
-    echo "  --probe-port PORT    Lightsail TCP port to test from probes (default: 22)"
-    echo "  --probe-min-ok N     Minimum successful probe hosts (default: 1)"
-    echo "  --probe-timeout N    Remote TCP check timeout in seconds (default: 5)"
-    echo "  --ssh-timeout N      SSH connect timeout in seconds (default: 8)"
-    echo "  --max-attempts N   Max Lightsail static IP rotation attempts (default: 10)"
+    echo "  --instance-ssh-user USER  SSH user for Lightsail return-path probes (default: current user)"
+    echo "  --instance-ssh-key PATH   SSH private key for Lightsail return-path probes (default: SSH config/agent)"
+    echo "  --probe-timeout N         Return-path TCP probe timeout in seconds (default: 3)"
+    echo "  --probe-rounds N          Return-path probe rounds before rejecting IP (default: 2)"
+    echo "  --probe-carrier-min-ok N  Per-carrier target successes required (default: 2)"
+    echo "  --probe-min-carriers N    Carrier groups required to pass (default: 2)"
+    echo "  --probe-total-min-ok N    Total target successes required (default: 6)"
+    echo "  --ssh-timeout N           SSH connect timeout in seconds (default: 8)"
+    echo "  --static-ip-ready-timeout N  Max seconds to wait for SSH after attaching IP (default: 60)"
+    echo "  --max-attempts N          Max Lightsail static IP candidates to test (default: 10)"
+    echo "  --allow-probe-outage      Allow temporary outage while candidate IPs are probed"
     echo "  --force-rotate-ip  Always rotate Lightsail static IPs before DNS sync"
+    echo "  --probe-ssh-hosts/--probe-port/--probe-min-ok are deprecated and ignored"
     echo "  --ttl N            TTL in seconds (default: 60)"
     echo "  --proxied          Enable Cloudflare proxy (default: off)"
     echo "  --dry-run          Show what would be done without making changes"
@@ -847,6 +1332,9 @@ show_help() {
     echo "  CF_Key         Cloudflare Global API Key"
     echo "  CF_Email       Cloudflare account email (used with CF_Key)"
     echo "  AWS credentials must be configured for Lightsail mode"
+    echo "  LIGHTSAIL_SSH_USER  Optional default for --instance-ssh-user"
+    echo "  LIGHTSAIL_SSH_KEY   Optional default for --instance-ssh-key"
+    echo "  Lightsail rotation temporarily detaches the current static IP while each candidate is probed"
     echo ""
     echo "Examples:"
     echo "  # From domain (dig)"
@@ -867,10 +1355,10 @@ show_help() {
     echo "  # With health check (only sync IPs where port 443 is open)"
     echo "  $0 source.example.com target.example.com --check-port 443"
     echo ""
-    echo "  # From AWS Lightsail, rotate static IPs until Chinese SSH probe TCP passes"
-    echo "  $0 --lightsail-ids ls-a,ls-b target.example.com --probe-ssh-hosts aliyun-sh --probe-port 22"
-    echo "  $0 --lightsail-tags role=proxy,env=prod target.example.com --probe-ssh-hosts aliyun-sh"
-    echo "  $0 --lightsail-tags role=proxy target.example.com --probe-ssh-hosts aliyun-sh --force-rotate-ip"
+    echo "  # From AWS Lightsail, rotate static IPs until return-path probes pass"
+    echo "  $0 --lightsail-ids ls-a,ls-b target.example.com"
+    echo "  $0 --lightsail-tags role=proxy,env=prod target.example.com --instance-ssh-key ~/.ssh/lightsail.pem"
+    echo "  $0 --lightsail-tags role=proxy target.example.com --force-rotate-ip --allow-probe-outage"
 }
 
 main() {
@@ -918,25 +1406,61 @@ main() {
                 LIGHTSAIL_TAGS="$2"
                 shift 2
                 ;;
-            --probe-ssh-hosts)
-                PROBE_SSH_HOSTS="$2"
+            --instance-ssh-user)
+                INSTANCE_SSH_USER="$2"
                 shift 2
                 ;;
-            --probe-port)
-                PROBE_PORT="$2"
-                shift 2
-                ;;
-            --probe-min-ok)
-                PROBE_MIN_OK="$2"
+            --instance-ssh-key)
+                INSTANCE_SSH_KEY="$2"
                 shift 2
                 ;;
             --probe-timeout)
                 PROBE_TIMEOUT="$2"
                 shift 2
                 ;;
+            --probe-ssh-hosts)
+                warn_deprecated_probe_option "$1"
+                shift 2
+                ;;
+            --probe-port)
+                warn_deprecated_probe_option "$1"
+                shift 2
+                ;;
+            --probe-min-ok)
+                warn_deprecated_probe_option "$1"
+                shift 2
+                ;;
+            --probe-rounds)
+                RETURN_PROBE_ROUNDS="$2"
+                shift 2
+                ;;
+            --probe-carrier-min-ok)
+                RETURN_PROBE_CARRIER_MIN_OK="$2"
+                shift 2
+                ;;
+            --probe-min-carriers)
+                RETURN_PROBE_MIN_CARRIERS="$2"
+                shift 2
+                ;;
+            --probe-total-min-ok)
+                RETURN_PROBE_TOTAL_MIN_OK="$2"
+                shift 2
+                ;;
             --ssh-timeout)
                 SSH_CONNECT_TIMEOUT="$2"
                 shift 2
+                ;;
+            --static-ip-ready-timeout)
+                STATIC_IP_READY_TIMEOUT="$2"
+                shift 2
+                ;;
+            --static-ip-batch-size)
+                warn_ignored_option "$1"
+                shift 2
+                ;;
+            --allow-probe-outage)
+                ALLOW_PROBE_OUTAGE=true
+                shift
                 ;;
             --max-attempts)
                 LIGHTSAIL_MAX_ATTEMPTS="$2"
@@ -996,6 +1520,7 @@ main() {
         exit 1
     fi
 
+    validate_lightsail_probe_options
     check_deps
 
     # Step 1: Get IPs from source
@@ -1011,7 +1536,8 @@ main() {
         else
             print_info "Collecting AWS Lightsail IPv4 addresses for IDs '${LIGHTSAIL_IDS}'"
         fi
-        resolved=$(collect_lightsail_ips "$LIGHTSAIL_IDS" "$LIGHTSAIL_TAGS")
+        collect_lightsail_ips "$LIGHTSAIL_IDS" "$LIGHTSAIL_TAGS"
+        resolved="$COLLECTED_LIGHTSAIL_IPS"
     elif [ "$source_domain" == "-" ]; then
         # Read from stdin
         print_info "Reading IPs from stdin..."
@@ -1062,11 +1588,17 @@ main() {
             echo ""
             echo -e "${CYAN}=== Health Check: TCP port ${CHECK_PORT} ===${NC}"
         fi
+        local pre_filter_ipv4_count=$ipv4_count
         resolved=$(filter_by_port "$resolved" "$CHECK_PORT")
 
         # Recount after filtering
         ipv4_count=$(echo "$resolved" | jq '.A | length')
         ipv6_count=$(echo "$resolved" | jq '.AAAA | length')
+
+        if [ "$SOURCE_MODE" == "lightsail" ] && [ "$ipv4_count" -lt "$pre_filter_ipv4_count" ]; then
+            print_err "One or more Lightsail IPv4 addresses failed the TCP health check; rolling back rotations" >&2
+            exit 1
+        fi
 
         if [ "$ipv4_count" -eq 0 ] && [ "$ipv6_count" -eq 0 ]; then
             print_err "No reachable IPs after health check"
@@ -1084,6 +1616,7 @@ main() {
             if [ "$SOURCE_MODE" == "lightsail" ]; then
                 echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
                 echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
+                echo -e "  Return probe: ${RETURN_PROBE_ROUNDS} round(s), >=${RETURN_PROBE_MIN_CARRIERS}/3 carriers, >=${RETURN_PROBE_TOTAL_MIN_OK}/15 total"
             else
                 echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
             fi
@@ -1094,6 +1627,11 @@ main() {
             echo -e "${CYAN}============================================${NC}"
         else
             print_result "DNS skipped target=${target_domain} ips=${compact_ips}"
+        fi
+        if [ "$SOURCE_MODE" == "lightsail" ]; then
+            finalize_completed_rotations
+            cleanup_created_static_ips
+            clear_lightsail_cleanup_trap
         fi
         exit 0
     fi
@@ -1134,7 +1672,10 @@ main() {
             ipv4_array+=("$ip")
         done < <(echo "$resolved" | jq -r '.A[]')
 
-        sync_records "$zone_id" "$target_domain" "A" "${ipv4_array[@]}"
+        if ! sync_records "$zone_id" "$target_domain" "A" "${ipv4_array[@]}"; then
+            print_err "DNS sync failed for A records" >&2
+            exit 1
+        fi
     fi
 
     # Sync AAAA records
@@ -1144,7 +1685,16 @@ main() {
             ipv6_array+=("$ip")
         done < <(echo "$resolved" | jq -r '.AAAA[]')
 
-        sync_records "$zone_id" "$target_domain" "AAAA" "${ipv6_array[@]}"
+        if ! sync_records "$zone_id" "$target_domain" "AAAA" "${ipv6_array[@]}"; then
+            print_err "DNS sync failed for AAAA records" >&2
+            exit 1
+        fi
+    fi
+
+    if [ "$SOURCE_MODE" == "lightsail" ]; then
+        finalize_completed_rotations
+        cleanup_created_static_ips
+        clear_lightsail_cleanup_trap
     fi
 
     # Summary
@@ -1165,6 +1715,7 @@ main() {
         echo -e "  Proxied: ${PROXIED}"
         if [ "$SOURCE_MODE" == "lightsail" ]; then
             echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
+            echo -e "  Return probe: ${RETURN_PROBE_ROUNDS} round(s), >=${RETURN_PROBE_MIN_CARRIERS}/3 carriers, >=${RETURN_PROBE_TOTAL_MIN_OK}/15 total"
         fi
         if [ "$DRY_RUN" == "true" ]; then
             echo -e "  Mode:    ${YELLOW}DRY-RUN${NC}"
