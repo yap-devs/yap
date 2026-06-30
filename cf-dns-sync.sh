@@ -466,6 +466,7 @@ instance_ssh() {
     target=$(build_instance_ssh_target "$ip")
 
     local args=(
+        -n
         -o BatchMode=yes
         -o StrictHostKeyChecking=accept-new
         -o ConnectTimeout="$SSH_CONNECT_TIMEOUT"
@@ -737,7 +738,8 @@ allocate_static_ip() {
     local safe_name
     safe_name=$(echo "$instance_name" | tr -c 'A-Za-z0-9-' '-')
     safe_name="${safe_name:0:40}"
-    local static_ip_name="cf-dns-sync-${safe_name}-$(date +%s)-${attempt}"
+    local static_ip_name
+    static_ip_name="cf-dns-sync-${safe_name}-$(date +%s)-${attempt}"
     ALLOCATED_STATIC_IP_NAME=""
     ALLOCATED_STATIC_IP_ADDRESS=""
 
@@ -1027,8 +1029,8 @@ collect_lightsail_ips() {
         local rows
         rows=$(echo "$instances" | jq -r '.instances[] | [.name, (.publicIpAddress // ""), (.arn // ""), (.supportCode // ""), (.state.name // ""), ((.tags // []) | @base64)] | @tsv')
 
-        local seeded_row_name seeded_public_ip seeded_arn seeded_support_code seeded_state seeded_tags_base64
-        while IFS=$'\t' read -r seeded_row_name seeded_public_ip seeded_arn seeded_support_code seeded_state seeded_tags_base64; do
+        local _seeded_row_name seeded_public_ip _seeded_arn _seeded_support_code _seeded_state _seeded_tags_base64
+        while IFS=$'\t' read -r _seeded_row_name seeded_public_ip _seeded_arn _seeded_support_code _seeded_state _seeded_tags_base64; do
             remember_lightsail_excluded_ip "$seeded_public_ip"
         done <<< "$rows"
 
@@ -1260,14 +1262,14 @@ sync_records() {
         for (( i=0; i<${#deleted_ips[@]}; i++ )); do
             local deleted_ip="${deleted_ips[$i]}"
             local deleted_ttl="${deleted_ttls[$i]}"
-            local deleted_proxied="${deleted_proxied[$i]}"
+            local deleted_proxied_value="${deleted_proxied[$i]}"
             local restore_payload
             restore_payload=$(jq -n \
                 --arg type "$record_type" \
                 --arg name "$target_domain" \
                 --arg content "$deleted_ip" \
                 --argjson ttl "$deleted_ttl" \
-                --argjson proxied "$deleted_proxied" \
+                --argjson proxied "$deleted_proxied_value" \
                 '{type: $type, name: $name, content: $content, ttl: $ttl, proxied: $proxied}')
 
             print_warn "Restoring deleted ${record_type} record: ${deleted_ip}" >&2
