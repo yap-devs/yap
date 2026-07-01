@@ -66,6 +66,9 @@ LOG_TS_FORMAT='%Y-%m-%d %H:%M:%S%z'
 ALLOCATED_STATIC_IP_NAME=""
 ALLOCATED_STATIC_IP_ADDRESS=""
 SELECTED_LIGHTSAIL_IP=""
+SELECTED_LIGHTSAIL_ROTATED=false
+SELECTED_LIGHTSAIL_PREVIOUS_STATIC_IP=""
+SELECTED_LIGHTSAIL_NEW_STATIC_IP=""
 COLLECTED_LIGHTSAIL_IPS='{"A":[],"AAAA":[]}'
 LIGHTSAIL_CLEANUP_TRAP_SET=false
 INSTANCE_SSH_HOST_KEY_ALIAS=""
@@ -630,6 +633,31 @@ remember_completed_rotation() {
     COMPLETED_ROTATIONS+=("${region}|${instance_name}|${previous_static_ip}|${new_static_ip}")
 }
 
+forget_completed_rotation() {
+    local region=$1
+    local instance_name=$2
+    local previous_static_ip=$3
+    local new_static_ip=$4
+    local retained_rotations=()
+    local entry
+
+    for entry in "${COMPLETED_ROTATIONS[@]}"; do
+        local entry_region entry_instance_name entry_previous_static_ip entry_new_static_ip
+        IFS='|' read -r entry_region entry_instance_name entry_previous_static_ip entry_new_static_ip <<< "$entry"
+
+        if [ "$entry_region" == "$region" ] \
+            && [ "$entry_instance_name" == "$instance_name" ] \
+            && [ "$entry_previous_static_ip" == "$previous_static_ip" ] \
+            && [ "$entry_new_static_ip" == "$new_static_ip" ]; then
+            continue
+        fi
+
+        retained_rotations+=("$entry")
+    done
+
+    COMPLETED_ROTATIONS=("${retained_rotations[@]}")
+}
+
 rollback_completed_rotations() {
     local index
 
@@ -787,6 +815,9 @@ ensure_lightsail_instance_reachable() {
     local current_ip=$3
     local current_ip_probe_failed=false
     SELECTED_LIGHTSAIL_IP=""
+    SELECTED_LIGHTSAIL_ROTATED=false
+    SELECTED_LIGHTSAIL_PREVIOUS_STATIC_IP=""
+    SELECTED_LIGHTSAIL_NEW_STATIC_IP=""
     INSTANCE_SSH_HOST_KEY_ALIAS="lightsail-${region}-${instance_name}"
 
     print_info "Checking Lightsail instance ${instance_name} (${region}) IPv4 ${current_ip}" >&2
@@ -903,6 +934,9 @@ ensure_lightsail_instance_reachable() {
             print_ok "Selected IPv4 for ${instance_name}: ${new_ip}" >&2
             remember_completed_rotation "$region" "$instance_name" "$previous_static_ip" "$new_static_ip"
             clear_rotation_restore
+            SELECTED_LIGHTSAIL_ROTATED=true
+            SELECTED_LIGHTSAIL_PREVIOUS_STATIC_IP="$previous_static_ip"
+            SELECTED_LIGHTSAIL_NEW_STATIC_IP="$new_static_ip"
             if [ -n "$current_ip" ] && [ "$current_ip" != "None" ] && [ "$current_ip" != "$new_ip" ]; then
                 print_result "Rotated ${instance_name}: ${current_ip} -> ${new_ip}" >&2
             fi
@@ -1011,6 +1045,8 @@ clear_lightsail_cleanup_trap() {
 collect_lightsail_ips() {
     local ids_csv=$1
     local tags_csv=$2
+    local zone_id=${3:-}
+    local target_domain=${4:-}
     local resolved='{"A":[],"AAAA":[]}'
     local ids=()
     local found=0
@@ -1082,7 +1118,28 @@ collect_lightsail_ips() {
             fi
             selected_ip="$SELECTED_LIGHTSAIL_IP"
             if [ -n "$selected_ip" ] && [ "$selected_ip" != "None" ]; then
+                if [ -n "$CHECK_PORT" ]; then
+                    print_info "Checking selected Lightsail IPv4 ${selected_ip}:${CHECK_PORT} before DNS sync" >&2
+                    if ! check_tcp "$selected_ip" "$CHECK_PORT"; then
+                        print_err "Selected Lightsail IPv4 ${selected_ip}:${CHECK_PORT} failed TCP health check before DNS sync" >&2
+                        exit 1
+                    fi
+                    print_ok "Selected Lightsail IPv4 ${selected_ip}:${CHECK_PORT} passed TCP health check" >&2
+                fi
+
                 resolved=$(json_add_ipv4_unique "$resolved" "$selected_ip")
+                if [ "$SKIP_DNS_SYNC" != "true" ]; then
+                    if ! sync_lightsail_instance_a_record "$zone_id" "$target_domain" "$name" "$public_ip" "$selected_ip"; then
+                        print_err "DNS sync failed after processing Lightsail instance ${name}" >&2
+                        exit 1
+                    fi
+                    if [ "$SELECTED_LIGHTSAIL_ROTATED" == "true" ]; then
+                        if [ -n "$SELECTED_LIGHTSAIL_PREVIOUS_STATIC_IP" ]; then
+                            release_static_ip "$region" "$SELECTED_LIGHTSAIL_PREVIOUS_STATIC_IP"
+                        fi
+                        forget_completed_rotation "$region" "$name" "$SELECTED_LIGHTSAIL_PREVIOUS_STATIC_IP" "$SELECTED_LIGHTSAIL_NEW_STATIC_IP"
+                    fi
+                fi
             fi
         done <<< "$rows"
     done
@@ -1290,6 +1347,61 @@ sync_records() {
     fi
 
     [ "$failed" == "false" ]
+}
+
+sync_lightsail_instance_a_record() {
+    local zone_id=$1
+    local target_domain=$2
+    local instance_name=$3
+    local previous_ip=$4
+    local selected_ip=$5
+
+    [ -z "$zone_id" ] && return 0
+    [ -z "$selected_ip" ] && return 0
+    [ "$selected_ip" == "None" ] && return 0
+
+    local existing
+    if ! existing=$(get_existing_records "$zone_id" "$target_domain" "A"); then
+        return 1
+    fi
+
+    local desired_ips=()
+    local count
+    count=$(echo "$existing" | jq 'length')
+
+    for (( i=0; i<count; i++ )); do
+        local ip
+        ip=$(echo "$existing" | jq -r ".[$i].content")
+
+        if [ -n "$previous_ip" ] && [ "$previous_ip" != "None" ] && [ "$ip" == "$previous_ip" ]; then
+            continue
+        fi
+
+        local exists=false
+        local desired_ip
+        for desired_ip in "${desired_ips[@]}"; do
+            if [ "$desired_ip" == "$ip" ]; then
+                exists=true
+                break
+            fi
+        done
+
+        [ "$exists" == "false" ] && desired_ips+=("$ip")
+    done
+
+    local selected_exists=false
+    local desired_ip
+    for desired_ip in "${desired_ips[@]}"; do
+        if [ "$desired_ip" == "$selected_ip" ]; then
+            selected_exists=true
+            break
+        fi
+    done
+
+    [ "$selected_exists" == "false" ] && desired_ips+=("$selected_ip")
+
+    print_info "Immediately syncing DNS for ${instance_name}: ${previous_ip:-none} -> ${selected_ip}" >&2
+    sync_records "$zone_id" "$target_domain" "A" "${desired_ips[@]}"
 }
 
 show_help() {
@@ -1529,6 +1641,25 @@ main() {
     validate_lightsail_probe_options
     check_deps
 
+    local zone_id=""
+    if [ "$SOURCE_MODE" == "lightsail" ] && [ "$SKIP_DNS_SYNC" != "true" ]; then
+        if [ "$DEBUG" == "true" ]; then
+            echo ""
+            echo -e "${CYAN}=== Step 0: Find Cloudflare zone for target ===${NC}"
+        fi
+        print_info "Looking up zone for: ${target_domain}"
+
+        zone_id=$(get_zone_id "$target_domain") || true
+
+        if [ -z "$zone_id" ]; then
+            print_err "Could not find Cloudflare zone for: ${target_domain}"
+            print_err "Ensure the domain is added to your Cloudflare account"
+            exit 1
+        fi
+
+        print_ok "Zone ID: ${zone_id}"
+    fi
+
     # Step 1: Get IPs from source
     if [ "$DEBUG" == "true" ]; then
         echo ""
@@ -1542,7 +1673,7 @@ main() {
         else
             print_info "Collecting AWS Lightsail IPv4 addresses for IDs '${LIGHTSAIL_IDS}'"
         fi
-        collect_lightsail_ips "$LIGHTSAIL_IDS" "$LIGHTSAIL_TAGS"
+        collect_lightsail_ips "$LIGHTSAIL_IDS" "$LIGHTSAIL_TAGS" "$zone_id" "$target_domain"
         resolved="$COLLECTED_LIGHTSAIL_IPS"
     elif [ "$source_domain" == "-" ]; then
         # Read from stdin
@@ -1589,22 +1720,16 @@ main() {
     fi
 
     # Health check: filter by TCP port reachability
-    if [ -n "$CHECK_PORT" ]; then
+    if [ -n "$CHECK_PORT" ] && [ "$SOURCE_MODE" != "lightsail" ]; then
         if [ "$DEBUG" == "true" ]; then
             echo ""
             echo -e "${CYAN}=== Health Check: TCP port ${CHECK_PORT} ===${NC}"
         fi
-        local pre_filter_ipv4_count=$ipv4_count
         resolved=$(filter_by_port "$resolved" "$CHECK_PORT")
 
         # Recount after filtering
         ipv4_count=$(echo "$resolved" | jq '.A | length')
         ipv6_count=$(echo "$resolved" | jq '.AAAA | length')
-
-        if [ "$SOURCE_MODE" == "lightsail" ] && [ "$ipv4_count" -lt "$pre_filter_ipv4_count" ]; then
-            print_err "One or more Lightsail IPv4 addresses failed the TCP health check; rolling back rotations" >&2
-            exit 1
-        fi
 
         if [ "$ipv4_count" -eq 0 ] && [ "$ipv6_count" -eq 0 ]; then
             print_err "No reachable IPs after health check"
@@ -1635,7 +1760,6 @@ main() {
             print_result "DNS skipped target=${target_domain} ips=${compact_ips}"
         fi
         if [ "$SOURCE_MODE" == "lightsail" ]; then
-            finalize_completed_rotations
             cleanup_created_static_ips
             clear_lightsail_cleanup_trap
         fi
@@ -1649,8 +1773,9 @@ main() {
     fi
     print_info "Looking up zone for: ${target_domain}"
 
-    local zone_id
-    zone_id=$(get_zone_id "$target_domain") || true
+    if [ -z "$zone_id" ]; then
+        zone_id=$(get_zone_id "$target_domain") || true
+    fi
 
     if [ -z "$zone_id" ]; then
         print_err "Could not find Cloudflare zone for: ${target_domain}"
