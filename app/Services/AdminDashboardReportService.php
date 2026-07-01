@@ -281,7 +281,7 @@ class AdminDashboardReportService
             $active_package_user_ids = UserPackage::query()
                 ->select('user_id')
                 ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
-                ->where('status', UserPackage::STATUS_ACTIVE)
+                ->available()
                 ->distinct();
 
             return collect([
@@ -420,7 +420,7 @@ class AdminDashboardReportService
     public function getActiveUserPackagesQuery(): Builder
     {
         return $this->getUserPackagesQuery()
-            ->where('user_packages.status', UserPackage::STATUS_ACTIVE)
+            ->available()
             ->orderBy('user_packages.ended_at');
     }
 

@@ -12,6 +12,14 @@ import {trans} from '@/Utils/i18n';
 export default function Index({auth, packages, userPackages}) {
   const [confirmingBuy, setConfirmingBuy] = useState(false);
 
+  const statusClasses = {
+    active: 'bg-green-100 text-green-800',
+    queued: 'bg-blue-100 text-blue-800',
+    expired: 'bg-gray-100 text-gray-600',
+    used: 'bg-gray-100 text-gray-600',
+    disabled: 'bg-gray-100 text-gray-600',
+  };
+
   function handleSubmit(e) {
     e.preventDefault();
     router.visit(route('package.buy', confirmingBuy), {
@@ -24,6 +32,30 @@ export default function Index({auth, packages, userPackages}) {
   const calcPercentageOff = (rawPrice, price) => {
     return trans('package.off', {percent: (((rawPrice - price) / rawPrice) * 100).toFixed(0)});
   }
+
+  const renderPackageStatus = (userPackage) => {
+    const displayStatus = userPackage.display_status || userPackage.status;
+
+    return (
+      <span
+        className={`inline-flex items-center rounded px-2 py-0.5 text-xs font-medium ${statusClasses[displayStatus] || statusClasses.disabled}`}
+      >
+        {trans(`package.status.${displayStatus}`, {}, displayStatus)}
+      </span>
+    );
+  };
+
+  const renderPackageExpiry = (userPackage) => {
+    if (userPackage.is_queued) {
+      if (userPackage.display_validity === 'queued_duration' && userPackage.validity_days > 0) {
+        return trans('package.queued_validity', {days: userPackage.validity_days});
+      }
+
+      return trans('package.queued_pending_activation');
+    }
+
+    return userPackage.display_ended_at || trans('package.no_expiry');
+  };
 
   return (
     <AuthenticatedLayout
@@ -135,7 +167,7 @@ export default function Index({auth, packages, userPackages}) {
                         className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('common.status')}
                       </th>
                       <th
-                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.expired_at')}
+                        className="px-6 py-3 bg-gray-50 text-left text-xs leading-4 font-medium text-gray-500 uppercase tracking-wider">{trans('package.validity_or_expiry')}
                       </th>
                     </tr>
                     </thead>
@@ -144,7 +176,7 @@ export default function Index({auth, packages, userPackages}) {
                       <tr
                         key={userPackage.id}
                         className={
-                          userPackage.status !== "active" ? "text-gray-500 line-through" : "text-gray-900"
+                          userPackage.status !== 'active' ? 'text-gray-500 line-through' : 'text-gray-900'
                         }
                       >
                         <td className="px-6 py-4 whitespace-no-wrap">
@@ -156,10 +188,15 @@ export default function Index({auth, packages, userPackages}) {
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-no-wrap">
-                          <div>{userPackage.status}</div>
+                          <div>{renderPackageStatus(userPackage)}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-no-wrap">
-                          <div>{userPackage.ended_at}</div>
+                          <div>{renderPackageExpiry(userPackage)}</div>
+                          {userPackage.is_queued && (
+                            <div className="mt-1 text-xs text-gray-500">
+                              {trans('package.queued_starts_after_current')}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     ))}

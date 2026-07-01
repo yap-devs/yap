@@ -80,8 +80,8 @@ class User extends Authenticatable implements FilamentUser
                 return $balance > 0
                     // or if you have any active packages, you can also use the service
                     || ($this->relationLoaded('packages')
-                        ? $this->packages->contains('status', UserPackage::STATUS_ACTIVE)
-                        : $this->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists())
+                        ? $this->packages->contains(fn (UserPackage $package): bool => $package->isAvailable())
+                        : $this->packages()->available()->exists())
                     // or you have a github account created N years ago, N - 9 > abs(balance)
                     || ($github_created_at !== null && Carbon::parse($github_created_at)->diffInYears(now()) - 9 > abs($balance));
             },

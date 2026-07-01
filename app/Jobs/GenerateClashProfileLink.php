@@ -3,7 +3,6 @@
 namespace App\Jobs;
 
 use App\Models\User;
-use App\Models\UserPackage;
 use App\Models\VmessServer;
 use App\Services\SubscriptionService;
 use App\Services\V2rayService;
@@ -36,7 +35,9 @@ class GenerateClashProfileLink implements ShouldQueue
         $this->vmess_servers = VmessServer::where('enabled', true)->with('relays')->get();
 
         $result = [];
-        $users = User::withTrashed()->with('packages')->get();
+        $users = User::withTrashed()->with(['packages' => function ($query) {
+            $query->available();
+        }])->get();
         foreach ($users as $user) {
             $result[] = $this->preProcessUser($user, $subscription_service);
         }
@@ -57,7 +58,7 @@ class GenerateClashProfileLink implements ShouldQueue
             // or user is not valid and no active packages
             || (
                 ! $user->is_valid
-                && $user->packages->where('status', UserPackage::STATUS_ACTIVE)->isEmpty()
+                && $user->packages->isEmpty()
             )
         ) {
             $subscription_service->forgetCache($user);

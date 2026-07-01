@@ -36,7 +36,7 @@ class PackageStatusNotificationCommand extends Command
 
         foreach ($users as $user) {
             $latest_active_user_package = $user->packages()
-                ->where('status', UserPackage::STATUS_ACTIVE)
+                ->available()
                 ->orderBy('ended_at', 'desc')
                 ->first();
 

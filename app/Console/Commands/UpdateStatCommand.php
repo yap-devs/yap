@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Models\UserPackage;
 use App\Models\VmessServer;
 use App\Services\V2rayService;
+use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Arr;
@@ -40,7 +41,7 @@ class UpdateStatCommand extends Command
     public function handle()
     {
         $users = User::with(['packages' => function ($query) {
-            $query->where('status', UserPackage::STATUS_ACTIVE);
+            $query->available();
         }])->get();
         $vmess_servers = VmessServer::where('enabled', true)->get();
         $all_stats = $this->getAllStats($vmess_servers);
@@ -97,7 +98,7 @@ class UpdateStatCommand extends Command
 
             // Reload the eager-loaded packages after billing may have changed statuses
             $user->load(['packages' => function ($query) {
-                $query->where('status', UserPackage::STATUS_ACTIVE);
+                $query->available();
             }]);
 
             if (
@@ -150,7 +151,7 @@ class UpdateStatCommand extends Command
             $this->expirePackage($locked_user);
 
             while (
-                $locked_user->packages()->where('status', UserPackage::STATUS_ACTIVE)->exists()
+                $locked_user->packages()->active()->exists()
                 && $locked_user->traffic_unpaid > 0
             ) {
                 $locked_user->traffic_unpaid = $this->processPackage($locked_user, $locked_user->traffic_unpaid);
@@ -179,19 +180,19 @@ class UpdateStatCommand extends Command
         });
     }
 
-    private function expirePackage(User $user)
+    private function expirePackage(User $user): void
     {
         $user->packages()
-            ->where('status', UserPackage::STATUS_ACTIVE)
+            ->active()
             ->where('ended_at', '<', now())
             ->update(['status' => UserPackage::STATUS_EXPIRED]);
     }
 
-    private function processPackage(User $user, $traffic)
+    private function processPackage(User $user, int $traffic): int
     {
         /** @var UserPackage $user_package */
         $user_package = $user->packages()
-            ->where('status', UserPackage::STATUS_ACTIVE)
+            ->active()
             ->orderBy('ended_at')
             ->first();
 
@@ -199,11 +200,16 @@ class UpdateStatCommand extends Command
             return $traffic;
         }
 
-        if ($user_package->remaining_traffic < $traffic) {
+        if (! $user_package->isStarted()) {
+            $this->activateQueuedPackage($user_package);
+        }
+
+        if ($user_package->remaining_traffic <= $traffic) {
             $traffic -= $user_package->remaining_traffic;
             $user_package->remaining_traffic = 0;
             $user_package->status = UserPackage::STATUS_USED;
             $user_package->save();
+            $this->activateNextQueuedPackage($user);
 
             return $traffic;
         }
@@ -214,7 +220,50 @@ class UpdateStatCommand extends Command
         return 0;
     }
 
-    private function getAllStats($vmess_servers)
+    private function activateNextQueuedPackage(User $user): void
+    {
+        /** @var UserPackage|null $next_package */
+        $next_package = $user->packages()
+            ->queued()
+            ->orderBy('started_at')
+            ->first();
+
+        if ($next_package) {
+            $this->activateQueuedPackage($next_package);
+        }
+    }
+
+    private function activateQueuedPackage(UserPackage $user_package): void
+    {
+        $started_at = CarbonImmutable::now();
+        $original_started_at = CarbonImmutable::parse($user_package->started_at);
+        $user_package->activateAt($started_at);
+        $user_package->save();
+
+        $next_started_at = $user_package->ended_at ? CarbonImmutable::parse($user_package->ended_at) : null;
+
+        if ($next_started_at === null) {
+            return;
+        }
+
+        $user_package->user->packages()
+            ->active()
+            ->where('id', '!=', $user_package->id)
+            ->where('started_at', '>', $original_started_at)
+            ->orderBy('started_at')
+            ->get()
+            ->each(function (UserPackage $queued_package) use (&$next_started_at): void {
+                if ($next_started_at === null) {
+                    return;
+                }
+
+                $queued_package->activateAt($next_started_at);
+                $queued_package->save();
+                $next_started_at = $queued_package->ended_at ? CarbonImmutable::parse($queued_package->ended_at) : null;
+            });
+    }
+
+    private function getAllStats($vmess_servers): array
     {
         $stats = [];
 
@@ -252,7 +301,7 @@ class UpdateStatCommand extends Command
      *
      * @param  Collection  $users
      */
-    private function updateBalanceDaily($users)
+    private function updateBalanceDaily($users): void
     {
         /** @var User $user */
         foreach ($users as $user) {
@@ -263,7 +312,7 @@ class UpdateStatCommand extends Command
 
             // if have active package, skip (uses eager-loaded relation, no extra query)
             $user->load(['packages' => function ($query) {
-                $query->where('status', UserPackage::STATUS_ACTIVE);
+                $query->available();
             }]);
             if ($user->packages->isNotEmpty()) {
                 continue;
@@ -307,7 +356,7 @@ class UpdateStatCommand extends Command
         }
     }
 
-    private function log($message, $level = 'info')
+    private function log(string $message, string $level = 'info'): void
     {
         $message = '[UpdateStatCommand] '.$message;
         logger()->driver('job')->log($level, $message);
