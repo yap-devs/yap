@@ -13,8 +13,6 @@ class MonthlyTopUpAndUsageChart extends ChartWidget
     use HasMobileFriendlyChart;
     use InteractsWithDashboardControls;
 
-    protected static bool $isLazy = false;
-
     protected int|string|array $columnSpan = [
         'default' => 'full',
         'md' => 8,

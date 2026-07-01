@@ -15,8 +15,6 @@ class DailyTrafficRankingTable extends TableWidget
 {
     use InteractsWithDashboardControls;
 
-    protected static bool $isLazy = false;
-
     protected int|string|array $columnSpan = [
         'md' => 6,
         'xl' => 6,
