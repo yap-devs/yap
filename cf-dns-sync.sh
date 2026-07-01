@@ -785,6 +785,7 @@ ensure_lightsail_instance_reachable() {
     local region=$1
     local instance_name=$2
     local current_ip=$3
+    local current_ip_probe_failed=false
     SELECTED_LIGHTSAIL_IP=""
     INSTANCE_SSH_HOST_KEY_ALIAS="lightsail-${region}-${instance_name}"
 
@@ -811,6 +812,7 @@ ensure_lightsail_instance_reachable() {
         fi
 
         remember_lightsail_excluded_ip "$current_ip"
+        current_ip_probe_failed=true
     fi
 
     if [ "$DRY_RUN" == "true" ]; then
@@ -822,7 +824,9 @@ ensure_lightsail_instance_reachable() {
     local active_static_ip
     active_static_ip=$(get_attached_static_ip_name "$region" "$instance_name")
 
-    if [ -n "$current_ip" ] && [ "$current_ip" != "None" ] && [ "$ALLOW_PROBE_OUTAGE" != "true" ]; then
+    if [ -n "$current_ip" ] && [ "$current_ip" != "None" ] && [ "$current_ip_probe_failed" == "true" ]; then
+        print_warn "Current IPv4 ${current_ip} failed return path probe; rotating ${instance_name} automatically" >&2
+    elif [ -n "$current_ip" ] && [ "$current_ip" != "None" ] && [ "$ALLOW_PROBE_OUTAGE" != "true" ]; then
         print_err "Rotating ${instance_name} changes the currently published IPv4 during probes" >&2
         print_err "Re-run with --allow-probe-outage to allow that short outage window, or keep the current IP" >&2
         return 1
