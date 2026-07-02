@@ -29,7 +29,16 @@ it('shows the network route positioning on the homepage', function () {
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('Welcome')
-            ->where('translations.welcome.network_title', '主要ルートを、ひと目で選べる')
-            ->where('translations.welcome.network_note', '表示は現在の提供方針に合わせたルート表現です。提供地域や入口は運用状況により変わる場合があります。')
+            ->where('translations.welcome.network_title', '使える入口を、わかりやすく')
+            ->where('translations.welcome.network_note', '表示は現在提供している入口と接続方法の説明です。提供地域は運用状況により変わる場合があります。')
+            ->where('translations.welcome.network_stats.0.value', '海外滞在者 / 中国本土ユーザー')
+            ->where('translations.welcome.network_stats.1.value', 'Clash / Shadowrocket / Stash')
+            ->where('translations.welcome.network_nodes.0.code', 'JP')
+            ->where('translations.welcome.network_nodes.1.code', 'HK')
+            ->where('translations.welcome.network_nodes.4.code', 'US')
+            ->where('translations.welcome.network_nodes', fn ($nodes): bool => ! collect($nodes)
+                ->pluck('code')
+                ->intersect(['CN', 'KR'])
+                ->isNotEmpty())
         );
 });

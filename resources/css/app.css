@@ -23,15 +23,18 @@
   --color-yap-border: #e2e8f0;
   --color-yap-card: #ffffff;
   --color-yap-ring: #0052ff;
-  --color-yap-route-background: #071817;
-  --color-yap-route-foreground: #ecfdf5;
-  --color-yap-route-muted: #a7f3d0;
-  --color-yap-route-accent: #6ee7b7;
-  --color-yap-route-ink: #052e26;
+  --color-yap-route-background: #f7fbff;
+  --color-yap-route-panel: #ffffff;
+  --color-yap-route-foreground: #14213d;
+  --color-yap-route-muted: #5c6f82;
+  --color-yap-route-accent: #19a974;
+  --color-yap-route-accent-soft: #e8f8f0;
+  --color-yap-route-ink: #063b2b;
+  --color-yap-route-line: #c9d8e8;
 
   --shadow-yap-accent: 0 4px 14px rgb(0 82 255 / 0.25);
   --shadow-yap-accent-lg: 0 8px 24px rgb(0 82 255 / 0.35);
-  --shadow-yap-route: 0 18px 45px rgb(15 23 42 / 0.25);
+  --shadow-yap-route: 0 18px 45px rgb(20 33 61 / 0.10);
 
   --animate-pulse: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-yap-float: yap-float 5s ease-in-out infinite;
@@ -78,8 +81,8 @@
 
   .yap-route-grid {
     background-image:
-      linear-gradient(rgb(110 231 183 / 0.12) 1px, transparent 1px),
-      linear-gradient(90deg, rgb(110 231 183 / 0.12) 1px, transparent 1px);
+      linear-gradient(rgb(20 33 61 / 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(20 33 61 / 0.06) 1px, transparent 1px);
     background-size: 34px 34px;
   }
 
