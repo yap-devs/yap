@@ -8,6 +8,24 @@ import Toast, {showToast} from '@/Components/Toast';
 import {setTranslations} from '@/Utils/i18n';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const vitePreloadErrorReloadKey = 'yap:vite-preload-error-reloaded-at';
+
+addEventListener('vite:preloadError', (event) => {
+  event.preventDefault();
+
+  try {
+    const lastReloadedAt = Number(sessionStorage.getItem(vitePreloadErrorReloadKey) || 0);
+    if (Date.now() - lastReloadedAt < 10000) {
+      return;
+    }
+
+    sessionStorage.setItem(vitePreloadErrorReloadKey, String(Date.now()));
+  } catch {
+    // Storage can fail in locked-down browsers; still reload to recover stale assets.
+  }
+
+  window.location.reload();
+});
 
 // Intercept non-Inertia responses (e.g. 429 Too Many Requests)
 router.on('invalid', (event) => {
