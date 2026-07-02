@@ -95,138 +95,44 @@ function renderHighlightedText(text) {
   );
 }
 
-function HeroNetworkVisual({nodes, clients, stats}) {
-  const primaryEntry = nodes[0] || {};
-  const secondaryEntry = nodes[1] || {};
-  const visibleNodes = nodes.slice(0, 8);
-
+function DashboardPreview({rows, actions}) {
   return (
-    <aside className="relative min-h-[520px] overflow-hidden rounded-lg border border-yap-route-line bg-yap-route-background p-4 text-yap-route-foreground shadow-yap-route sm:p-5 lg:min-h-[600px]" aria-label={trans('welcome.network_label')}>
-      <div className="yap-route-grid absolute inset-0 opacity-70" aria-hidden="true" />
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-yap-accent via-yap-route-accent to-yap-accent-secondary" aria-hidden="true" />
-
-      <div className="relative flex items-center justify-between gap-3">
-        <span className="rounded-lg border border-yap-route-accent/25 bg-yap-route-accent-soft px-3 py-1.5 text-xs font-semibold text-yap-route-ink">
-          {trans('welcome.network_label')}
-        </span>
-        <span className="flex items-center gap-2 rounded-lg border border-yap-route-line bg-yap-route-panel px-3 py-1.5 text-xs font-semibold text-yap-route-muted">
-          <span className="h-2 w-2 rounded-full bg-yap-route-accent motion-safe:animate-yap-pulse" />
-          {trans('welcome.network_status')}
-        </span>
-      </div>
-
-      <div className="relative mt-7 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
-        <div className="rounded-lg border border-yap-route-line bg-yap-route-panel p-4">
-          <div className="text-3xl" aria-hidden="true">{primaryEntry.flag}</div>
-          <p className="mt-3 text-sm font-semibold text-yap-route-foreground">{primaryEntry.name}</p>
-          <p className="mt-1 text-xs text-yap-route-muted">{primaryEntry.role}</p>
-        </div>
-        <div className="relative h-16 w-20 sm:w-28">
-          <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-yap-route-line" />
-          <div className="yap-route-beam absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full" />
-          <div className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg border border-yap-route-accent/30 bg-yap-route-accent text-xs font-bold text-yap-route-ink shadow-yap-route">
-            YAP
-          </div>
-        </div>
-        <div className="rounded-lg border border-yap-route-accent/35 bg-yap-route-accent-soft p-4">
-          <div className="text-3xl" aria-hidden="true">{secondaryEntry.flag}</div>
-          <p className="mt-3 text-sm font-semibold text-yap-route-foreground">{secondaryEntry.name}</p>
-          <p className="mt-1 text-xs text-yap-route-muted">{secondaryEntry.role}</p>
-        </div>
-      </div>
-
-      <div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        {visibleNodes.map((node, index) => (
-          <div key={`${node.code}-${node.name}`} className={`rounded-lg border p-3 ${index === 1 ? 'border-yap-route-accent/40 bg-yap-route-accent-soft' : 'border-yap-route-line bg-yap-route-panel'}`}>
-            <div className="flex items-center justify-between gap-2">
-              <span className="text-2xl" aria-hidden="true">{node.flag}</span>
-              <span className="font-mono text-xs text-yap-route-muted">{node.code}</span>
-            </div>
-            <p className="mt-3 truncate text-sm font-semibold text-yap-route-foreground">{node.name}</p>
-            <p className="mt-1 truncate text-xs text-yap-route-muted">{node.role}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="relative mt-6 grid gap-2 sm:grid-cols-3">
-        {clients.map((client) => (
-          <div key={client.name} className="rounded-lg border border-yap-route-line bg-yap-route-panel p-3">
-            <p className="text-sm font-semibold text-yap-route-foreground">{client.name}</p>
-            <p className="mt-1 text-xs leading-5 text-yap-route-muted">{client.desc}</p>
-          </div>
-        ))}
-      </div>
-
-      <div className="relative mt-6 grid grid-cols-3 gap-2">
-        {stats.map((item) => (
-          <div key={item.label} className="rounded-lg border border-yap-route-line bg-yap-route-panel p-3">
-            <p className="text-[0.68rem] font-medium text-yap-route-muted">{item.label}</p>
-            <p className="mt-2 text-sm font-semibold leading-5 text-yap-route-foreground">{item.value}</p>
-          </div>
-        ))}
-      </div>
-    </aside>
-  );
-}
-
-function NetworkNodeCard({node, index}) {
-  return (
-    <article className={`rounded-lg border p-4 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-md motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${index === 1 ? 'border-yap-route-accent/45 bg-yap-route-accent-soft' : 'border-yap-route-line bg-yap-route-panel'}`}>
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-3xl" aria-hidden="true">{node.flag}</span>
-        <span className="rounded-md bg-yap-muted px-2 py-1 font-mono text-xs text-yap-route-muted">{node.code}</span>
-      </div>
-      <h3 className="mt-4 text-lg font-semibold text-yap-route-foreground">{node.name}</h3>
-      <p className="mt-2 text-sm leading-6 text-yap-route-muted">{node.role}</p>
-    </article>
-  );
-}
-
-function NetworkShowcase({nodes, stats, clients}) {
-  return (
-    <section id="network" className="relative overflow-hidden border-y border-yap-route-line bg-yap-route-background px-4 py-20 text-yap-route-foreground sm:px-6 sm:py-24 lg:px-8">
-      <div className="yap-route-grid absolute inset-0 opacity-60" aria-hidden="true" />
-      <div className="relative mx-auto max-w-6xl">
-        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+    <aside className="overflow-hidden rounded-2xl border border-yap-border bg-white shadow-xl shadow-slate-900/8" aria-label={trans('welcome.dashboard_preview_title')}>
+      <div className="border-b border-yap-border bg-yap-muted/70 px-5 py-4">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <SectionBadge>{trans('welcome.network_label')}</SectionBadge>
-            <h2 className="mt-6 max-w-xl font-display text-4xl leading-tight text-yap-route-foreground sm:text-5xl">
-              {renderHighlightedText(trans('welcome.network_title'))}
-            </h2>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-yap-route-muted">
-              {trans('welcome.network_body')}
-            </p>
+            <p className="text-xs font-medium text-yap-muted-foreground">{trans('nav.dashboard')}</p>
+            <h2 className="mt-1 text-lg font-semibold text-yap-foreground">{trans('welcome.dashboard_preview_title')}</h2>
           </div>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            {stats.map((item) => (
-              <div key={item.label} className="rounded-lg border border-yap-route-line bg-yap-route-panel p-4 shadow-sm">
-                <p className="text-xs font-medium text-yap-route-muted">{item.label}</p>
-                <p className="mt-3 text-lg font-semibold leading-7 text-yap-route-foreground">{item.value}</p>
-              </div>
-            ))}
-          </div>
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-yap-foreground text-sm font-bold text-white">Y</span>
         </div>
+      </div>
 
-        <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {nodes.map((node, index) => (
-            <NetworkNodeCard key={`${node.code}-${node.name}`} node={node} index={index} />
+      <div className="space-y-3 p-5">
+        {rows.map((row, index) => (
+          <div key={row.label} className={`rounded-xl border p-4 ${index === 0 ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'}`}>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-medium text-gray-500">{row.label}</p>
+                <p className="mt-1 text-lg font-semibold text-gray-900">{row.value}</p>
+              </div>
+              <span className={`mt-1 h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-green-500' : 'bg-blue-500'}`} aria-hidden="true" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="border-t border-yap-border bg-yap-muted/40 p-5">
+        <div className="grid gap-2 sm:grid-cols-3">
+          {actions.map((action) => (
+            <div key={action} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-semibold text-gray-700 shadow-sm">
+              {action}
+            </div>
           ))}
         </div>
-
-        <div className="mt-8 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
-          <div className="flex flex-wrap gap-2">
-            {clients.map((client) => (
-              <div key={client.name} className="rounded-lg border border-yap-route-line bg-yap-route-panel px-4 py-3 shadow-sm">
-                <p className="text-sm font-semibold text-yap-route-foreground">{client.name}</p>
-                <p className="mt-1 text-xs text-yap-route-muted">{client.desc}</p>
-              </div>
-            ))}
-          </div>
-          <p className="max-w-xl text-sm leading-7 text-yap-route-muted md:text-right">{trans('welcome.network_note')}</p>
-        </div>
+        <p className="mt-4 text-sm leading-6 text-yap-muted-foreground">{trans('welcome.dashboard_preview_body')}</p>
       </div>
-    </section>
+    </aside>
   );
 }
 
@@ -255,9 +161,8 @@ export default function Welcome({auth, canLogin, canRegister}) {
   const privacyPoints = trans('welcome.privacy_points', {}, []);
   const features = trans('welcome.features', {}, []);
   const steps = trans('welcome.steps', {}, []);
-  const networkNodes = trans('welcome.network_nodes', {}, []);
-  const networkClients = trans('welcome.network_clients', {}, []);
-  const networkStats = trans('welcome.network_stats', {}, []);
+  const dashboardPreviewRows = trans('welcome.dashboard_preview_rows', {}, []);
+  const dashboardPreviewActions = trans('welcome.dashboard_preview_actions', {}, []);
 
   const primaryHref = auth.user
     ? route('dashboard')
@@ -282,7 +187,6 @@ export default function Welcome({auth, canLogin, canRegister}) {
             </Link>
 
             <nav className="hidden items-center gap-8 md:flex" aria-label="Primary navigation">
-              <a href="#network" className={navLinkClasses}>{trans('welcome.network_label')}</a>
               <a href="#features" className={navLinkClasses}>{trans('welcome.learn_more')}</a>
               <a href="#privacy" className={navLinkClasses}>{trans('welcome.privacy_label')}</a>
               <a href="#how" className={navLinkClasses}>{trans('welcome.hero_panel_label')}</a>
@@ -330,8 +234,8 @@ export default function Welcome({auth, canLogin, canRegister}) {
                     {primaryLabel}
                     <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
                   </ActionLink>
-                  <a href="#network" className={secondaryActionClasses}>
-                    {trans('welcome.network_cta')}
+                  <a href="#how" className={secondaryActionClasses}>
+                    {trans('welcome.dashboard_preview_cta')}
                     <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
                   </a>
                 </div>
@@ -350,11 +254,9 @@ export default function Welcome({auth, canLogin, canRegister}) {
                 </div>
               </div>
 
-              <HeroNetworkVisual nodes={networkNodes} clients={networkClients} stats={networkStats} />
+              <DashboardPreview rows={dashboardPreviewRows} actions={dashboardPreviewActions} />
             </div>
           </section>
-
-          <NetworkShowcase nodes={networkNodes} stats={networkStats} clients={networkClients} />
 
           <section className="relative overflow-hidden bg-yap-foreground px-4 py-20 text-white sm:px-6 sm:py-24 lg:px-8">
             <div className="yap-dot-grid absolute inset-0 opacity-[0.06]" aria-hidden="true" />

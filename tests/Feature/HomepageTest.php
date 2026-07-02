@@ -20,7 +20,7 @@ it('keeps the china travel and privacy positioning on the homepage', function ()
         );
 });
 
-it('shows the network route positioning on the homepage', function () {
+it('keeps entry point details out of the public homepage', function () {
     $response = $this
         ->withSession(['locale' => 'ja'])
         ->get('/');
@@ -29,16 +29,27 @@ it('shows the network route positioning on the homepage', function () {
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('Welcome')
-            ->where('translations.welcome.network_title', '使える入口を、わかりやすく')
-            ->where('translations.welcome.network_note', '表示は現在提供している入口と接続方法の説明です。提供地域は運用状況により変わる場合があります。')
-            ->where('translations.welcome.network_stats.0.value', '海外滞在者 / 中国本土ユーザー')
-            ->where('translations.welcome.network_stats.1.value', 'Clash / Shadowrocket / Stash')
-            ->where('translations.welcome.network_nodes.0.code', 'JP')
-            ->where('translations.welcome.network_nodes.1.code', 'HK')
-            ->where('translations.welcome.network_nodes.4.code', 'US')
-            ->where('translations.welcome.network_nodes', fn ($nodes): bool => ! collect($nodes)
-                ->pluck('code')
-                ->intersect(['CN', 'KR'])
-                ->isNotEmpty())
+            ->where('translations.welcome.dashboard_preview_title', 'ダッシュボードで接続準備を完結')
+            ->where('translations.welcome.dashboard_preview_rows.2.label', 'サーバー')
+            ->where('translations.welcome.dashboard_preview_rows.2.value', 'ログイン後に確認')
+            ->missing('translations.welcome.network_nodes')
+            ->missing('translations.welcome.network_title')
+            ->missing('translations.welcome.network_stats')
+        );
+});
+
+it('uses dashboard-first positioning in simplified chinese', function () {
+    $response = $this
+        ->withSession(['locale' => 'zh_CN'])
+        ->get('/');
+
+    $response
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('Welcome')
+            ->where('translations.welcome.dashboard_preview_title', '在仪表盘完成连接准备')
+            ->where('translations.welcome.dashboard_preview_rows.2.label', '服务器')
+            ->where('translations.welcome.dashboard_preview_rows.2.value', '登录后查看')
+            ->missing('translations.welcome.network_nodes')
         );
 });
