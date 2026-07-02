@@ -95,42 +95,43 @@ function renderHighlightedText(text) {
   );
 }
 
-function DashboardPreview({rows, actions}) {
+function SetupPreview({steps, tools}) {
   return (
-    <aside className="overflow-hidden rounded-2xl border border-yap-border bg-white shadow-xl shadow-slate-900/8" aria-label={trans('welcome.dashboard_preview_title')}>
-      <div className="border-b border-yap-border bg-yap-muted/70 px-5 py-4">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="text-xs font-medium text-yap-muted-foreground">{trans('nav.dashboard')}</p>
-            <h2 className="mt-1 text-lg font-semibold text-yap-foreground">{trans('welcome.dashboard_preview_title')}</h2>
-          </div>
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-yap-foreground text-sm font-bold text-white">Y</span>
+    <aside className="rounded-2xl border border-yap-border bg-white p-5 shadow-xl shadow-slate-900/8" aria-label={trans('welcome.setup_preview_title')}>
+      <div className="flex items-center justify-between gap-4 border-b border-yap-border pb-4">
+        <div>
+          <p className="text-xs font-medium text-yap-muted-foreground">{trans('welcome.setup_preview_label')}</p>
+          <h2 className="mt-1 text-lg font-semibold text-yap-foreground">{trans('welcome.setup_preview_title')}</h2>
         </div>
+        <span className="shrink-0 rounded-full border border-green-200 bg-green-50 px-3 py-1 text-xs font-semibold text-green-700">
+          {trans('welcome.setup_preview_status')}
+        </span>
       </div>
 
-      <div className="space-y-3 p-5">
-        {rows.map((row, index) => (
-          <div key={row.label} className={`rounded-xl border p-4 ${index === 0 ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white'}`}>
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <p className="text-xs font-medium text-gray-500">{row.label}</p>
-                <p className="mt-1 text-lg font-semibold text-gray-900">{row.value}</p>
-              </div>
-              <span className={`mt-1 h-2.5 w-2.5 rounded-full ${index === 0 ? 'bg-green-500' : 'bg-blue-500'}`} aria-hidden="true" />
+      <div className="mt-5 space-y-3">
+        {steps.map((step, index) => (
+          <div key={step.title} className="flex gap-3 rounded-xl border border-gray-200 bg-white p-4">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-yap-muted font-mono text-xs font-semibold text-yap-muted-foreground">
+              {String(index + 1).padStart(2, '0')}
+            </span>
+            <div>
+              <p className="text-sm font-semibold text-yap-foreground">{step.title}</p>
+              <p className="mt-1 text-sm leading-6 text-yap-muted-foreground">{step.desc}</p>
             </div>
           </div>
         ))}
       </div>
 
-      <div className="border-t border-yap-border bg-yap-muted/40 p-5">
-        <div className="grid gap-2 sm:grid-cols-3">
-          {actions.map((action) => (
-            <div key={action} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-center text-xs font-semibold text-gray-700 shadow-sm">
-              {action}
-            </div>
+      <div className="mt-5 rounded-xl border border-yap-border bg-yap-muted/60 p-4">
+        <p className="text-xs font-medium text-yap-muted-foreground">{trans('welcome.setup_preview_tools_label')}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          {tools.map((tool) => (
+            <span key={tool} className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700">
+              {tool}
+            </span>
           ))}
         </div>
-        <p className="mt-4 text-sm leading-6 text-yap-muted-foreground">{trans('welcome.dashboard_preview_body')}</p>
+        <p className="mt-4 text-sm leading-6 text-yap-muted-foreground">{trans('welcome.setup_preview_body')}</p>
       </div>
     </aside>
   );
@@ -155,14 +156,13 @@ function FeatureIcon({index}) {
 
 export default function Welcome({auth, canLogin, canRegister}) {
   const heroPoints = trans('welcome.hero_points', {}, []);
-  const heroPanelSteps = trans('welcome.hero_panel_steps', {}, []);
   const trustItems = trans('welcome.trust', {}, []);
   const useCases = trans('welcome.use_cases', {}, []);
   const privacyPoints = trans('welcome.privacy_points', {}, []);
   const features = trans('welcome.features', {}, []);
   const steps = trans('welcome.steps', {}, []);
-  const dashboardPreviewRows = trans('welcome.dashboard_preview_rows', {}, []);
-  const dashboardPreviewActions = trans('welcome.dashboard_preview_actions', {}, []);
+  const setupPreviewSteps = trans('welcome.setup_preview_steps', {}, []);
+  const setupPreviewTools = trans('welcome.setup_preview_tools', {}, []);
 
   const primaryHref = auth.user
     ? route('dashboard')
@@ -235,7 +235,7 @@ export default function Welcome({auth, canLogin, canRegister}) {
                     <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
                   </ActionLink>
                   <a href="#how" className={secondaryActionClasses}>
-                    {trans('welcome.dashboard_preview_cta')}
+                    {trans('welcome.setup_preview_cta')}
                     <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
                   </a>
                 </div>
@@ -254,7 +254,7 @@ export default function Welcome({auth, canLogin, canRegister}) {
                 </div>
               </div>
 
-              <DashboardPreview rows={dashboardPreviewRows} actions={dashboardPreviewActions} />
+              <SetupPreview steps={setupPreviewSteps} tools={setupPreviewTools} />
             </div>
           </section>
 

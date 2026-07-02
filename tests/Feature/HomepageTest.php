@@ -29,9 +29,10 @@ it('keeps entry point details out of the public homepage', function () {
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('Welcome')
-            ->where('translations.welcome.dashboard_preview_title', 'ダッシュボードで接続準備を完結')
-            ->where('translations.welcome.dashboard_preview_rows.2.label', 'サーバー')
-            ->where('translations.welcome.dashboard_preview_rows.2.value', 'ログイン後に確認')
+            ->where('translations.welcome.setup_preview_title', '接続までの流れ')
+            ->where('translations.welcome.setup_preview_steps.0.title', 'アカウント作成')
+            ->where('translations.welcome.setup_preview_steps.2.title', 'Dashboardで確認')
+            ->missing('translations.welcome.dashboard_preview_rows')
             ->missing('translations.welcome.network_nodes')
             ->missing('translations.welcome.network_title')
             ->missing('translations.welcome.network_stats')
@@ -47,9 +48,10 @@ it('uses dashboard-first positioning in simplified chinese', function () {
         ->assertSuccessful()
         ->assertInertia(fn ($page) => $page
             ->component('Welcome')
-            ->where('translations.welcome.dashboard_preview_title', '在仪表盘完成连接准备')
-            ->where('translations.welcome.dashboard_preview_rows.2.label', '服务器')
-            ->where('translations.welcome.dashboard_preview_rows.2.value', '登录后查看')
+            ->where('translations.welcome.setup_preview_title', '连接准备流程')
+            ->where('translations.welcome.setup_preview_steps.0.title', '创建账户')
+            ->where('translations.welcome.setup_preview_steps.2.title', '在仪表盘查看')
+            ->missing('translations.welcome.dashboard_preview_rows')
             ->missing('translations.welcome.network_nodes')
         );
 });
