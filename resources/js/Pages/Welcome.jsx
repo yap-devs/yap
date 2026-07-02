@@ -44,7 +44,7 @@ function SectionBadge({children, dark = false}) {
   return (
     <div className={`inline-flex items-center gap-3 rounded-full border px-5 py-2 ${dark ? 'border-white/15 bg-white/10' : 'border-yap-accent/30 bg-yap-accent/5'}`}>
       <span className="h-2 w-2 rounded-full bg-yap-accent motion-safe:animate-yap-pulse" />
-      <span className={`font-mono text-xs uppercase tracking-[0.15em] ${dark ? 'text-white' : 'text-yap-accent'}`}>
+      <span className={`font-mono text-xs ${dark ? 'text-white' : 'text-yap-accent'}`}>
         {children}
       </span>
     </div>
@@ -95,63 +95,138 @@ function renderHighlightedText(text) {
   );
 }
 
-function HeroVisual({steps, footer}) {
+function HeroNetworkVisual({nodes, clients, stats}) {
+  const origin = nodes[0] || {};
+  const destination = nodes[1] || {};
+  const visibleNodes = nodes.slice(0, 8);
+
   return (
-    <aside className="relative hidden min-h-[620px] lg:block" aria-hidden="true">
-      <div className="absolute inset-10 rounded-[2rem] bg-gradient-to-br from-yap-accent/10 via-white to-yap-muted shadow-2xl shadow-slate-900/10" />
-      <div className="absolute left-3 top-8 h-[500px] w-[500px] rounded-full border border-dashed border-yap-accent/25 motion-safe:animate-yap-spin-slow" />
-      <div className="absolute left-16 top-24 h-72 w-72 rounded-full bg-yap-accent/10 blur-[90px]" />
-      <div className="yap-light-dot-grid absolute bottom-24 right-2 h-44 w-44 rounded-full opacity-70" />
+    <aside className="relative min-h-[520px] overflow-hidden rounded-lg border border-yap-route-accent/20 bg-yap-route-background p-4 text-yap-route-foreground shadow-yap-route sm:p-5 lg:min-h-[600px]" aria-label={trans('welcome.network_label')}>
+      <div className="yap-route-grid absolute inset-0 opacity-35" aria-hidden="true" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-200/70 to-transparent" aria-hidden="true" />
 
-      <div className="absolute right-0 top-16 w-80 rounded-[1.75rem] border border-yap-border bg-white/90 p-5 shadow-2xl shadow-slate-900/12 backdrop-blur motion-safe:animate-yap-float">
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <p className="font-mono text-[0.65rem] uppercase tracking-[0.18em] text-yap-muted-foreground">YAP ROUTE</p>
-            <p className="mt-2 text-lg font-semibold tracking-tight text-yap-foreground">Japan to China</p>
-          </div>
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-yap-accent to-yap-accent-secondary text-sm font-bold text-white shadow-yap-accent">
-            CN
+      <div className="relative flex items-center justify-between gap-3">
+        <span className="rounded-lg border border-yap-route-accent/30 bg-yap-route-accent/10 px-3 py-1.5 text-xs font-semibold text-yap-route-foreground">
+          {trans('welcome.network_label')}
+        </span>
+        <span className="flex items-center gap-2 rounded-lg bg-white/8 px-3 py-1.5 text-xs font-semibold text-yap-route-foreground">
+          <span className="h-2 w-2 rounded-full bg-yap-route-accent motion-safe:animate-yap-pulse" />
+          {trans('welcome.network_status')}
+        </span>
+      </div>
+
+      <div className="relative mt-7 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+        <div className="rounded-lg border border-white/12 bg-white/10 p-4">
+          <div className="text-3xl" aria-hidden="true">{origin.flag}</div>
+          <p className="mt-3 text-sm font-semibold text-white">{origin.name}</p>
+          <p className="mt-1 text-xs text-white/58">{origin.role}</p>
+        </div>
+        <div className="relative h-16 w-20 sm:w-28">
+          <div className="absolute left-0 right-0 top-1/2 h-px -translate-y-1/2 bg-white/18" />
+          <div className="yap-route-beam absolute left-0 right-0 top-1/2 h-1 -translate-y-1/2 rounded-full" />
+          <div className="absolute left-1/2 top-1/2 flex h-9 w-9 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg border border-yap-route-accent/30 bg-yap-route-accent text-xs font-bold text-yap-route-ink shadow-yap-route">
+            YAP
           </div>
         </div>
-        <div className="mt-6 grid grid-cols-[auto_1fr_auto] items-center gap-3">
-          <span className="h-3 w-3 rounded-full bg-yap-accent" />
-          <span className="h-px bg-gradient-to-r from-yap-accent to-yap-accent-secondary" />
-          <span className="h-3 w-3 rounded-full border-2 border-yap-accent bg-white" />
-        </div>
-        <div className="mt-6 grid grid-cols-3 gap-2 text-center">
-          {['Clash', 'Stash', 'QR'].map((item) => (
-            <div key={item} className="rounded-xl border border-yap-border bg-yap-muted/70 px-3 py-2 text-xs font-semibold text-yap-foreground">
-              {item}
-            </div>
-          ))}
+        <div className="rounded-lg border border-yap-route-accent/35 bg-yap-route-accent/14 p-4">
+          <div className="text-3xl" aria-hidden="true">{destination.flag}</div>
+          <p className="mt-3 text-sm font-semibold text-white">{destination.name}</p>
+          <p className="mt-1 text-xs text-white/58">{destination.role}</p>
         </div>
       </div>
 
-      <div className="absolute left-0 top-56 w-72 rounded-[1.5rem] border border-yap-border bg-white p-5 shadow-xl shadow-slate-900/10 motion-safe:animate-yap-float-delayed">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-yap-accent to-yap-accent-secondary text-white shadow-yap-accent">
-            <CheckIcon className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-yap-foreground">{steps[0]?.title}</p>
-            <p className="text-xs text-yap-muted-foreground">{steps[0]?.step} / {steps[2]?.step}</p>
-          </div>
-        </div>
-        <div className="mt-5 space-y-3">
-          {steps.map((step, index) => (
-            <div key={step.step} className="flex items-center gap-3 rounded-xl bg-yap-muted/70 p-3">
-              <span className={`h-2.5 w-2.5 rounded-full ${index === 1 ? 'bg-yap-accent motion-safe:animate-yap-pulse' : 'bg-slate-300'}`} />
-              <span className="text-xs font-medium text-yap-muted-foreground">{step.title}</span>
+      <div className="relative mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+        {visibleNodes.map((node, index) => (
+          <div key={`${node.code}-${node.name}`} className={`rounded-lg border p-3 ${index === 1 ? 'border-yap-route-accent/40 bg-yap-route-accent/14' : 'border-white/10 bg-white/8'}`}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-2xl" aria-hidden="true">{node.flag}</span>
+              <span className="font-mono text-xs text-white/45">{node.code}</span>
             </div>
-          ))}
-        </div>
+            <p className="mt-3 truncate text-sm font-semibold text-white">{node.name}</p>
+            <p className="mt-1 truncate text-xs text-white/50">{node.role}</p>
+          </div>
+        ))}
       </div>
 
-      <div className="absolute bottom-10 right-14 max-w-sm rounded-[1.5rem] bg-yap-foreground p-5 text-white shadow-2xl shadow-slate-900/30">
-        <div className="absolute -right-4 -top-4 h-16 w-16 rounded-tl-[2rem] rounded-br-[2rem] bg-yap-accent shadow-yap-accent-lg" />
-        <p className="relative text-sm leading-6 text-white/78">{footer}</p>
+      <div className="relative mt-6 grid gap-2 sm:grid-cols-3">
+        {clients.map((client) => (
+          <div key={client.name} className="rounded-lg border border-white/10 bg-white/8 p-3">
+            <p className="text-sm font-semibold text-white">{client.name}</p>
+            <p className="mt-1 text-xs leading-5 text-white/52">{client.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="relative mt-6 grid grid-cols-3 gap-2">
+        {stats.map((item) => (
+          <div key={item.label} className="rounded-lg bg-white/[0.06] p-3">
+            <p className="text-[0.68rem] font-medium text-white/45">{item.label}</p>
+            <p className="mt-2 text-sm font-semibold leading-5 text-white">{item.value}</p>
+          </div>
+        ))}
       </div>
     </aside>
+  );
+}
+
+function NetworkNodeCard({node, index}) {
+  return (
+    <article className={`rounded-lg border p-4 transition duration-300 hover:-translate-y-1 motion-reduce:transition-none motion-reduce:hover:translate-y-0 ${index === 1 ? 'border-yap-route-accent/45 bg-yap-route-accent/12' : 'border-white/10 bg-white/7'}`}>
+      <div className="flex items-center justify-between gap-4">
+        <span className="text-3xl" aria-hidden="true">{node.flag}</span>
+        <span className="rounded-md bg-white/10 px-2 py-1 font-mono text-xs text-white/60">{node.code}</span>
+      </div>
+      <h3 className="mt-4 text-lg font-semibold text-white">{node.name}</h3>
+      <p className="mt-2 text-sm leading-6 text-white/60">{node.role}</p>
+    </article>
+  );
+}
+
+function NetworkShowcase({nodes, stats, clients}) {
+  return (
+    <section id="network" className="relative overflow-hidden bg-yap-route-background px-4 py-20 text-yap-route-foreground sm:px-6 sm:py-24 lg:px-8">
+      <div className="yap-route-grid absolute inset-0 opacity-25" aria-hidden="true" />
+      <div className="relative mx-auto max-w-6xl">
+        <div className="grid gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-end">
+          <div>
+            <SectionBadge dark>{trans('welcome.network_label')}</SectionBadge>
+            <h2 className="mt-6 max-w-xl font-display text-4xl leading-tight text-white sm:text-5xl">
+              {renderHighlightedText(trans('welcome.network_title'))}
+            </h2>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-white/70">
+              {trans('welcome.network_body')}
+            </p>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-3">
+            {stats.map((item) => (
+              <div key={item.label} className="rounded-lg border border-white/10 bg-white/8 p-4">
+                <p className="text-xs font-medium text-yap-route-muted/70">{item.label}</p>
+                <p className="mt-3 text-lg font-semibold leading-7 text-white">{item.value}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          {nodes.map((node, index) => (
+            <NetworkNodeCard key={`${node.code}-${node.name}`} node={node} index={index} />
+          ))}
+        </div>
+
+        <div className="mt-8 grid gap-3 md:grid-cols-[1fr_auto] md:items-center">
+          <div className="flex flex-wrap gap-2">
+            {clients.map((client) => (
+              <div key={client.name} className="rounded-lg border border-white/10 bg-white/8 px-4 py-3">
+                <p className="text-sm font-semibold text-white">{client.name}</p>
+                <p className="mt-1 text-xs text-white/50">{client.desc}</p>
+              </div>
+            ))}
+          </div>
+          <p className="max-w-xl text-sm leading-7 text-white/58 md:text-right">{trans('welcome.network_note')}</p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -180,6 +255,9 @@ export default function Welcome({auth, canLogin, canRegister}) {
   const privacyPoints = trans('welcome.privacy_points', {}, []);
   const features = trans('welcome.features', {}, []);
   const steps = trans('welcome.steps', {}, []);
+  const networkNodes = trans('welcome.network_nodes', {}, []);
+  const networkClients = trans('welcome.network_clients', {}, []);
+  const networkStats = trans('welcome.network_stats', {}, []);
 
   const primaryHref = auth.user
     ? route('dashboard')
@@ -204,6 +282,7 @@ export default function Welcome({auth, canLogin, canRegister}) {
             </Link>
 
             <nav className="hidden items-center gap-8 md:flex" aria-label="Primary navigation">
+              <a href="#network" className={navLinkClasses}>{trans('welcome.network_label')}</a>
               <a href="#features" className={navLinkClasses}>{trans('welcome.learn_more')}</a>
               <a href="#privacy" className={navLinkClasses}>{trans('welcome.privacy_label')}</a>
               <a href="#how" className={navLinkClasses}>{trans('welcome.hero_panel_label')}</a>
@@ -251,8 +330,8 @@ export default function Welcome({auth, canLogin, canRegister}) {
                     {primaryLabel}
                     <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
                   </ActionLink>
-                  <a href="#privacy" className={secondaryActionClasses}>
-                    {trans('welcome.privacy_cta')}
+                  <a href="#network" className={secondaryActionClasses}>
+                    {trans('welcome.network_cta')}
                     <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
                   </a>
                 </div>
@@ -271,9 +350,11 @@ export default function Welcome({auth, canLogin, canRegister}) {
                 </div>
               </div>
 
-              <HeroVisual steps={heroPanelSteps} footer={trans('welcome.hero_panel_footer')} />
+              <HeroNetworkVisual nodes={networkNodes} clients={networkClients} stats={networkStats} />
             </div>
           </section>
+
+          <NetworkShowcase nodes={networkNodes} stats={networkStats} clients={networkClients} />
 
           <section className="relative overflow-hidden bg-yap-foreground px-4 py-20 text-white sm:px-6 sm:py-24 lg:px-8">
             <div className="yap-dot-grid absolute inset-0 opacity-[0.06]" aria-hidden="true" />

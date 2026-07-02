@@ -23,9 +23,15 @@
   --color-yap-border: #e2e8f0;
   --color-yap-card: #ffffff;
   --color-yap-ring: #0052ff;
+  --color-yap-route-background: #071817;
+  --color-yap-route-foreground: #ecfdf5;
+  --color-yap-route-muted: #a7f3d0;
+  --color-yap-route-accent: #6ee7b7;
+  --color-yap-route-ink: #052e26;
 
   --shadow-yap-accent: 0 4px 14px rgb(0 82 255 / 0.25);
   --shadow-yap-accent-lg: 0 8px 24px rgb(0 82 255 / 0.35);
+  --shadow-yap-route: 0 18px 45px rgb(15 23 42 / 0.25);
 
   --animate-pulse: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   --animate-yap-float: yap-float 5s ease-in-out infinite;
@@ -68,6 +74,18 @@
   .yap-light-dot-grid {
     background-image: radial-gradient(circle, rgb(15 23 42 / 0.08) 1px, transparent 1px);
     background-size: 28px 28px;
+  }
+
+  .yap-route-grid {
+    background-image:
+      linear-gradient(rgb(110 231 183 / 0.12) 1px, transparent 1px),
+      linear-gradient(90deg, rgb(110 231 183 / 0.12) 1px, transparent 1px);
+    background-size: 34px 34px;
+  }
+
+  .yap-route-beam {
+    background-image: linear-gradient(90deg, transparent, var(--color-yap-route-accent), transparent);
+    animation: yap-route-beam 2.8s ease-in-out infinite;
   }
 }
 
@@ -122,11 +140,23 @@
     }
 }
 
+@keyframes yap-route-beam {
+    0%, 100% {
+        opacity: 0.45;
+        transform: translateY(-50%) scaleX(0.7);
+    }
+    50% {
+        opacity: 1;
+        transform: translateY(-50%) scaleX(1);
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .animate-yap-float,
     .animate-yap-float-delayed,
     .animate-yap-pulse,
     .animate-yap-spin-slow,
+    .yap-route-beam,
     .aurora-bg,
     .aurora-orb-1,
     .aurora-orb-2,
