@@ -26,6 +26,7 @@ return [
         'pay' => '支付',
         'no_records' => '暂无记录',
         'too_many_requests' => '请求过多，请稍后再试。',
+        'network_error' => '网络中断，请重试。',
         'privacy_policy' => '隐私政策',
         'terms_of_service' => '服务条款',
         'commercial_disclosure' => '商业披露',

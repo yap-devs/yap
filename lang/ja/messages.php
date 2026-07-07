@@ -26,6 +26,7 @@ return [
         'pay' => '支払う',
         'no_records' => '該当する記録はありません',
         'too_many_requests' => 'リクエストが集中しています。しばらくしてからもう一度お試しください。',
+        'network_error' => 'ネットワークが切断されました。もう一度お試しください。',
         'privacy_policy' => 'プライバシーポリシー',
         'terms_of_service' => '利用規約',
         'commercial_disclosure' => '特定商取引法に基づく表記',

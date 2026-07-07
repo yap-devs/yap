@@ -26,6 +26,7 @@ return [
         'pay' => 'Pay',
         'no_records' => 'No records found',
         'too_many_requests' => 'Too many requests, please try again later.',
+        'network_error' => 'Network interrupted, please try again.',
         'privacy_policy' => 'Privacy Policy',
         'terms_of_service' => 'Terms of Service',
         'commercial_disclosure' => 'Commercial Disclosure',
