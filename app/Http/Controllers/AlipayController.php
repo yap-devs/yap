@@ -57,17 +57,16 @@ class AlipayController extends Controller
     {
         /** @var User $user */
         $user = $request->user();
-        if ($payment->user->isNot($user)) {
+        if ($payment->user_id !== $user->id) {
             return redirect()->route('recharge')->withErrors([
                 'message' => __('messages.errors.payment_not_found'),
             ]);
         }
 
-        $result = Pay::alipay()->query([
-            'out_trade_no' => $payment->remote_id,
+        return response()->json([
+            'payment_status' => $payment->status,
+            'trade_status' => $this->tradeStatus($payment),
         ]);
-
-        return response()->json($result);
     }
 
     /**
@@ -137,5 +136,14 @@ class AlipayController extends Controller
             'amount' => $payment->amount,
             'paymentId' => $payment->id,
         ]);
+    }
+
+    private function tradeStatus(Payment $payment): string
+    {
+        return match ($payment->status) {
+            Payment::STATUS_PAID => 'TRADE_SUCCESS',
+            Payment::STATUS_CANCELLED, Payment::STATUS_EXPIRED, Payment::STATUS_REFUNDED => 'TRADE_CLOSED',
+            default => 'WAIT_BUYER_PAY',
+        };
     }
 }

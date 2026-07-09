@@ -14,24 +14,40 @@ export default function Scan({_auth, QRInfo, amount, paymentId}) {
   };
 
   useEffect(() => {
-    const query = () => {
-      axios.get(route('alipay.query', {payment: paymentId}))
-        .then(response => {
-          if (!response.data.trade_status) return;
+    let timeoutId;
+    let cancelled = false;
 
-          setTradeStatus(response.data.trade_status);
+    const query = async () => {
+      let shouldPollAgain = true;
 
-          if (response.data.trade_status === 'TRADE_SUCCESS') {
-            setTimeout(() => {
-              router.get(route('profile.edit'));
-            }, 2000);
-          }
-        });
+      try {
+        const response = await axios.get(route('alipay.query', {payment: paymentId}));
+
+        if (cancelled || !response.data.trade_status) return;
+
+        setTradeStatus(response.data.trade_status);
+
+        if (response.data.trade_status === 'TRADE_SUCCESS') {
+          shouldPollAgain = false;
+          timeoutId = setTimeout(() => {
+            router.get(route('profile.edit'));
+          }, 2000);
+        }
+      } catch {
+        // Keep polling through transient network errors.
+      } finally {
+        if (!cancelled && shouldPollAgain) {
+          timeoutId = setTimeout(query, 2000);
+        }
+      }
     };
 
-    const interval = setInterval(query, 2000);
+    timeoutId = setTimeout(query, 2000);
 
-    return () => clearInterval(interval);
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, []);
 
   return (
