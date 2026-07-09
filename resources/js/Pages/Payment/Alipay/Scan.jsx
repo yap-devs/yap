@@ -21,7 +21,7 @@ export default function Scan({_auth, QRInfo, amount, paymentId}) {
       let shouldPollAgain = true;
 
       try {
-        const response = await axios.get(route('alipay.query', {payment: paymentId}));
+        const response = await axios.get(route('alipay.query', {payment: paymentId}), {timeout: 10000});
 
         if (cancelled || !response.data.trade_status) return;
 

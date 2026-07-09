@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\AlipayPaymentStatusService;
 use App\Services\PaymentFulfillmentService;
 use App\Services\RechargeOrderLockService;
 use Illuminate\Http\Request;
@@ -53,7 +54,7 @@ class AlipayController extends Controller
      * @throws ContainerException
      * @throws InvalidParamsException
      */
-    public function query(Request $request, Payment $payment)
+    public function query(Request $request, Payment $payment, AlipayPaymentStatusService $alipayPaymentStatusService)
     {
         /** @var User $user */
         $user = $request->user();
@@ -63,10 +64,13 @@ class AlipayController extends Controller
             ]);
         }
 
-        return response()->json([
-            'payment_status' => $payment->status,
-            'trade_status' => $this->tradeStatus($payment),
-        ]);
+        if ($payment->gateway !== Payment::GATEWAY_ALIPAY) {
+            return redirect()->route('recharge')->withErrors([
+                'message' => __('messages.errors.invalid_payment_gateway'),
+            ]);
+        }
+
+        return response()->json($alipayPaymentStatusService->snapshot($payment));
     }
 
     /**
@@ -136,14 +140,5 @@ class AlipayController extends Controller
             'amount' => $payment->amount,
             'paymentId' => $payment->id,
         ]);
-    }
-
-    private function tradeStatus(Payment $payment): string
-    {
-        return match ($payment->status) {
-            Payment::STATUS_PAID => 'TRADE_SUCCESS',
-            Payment::STATUS_CANCELLED, Payment::STATUS_EXPIRED, Payment::STATUS_REFUNDED => 'TRADE_CLOSED',
-            default => 'WAIT_BUYER_PAY',
-        };
     }
 }
