@@ -17,13 +17,23 @@ class PaymentFulfillmentService
     {
         $fulfilled = false;
         $fulfilled_user_id = null;
+        $should_sync_clash_profile = false;
 
-        DB::transaction(function () use ($payment, $paid_payload, &$fulfilled, &$fulfilled_user_id): void {
+        DB::transaction(function () use ($payment, $paid_payload, &$fulfilled, &$fulfilled_user_id, &$should_sync_clash_profile): void {
             /** @var Payment|null $payment */
             $payment = Payment::query()->lockForUpdate()->find($payment->id);
             if (! $payment || $payment->status === Payment::STATUS_PAID) {
                 return;
             }
+
+            $user = $payment->user()
+                ->with(['packages' => function ($query) {
+                    $query->available();
+                }])
+                ->lockForUpdate()
+                ->firstOrFail();
+            $is_valid_initial = $user->is_valid;
+            $is_low_priority_initial = $user->is_low_priority;
 
             $payment->status = Payment::STATUS_PAID;
 
@@ -35,20 +45,29 @@ class PaymentFulfillmentService
 
             $payment->save();
 
-            $payment->user->increment('balance', $payment->amount);
+            $user->increment('balance', $payment->amount);
 
-            $payment->user->balanceDetails()->create([
+            $user->balanceDetails()->create([
                 'amount' => $payment->amount,
                 'description' => $this->balanceDescription($payment),
             ]);
 
             app(AffiliateService::class)->handlePaymentPaid($payment);
 
-            GenerateClashProfileLink::dispatch();
+            $user->refresh();
+            $user->load(['packages' => function ($query) {
+                $query->available();
+            }]);
+            $should_sync_clash_profile = $user->is_valid !== $is_valid_initial
+                || $user->is_low_priority !== $is_low_priority_initial;
 
             $fulfilled = true;
             $fulfilled_user_id = $payment->user_id;
         });
+
+        if ($fulfilled && $should_sync_clash_profile) {
+            GenerateClashProfileLink::dispatch();
+        }
 
         if ($fulfilled && $fulfilled_user_id !== null) {
             $this->dispatchSub2apiSyncForUser($fulfilled_user_id);
