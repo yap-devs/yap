@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Jobs\GenerateClashProfileLink;
+use App\Jobs\SyncSub2apiUser;
 use App\Models\Payment;
 use App\Services\Affiliate\AffiliateService;
 use Illuminate\Support\Facades\DB;
@@ -15,8 +16,9 @@ class PaymentFulfillmentService
     public function fulfill(Payment $payment, ?array $paid_payload = null): bool
     {
         $fulfilled = false;
+        $fulfilled_user_id = null;
 
-        DB::transaction(function () use ($payment, $paid_payload, &$fulfilled): void {
+        DB::transaction(function () use ($payment, $paid_payload, &$fulfilled, &$fulfilled_user_id): void {
             /** @var Payment|null $payment */
             $payment = Payment::query()->lockForUpdate()->find($payment->id);
             if (! $payment || $payment->status === Payment::STATUS_PAID) {
@@ -45,7 +47,12 @@ class PaymentFulfillmentService
             GenerateClashProfileLink::dispatch();
 
             $fulfilled = true;
+            $fulfilled_user_id = $payment->user_id;
         });
+
+        if ($fulfilled && $fulfilled_user_id !== null) {
+            $this->dispatchSub2apiSyncForUser($fulfilled_user_id);
+        }
 
         return $fulfilled;
     }
@@ -59,5 +66,10 @@ class PaymentFulfillmentService
             Payment::GATEWAY_GITHUB => __('messages.balance_descriptions.github_sponsor', [], 'en'),
             default => 'Payment recharge',
         };
+    }
+
+    public function dispatchSub2apiSyncForUser(int $user_id): void
+    {
+        SyncSub2apiUser::dispatch($user_id);
     }
 }

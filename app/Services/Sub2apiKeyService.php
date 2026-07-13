@@ -103,6 +103,12 @@ class Sub2apiKeyService
         ])->save();
     }
 
+    public function syncUserUsageAndStatus(User $user): void
+    {
+        $this->usage_sync_service->syncUser($user);
+        $this->syncUserStatus($user);
+    }
+
     public function rotateAfterUuidReset(User $user, ?int $old_key_id = null): void
     {
         $old_key_id = $old_key_id ?? $user->sub2api_key_id;

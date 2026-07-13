@@ -6,6 +6,7 @@ use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\Affiliate\AffiliateService;
+use App\Services\PaymentFulfillmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Laravel\Socialite\Facades\Socialite;
@@ -54,7 +55,7 @@ class GithubController extends Controller
         return redirect()->route('profile.edit');
     }
 
-    public function sponsorWebhook(Request $request)
+    public function sponsorWebhook(Request $request, PaymentFulfillmentService $paymentFulfillmentService)
     {
         logger('GitHub sponsor webhook', $request->all());
 
@@ -78,7 +79,9 @@ class GithubController extends Controller
 
         $remote_id = $request->input('sponsorship.tier.node_id').'|'.$request->input('sponsorship.tier.created_at');
 
-        DB::transaction(function () use ($user, $amount, $remote_id, $request) {
+        $fulfilled_user_id = null;
+
+        DB::transaction(function () use ($user, $amount, $remote_id, $request, &$fulfilled_user_id): void {
             // Lock matching rows (if any) to prevent duplicate processing.
             // Without lockForUpdate, two concurrent webhook deliveries could both
             // see exists()=false under REPEATABLE READ and double-credit the user.
@@ -86,6 +89,7 @@ class GithubController extends Controller
                 return;
             }
 
+            /** @var Payment $payment */
             $payment = $user->payments()->create([
                 'gateway' => Payment::GATEWAY_GITHUB,
                 'status' => Payment::STATUS_PAID,
@@ -104,7 +108,13 @@ class GithubController extends Controller
             app(AffiliateService::class)->handlePaymentPaid($payment);
 
             GenerateClashProfileLink::dispatch();
+
+            $fulfilled_user_id = $user->id;
         });
+
+        if ($fulfilled_user_id !== null) {
+            $paymentFulfillmentService->dispatchSub2apiSyncForUser($fulfilled_user_id);
+        }
 
         return response()->json(['message' => __('messages.errors.ok')]);
     }
