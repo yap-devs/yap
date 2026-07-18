@@ -43,7 +43,7 @@ it('presents active package pricing on the public homepage', function () {
             ->where('unitPrice', config('yap.unit_price'))
             ->has('packages', 2)
             ->where('packages.0.name', 'Small Package')
-            ->where('packages.0.description', 'Smaller package')
+            ->missing('packages.0.description')
             ->where('packages.0.duration_days', 7)
             ->where('packages.0.traffic_limit', 10 * 1024 * 1024 * 1024)
             ->where('packages.0.price', fn ($price) => (float) $price === 0.18)

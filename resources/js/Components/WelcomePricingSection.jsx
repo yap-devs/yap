@@ -133,10 +133,6 @@ export default function WelcomePricingSection({
                         )}
                       </div>
 
-                      <p className="mt-4 min-h-14 text-sm leading-6 text-yap-muted-foreground">
-                        {packageItem.description || trans('welcome.pricing_package_default_body')}
-                      </p>
-
                       <div className="mt-6 flex items-end gap-2">
                         <span className="font-display text-3xl leading-none text-yap-accent">{formatPrice(packageItem.price)}</span>
                         {discount !== null && (

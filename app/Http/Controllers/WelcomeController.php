@@ -16,7 +16,6 @@ class WelcomeController extends Controller
             ->get([
                 'id',
                 'name',
-                'description',
                 'price',
                 'duration_days',
                 'traffic_limit',
@@ -24,7 +23,6 @@ class WelcomeController extends Controller
             ->map(fn (Package $package): array => [
                 'id' => $package->id,
                 'name' => $package->name,
-                'description' => $package->description,
                 'price' => $package->price,
                 'original_price' => $package->original_price,
                 'duration_days' => $package->duration_days,
