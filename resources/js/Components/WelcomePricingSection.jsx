@@ -5,6 +5,7 @@ import {trans} from '@/Utils/i18n';
 
 const actionClasses = 'inline-flex items-center justify-center gap-2 rounded-xl bg-yap-foreground px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-muted motion-reduce:transition-none motion-reduce:hover:translate-y-0';
 const secondaryActionClasses = 'inline-flex items-center justify-center gap-2 rounded-xl border border-yap-border bg-white px-4 py-3 text-sm font-semibold text-yap-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-yap-accent/30 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-muted motion-reduce:transition-none motion-reduce:hover:translate-y-0';
+const pricingLinkClasses = 'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-yap-accent bg-white px-4 py-2.5 text-sm font-semibold text-yap-accent shadow-sm transition hover:-translate-y-0.5 hover:bg-yap-accent hover:text-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-muted motion-reduce:transition-none motion-reduce:hover:translate-y-0';
 
 function ArrowIcon() {
   return (
@@ -101,8 +102,9 @@ export default function WelcomePricingSection({
                   {trans('welcome.pricing_packages_title')}
                 </h3>
               </div>
-              <Link href={purchaseHref} className="text-sm font-semibold text-yap-accent transition hover:text-yap-foreground">
+              <Link href={purchaseHref} className={pricingLinkClasses}>
                 {trans('welcome.pricing_view_packages')}
+                <ArrowIcon />
               </Link>
             </div>
 
