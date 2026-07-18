@@ -3,7 +3,7 @@ import {formatBytes} from '@/Utils/formatBytes.js';
 import {formatPrice} from '@/Utils/formatPrice.js';
 import {trans} from '@/Utils/i18n';
 
-const actionClasses = 'inline-flex items-center justify-center gap-2 rounded-xl bg-yap-foreground px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-muted motion-reduce:transition-none motion-reduce:hover:translate-y-0';
+const paygActionClasses = 'inline-flex items-center justify-center gap-2 rounded-xl bg-white px-4 py-3 text-sm font-semibold text-yap-foreground shadow-sm transition hover:-translate-y-0.5 hover:bg-yap-muted hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-muted motion-reduce:transition-none motion-reduce:hover:translate-y-0';
 const secondaryActionClasses = 'inline-flex items-center justify-center gap-2 rounded-xl border border-yap-border bg-white px-4 py-3 text-sm font-semibold text-yap-foreground shadow-sm transition hover:-translate-y-0.5 hover:border-yap-accent/30 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-muted motion-reduce:transition-none motion-reduce:hover:translate-y-0';
 const pricingLinkClasses = 'inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-yap-accent bg-white px-4 py-2.5 text-sm font-semibold text-yap-accent shadow-sm transition hover:-translate-y-0.5 hover:bg-yap-accent hover:text-white hover:shadow-md focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-muted motion-reduce:transition-none motion-reduce:hover:translate-y-0';
 
@@ -85,7 +85,7 @@ export default function WelcomePricingSection({
             <p className="mt-3 text-sm leading-7 text-white/70">{trans('welcome.pricing_payg_body')}</p>
             <div className="mt-7 border-t border-white/15 pt-5">
               <p className="text-xs leading-6 text-white/60">{trans('welcome.pricing_payg_note')}</p>
-              <Link href={purchaseHref} className={`${actionClasses} mt-6 bg-white text-yap-foreground hover:bg-yap-muted`}>
+              <Link href={purchaseHref} className={`${paygActionClasses} mt-6`}>
                 {purchaseLabel}
                 <ArrowIcon />
               </Link>

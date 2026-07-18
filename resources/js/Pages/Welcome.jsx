@@ -4,6 +4,7 @@ import WelcomePricingSection from '@/Components/WelcomePricingSection';
 import {trans} from '@/Utils/i18n';
 
 const primaryActionClasses = 'group inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yap-accent to-yap-accent-secondary px-6 text-sm font-semibold text-yap-accent-foreground shadow-yap-accent transition duration-200 hover:-translate-y-0.5 hover:shadow-yap-accent-lg hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-background active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:transition-none';
+const lightPrimaryActionClasses = 'group inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-white px-6 text-sm font-semibold text-yap-accent shadow-sm transition duration-200 hover:-translate-y-0.5 hover:bg-yap-muted hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-foreground active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:transition-none';
 const secondaryActionClasses = 'group inline-flex h-14 items-center justify-center gap-2 rounded-xl border border-yap-border bg-white px-6 text-sm font-semibold text-yap-foreground shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-yap-accent/30 hover:bg-yap-muted hover:shadow-lg focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-background active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:transition-none';
 const navLinkClasses = 'text-sm font-medium text-yap-muted-foreground transition hover:text-yap-foreground focus:outline-none focus:text-yap-foreground';
 
@@ -418,7 +419,7 @@ export default function Welcome({auth, canLogin, canRegister, packages, unitPric
                   </h2>
                   <p className="mt-5 max-w-2xl text-base leading-8 text-white/72">{trans('welcome.cta_body')}</p>
                 </div>
-                <ActionLink href={primaryHref} className={`${primaryActionClasses} bg-white from-white to-white text-yap-accent hover:brightness-100`}>
+                <ActionLink href={primaryHref} className={lightPrimaryActionClasses}>
                   {primaryLabel}
                   <ArrowIcon className="h-4 w-4 transition group-hover:translate-x-1 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
                 </ActionLink>
