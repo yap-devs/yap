@@ -1,5 +1,6 @@
 import {Head, Link} from '@inertiajs/react';
 import LanguageSelector from '@/Components/LanguageSelector';
+import WelcomePricingSection from '@/Components/WelcomePricingSection';
 import {trans} from '@/Utils/i18n';
 
 const primaryActionClasses = 'group inline-flex h-14 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-yap-accent to-yap-accent-secondary px-6 text-sm font-semibold text-yap-accent-foreground shadow-yap-accent transition duration-200 hover:-translate-y-0.5 hover:shadow-yap-accent-lg hover:brightness-110 focus:outline-none focus:ring-2 focus:ring-yap-ring focus:ring-offset-2 focus:ring-offset-yap-background active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:transition-none';
@@ -154,7 +155,7 @@ function FeatureIcon({index}) {
   );
 }
 
-export default function Welcome({auth, canLogin, canRegister}) {
+export default function Welcome({auth, canLogin, canRegister, packages, unitPrice}) {
   const heroPoints = trans('welcome.hero_points', {}, []);
   const trustItems = trans('welcome.trust', {}, []);
   const useCases = trans('welcome.use_cases', {}, []);
@@ -187,6 +188,7 @@ export default function Welcome({auth, canLogin, canRegister}) {
             </Link>
 
             <nav className="hidden items-center gap-8 md:flex" aria-label="Primary navigation">
+              <a href="#pricing" className={navLinkClasses}>{trans('welcome.pricing_label')}</a>
               <a href="#features" className={navLinkClasses}>{trans('welcome.learn_more')}</a>
               <a href="#privacy" className={navLinkClasses}>{trans('welcome.privacy_label')}</a>
               <a href="#how" className={navLinkClasses}>{trans('welcome.hero_panel_label')}</a>
@@ -257,6 +259,14 @@ export default function Welcome({auth, canLogin, canRegister}) {
               <SetupPreview steps={setupPreviewSteps} tools={setupPreviewTools} />
             </div>
           </section>
+
+          <WelcomePricingSection
+            auth={auth}
+            canLogin={canLogin}
+            canRegister={canRegister}
+            packages={packages}
+            unitPrice={unitPrice}
+          />
 
           <section className="relative overflow-hidden bg-yap-foreground px-4 py-20 text-white sm:px-6 sm:py-24 lg:px-8">
             <div className="yap-dot-grid absolute inset-0 opacity-[0.06]" aria-hidden="true" />

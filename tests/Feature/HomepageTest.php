@@ -1,9 +1,56 @@
 <?php
 
+use App\Models\Package;
+
 it('renders the homepage successfully', function () {
     $response = $this->get('/');
 
     $response->assertSuccessful();
+});
+
+it('presents active package pricing on the public homepage', function () {
+    Package::query()->create([
+        'name' => 'Public Package',
+        'description' => 'Visible package',
+        'status' => Package::STATUS_ACTIVE,
+        'price' => 0.8,
+        'duration_days' => 30,
+        'traffic_limit' => 50 * 1024 * 1024 * 1024,
+    ]);
+    Package::query()->create([
+        'name' => 'Small Package',
+        'description' => 'Smaller package',
+        'status' => Package::STATUS_ACTIVE,
+        'price' => 0.18,
+        'duration_days' => 7,
+        'traffic_limit' => 10 * 1024 * 1024 * 1024,
+    ]);
+    Package::query()->create([
+        'name' => 'Hidden Package',
+        'description' => 'Private package',
+        'status' => Package::STATUS_HIDDEN,
+        'price' => 2,
+        'duration_days' => 30,
+        'traffic_limit' => 100 * 1024 * 1024 * 1024,
+    ]);
+
+    $response = $this->get('/');
+
+    $response
+        ->assertSuccessful()
+        ->assertInertia(fn ($page) => $page
+            ->component('Welcome')
+            ->where('unitPrice', config('yap.unit_price'))
+            ->has('packages', 2)
+            ->where('packages.0.name', 'Small Package')
+            ->where('packages.0.description', 'Smaller package')
+            ->where('packages.0.duration_days', 7)
+            ->where('packages.0.traffic_limit', 10 * 1024 * 1024 * 1024)
+            ->where('packages.0.price', fn ($price) => (float) $price === 0.18)
+            ->where('packages.0.original_price', fn ($price) => (float) $price === 0.2)
+            ->where('packages.1.name', 'Public Package')
+            ->where('packages.1.original_price', fn ($price) => (float) $price === 1.0)
+            ->missing('packages.2'));
 });
 
 it('keeps the china travel and privacy positioning on the homepage', function () {
