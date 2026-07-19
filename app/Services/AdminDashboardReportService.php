@@ -125,6 +125,62 @@ class AdminDashboardReportService
         });
     }
 
+    public function getLastTwentyFourHourTrafficOverview(): array
+    {
+        return $this->remember('last_twenty_four_hour_traffic_overview', [], function (): array {
+            [$start_at, $end_at] = $this->getLastTwentyFourHourTrafficWindow();
+            $summary = $this->getReportableUserStatsQuery()
+                ->where('created_at', '>=', $start_at)
+                ->where('created_at', '<', $end_at)
+                ->selectRaw('SUM(traffic_downlink) as traffic_downlink')
+                ->selectRaw('SUM(traffic_uplink) as traffic_uplink')
+                ->selectRaw('COUNT(DISTINCT user_id) as active_users')
+                ->first();
+            $downlink_bytes = (float) ($summary?->traffic_downlink ?? 0);
+            $uplink_bytes = (float) ($summary?->traffic_uplink ?? 0);
+
+            return [
+                'total_gb' => $this->bytesToGigabytes($downlink_bytes + $uplink_bytes),
+                'downlink_gb' => $this->bytesToGigabytes($downlink_bytes),
+                'uplink_gb' => $this->bytesToGigabytes($uplink_bytes),
+                'active_users' => (int) ($summary?->active_users ?? 0),
+            ];
+        });
+    }
+
+    public function getLastTwentyFourHourTrafficSeries(): Collection
+    {
+        return $this->remember('last_twenty_four_hour_traffic_series', [], function (): Collection {
+            [$start_at, $end_at] = $this->getLastTwentyFourHourTrafficWindow();
+            $bucket_expression = 'FLOOR(TIMESTAMPDIFF(SECOND, ?, created_at) / 3600)';
+            $rows = $this->getReportableUserStatsQuery()
+                ->selectRaw($bucket_expression.' as bucket_index', [$start_at])
+                ->selectRaw('SUM(traffic_downlink) as traffic_downlink')
+                ->selectRaw('SUM(traffic_uplink) as traffic_uplink')
+                ->where('created_at', '>=', $start_at)
+                ->where('created_at', '<', $end_at)
+                ->groupBy('bucket_index')
+                ->get()
+                ->keyBy(fn (UserStat $row): int => (int) $row->bucket_index);
+
+            return collect(range(0, 23))
+                ->mapWithKeys(function (int $bucket_index) use ($rows, $start_at): array {
+                    /** @var UserStat|null $row */
+                    $row = $rows->get($bucket_index);
+                    $downlink_gb = $this->bytesToGigabytes((float) ($row?->traffic_downlink ?? 0));
+                    $uplink_gb = $this->bytesToGigabytes((float) ($row?->traffic_uplink ?? 0));
+
+                    return [
+                        $start_at->addHours($bucket_index)->format('Y-m-d H:i') => [
+                            'downlink_gb' => $downlink_gb,
+                            'uplink_gb' => $uplink_gb,
+                            'total_gb' => round($downlink_gb + $uplink_gb, 2),
+                        ],
+                    ];
+                });
+        });
+    }
+
     public function getMonthlyTrafficSeries(int $months = 12): Collection
     {
         return $this->remember('monthly_traffic_series', [$months], function () use ($months): Collection {
@@ -407,6 +463,26 @@ class AdminDashboardReportService
             ->groupByRaw("DATE_FORMAT(user_stats.created_at, '%Y-%m-%d'), user_stats.user_id, users.name")
             ->orderByDesc('day')
             ->orderByDesc('daily_traffic_bytes');
+    }
+
+    public function getLastTwentyFourHourTrafficRankingQuery(): Builder
+    {
+        [$start_at, $end_at] = $this->getLastTwentyFourHourTrafficWindow();
+
+        return $this->getReportableUserStatsQuery()
+            ->join('users', 'users.id', '=', 'user_stats.user_id')
+            ->selectRaw('MIN(user_stats.id) as id')
+            ->selectRaw('user_stats.user_id')
+            ->selectRaw('users.name as user_name')
+            ->selectRaw('users.email as user_email')
+            ->selectRaw('SUM(user_stats.traffic_downlink) as traffic_downlink_bytes')
+            ->selectRaw('SUM(user_stats.traffic_uplink) as traffic_uplink_bytes')
+            ->selectRaw('SUM(user_stats.traffic_downlink + user_stats.traffic_uplink) as total_traffic_bytes')
+            ->selectRaw('MAX(user_stats.created_at) as last_activity_at')
+            ->where('user_stats.created_at', '>=', $start_at)
+            ->where('user_stats.created_at', '<', $end_at)
+            ->groupBy('user_stats.user_id', 'users.name', 'users.email')
+            ->orderByDesc('total_traffic_bytes');
     }
 
     public function getTotalTrafficLeaderboardQuery(): Builder
@@ -722,6 +798,16 @@ class AdminDashboardReportService
         return $series->replace(
             $values->map(fn (mixed $value): float => round((float) $value, 2))->all(),
         );
+    }
+
+    /**
+     * @return array{0: CarbonImmutable, 1: CarbonImmutable}
+     */
+    private function getLastTwentyFourHourTrafficWindow(): array
+    {
+        $end_at = CarbonImmutable::now()->startOfMinute();
+
+        return [$end_at->subHours(24), $end_at];
     }
 
     /**
