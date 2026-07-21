@@ -2,6 +2,7 @@
 
 use App\Services\ClientDownloadMirrorService;
 use Illuminate\Filesystem\FilesystemAdapter;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 test('it selects only supported client release assets', function () {
@@ -59,6 +60,265 @@ test('downloads skips invalid configured targets', function () {
     ]);
 
     expect(app(ClientDownloadMirrorService::class)->downloads())->toBe([]);
+});
+
+test('sync skips binary writes when the current release is already mirrored', function () {
+    config()->set('services.client_downloads.disk', 'r2_downloads');
+    config()->set('services.client_downloads.prefix', 'clients');
+    config()->set('services.client_downloads.targets', [
+        'custom-client' => [
+            'repo' => 'example/project',
+            'label' => 'Custom Client',
+            'patterns' => ['/custom-release\.zip$/i'],
+            'latest_name' => 'custom-client.zip',
+        ],
+    ]);
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://api.github.com/repos/example/project/releases/latest' => Http::response([
+            'tag_name' => 'v1.2.3',
+            'assets' => [
+                [
+                    'name' => 'custom-release.zip',
+                    'browser_download_url' => 'https://downloads.example.com/custom-release.zip',
+                    'size' => 123,
+                ],
+            ],
+        ]),
+    ]);
+
+    $versioned_path = 'clients/custom-client/1.2.3/custom-release.zip';
+    $latest_path = 'clients/custom-client/custom-client.zip';
+    $disk = Mockery::mock(FilesystemAdapter::class);
+    $disk->shouldReceive('exists')
+        ->once()
+        ->with('clients/manifest.json')
+        ->andReturn(true);
+    $disk->shouldReceive('get')
+        ->once()
+        ->with('clients/manifest.json')
+        ->andReturn(json_encode([
+            'assets' => [
+                'custom-client' => [
+                    'versioned_path' => $versioned_path,
+                    'latest_path' => $latest_path,
+                ],
+            ],
+        ]));
+    $disk->shouldReceive('exists')
+        ->once()
+        ->with($versioned_path)
+        ->andReturn(true);
+    $disk->shouldReceive('exists')
+        ->once()
+        ->with($latest_path)
+        ->andReturn(true);
+    $disk->shouldReceive('readStream')
+        ->zeroOrMoreTimes()
+        ->andThrow(new RuntimeException('Current mirrored binaries must not be read during sync.'));
+    $disk->shouldReceive('put')
+        ->once()
+        ->withArgs(fn (string $path, mixed $contents): bool => is_string($contents)
+            && $path === 'clients/manifest.json'
+            && json_decode($contents, true)['assets']['custom-client']['versioned_path'] === $versioned_path)
+        ->andReturn(true);
+
+    Storage::shouldReceive('disk')
+        ->with('r2_downloads')
+        ->andReturn($disk);
+
+    $manifest = app(ClientDownloadMirrorService::class)->sync();
+
+    expect($manifest['assets']['custom-client']['versioned_path'])->toBe($versioned_path)
+        ->and($manifest['assets']['custom-client']['latest_path'])->toBe($latest_path);
+});
+
+test('sync rebuilds the latest object when the versioned asset exists', function () {
+    config()->set('services.client_downloads.disk', 'r2_downloads');
+    config()->set('services.client_downloads.prefix', 'clients');
+    config()->set('services.client_downloads.targets', [
+        'custom-client' => [
+            'repo' => 'example/project',
+            'label' => 'Custom Client',
+            'patterns' => ['/custom-release\.zip$/i'],
+            'latest_name' => 'custom-client.zip',
+        ],
+    ]);
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://api.github.com/repos/example/project/releases/latest' => Http::response([
+            'tag_name' => 'v1.2.3',
+            'assets' => [
+                [
+                    'name' => 'custom-release.zip',
+                    'browser_download_url' => 'https://downloads.example.com/custom-release.zip',
+                    'size' => 123,
+                ],
+            ],
+        ]),
+    ]);
+
+    $versioned_path = 'clients/custom-client/1.2.3/custom-release.zip';
+    $latest_path = 'clients/custom-client/custom-client.zip';
+    $stream = fopen('php://temp', 'w+b');
+    fwrite($stream, 'client-binary');
+    rewind($stream);
+
+    $disk = Mockery::mock(FilesystemAdapter::class);
+    $disk->shouldReceive('exists')
+        ->once()
+        ->with('clients/manifest.json')
+        ->andReturn(true);
+    $disk->shouldReceive('get')
+        ->once()
+        ->with('clients/manifest.json')
+        ->andReturn(json_encode([
+            'assets' => [
+                'custom-client' => [
+                    'versioned_path' => $versioned_path,
+                    'latest_path' => $latest_path,
+                ],
+            ],
+        ]));
+    $disk->shouldReceive('exists')
+        ->twice()
+        ->with($versioned_path)
+        ->andReturn(true);
+    $disk->shouldReceive('exists')
+        ->once()
+        ->with($latest_path)
+        ->andReturn(false);
+    $disk->shouldReceive('readStream')
+        ->once()
+        ->with($versioned_path)
+        ->andReturn($stream);
+    $disk->shouldReceive('put')
+        ->once()
+        ->withArgs(fn (string $path, mixed $contents, array $options): bool => $path === $latest_path
+            && is_resource($contents)
+            && $options === [
+                'visibility' => 'private',
+                'ContentType' => 'application/octet-stream',
+            ])
+        ->andReturn(true);
+    $disk->shouldReceive('put')
+        ->once()
+        ->withArgs(fn (string $path, mixed $contents): bool => is_string($contents)
+            && $path === 'clients/manifest.json')
+        ->andReturn(true);
+
+    Storage::shouldReceive('disk')
+        ->with('r2_downloads')
+        ->andReturn($disk);
+
+    app(ClientDownloadMirrorService::class)->sync();
+});
+
+test('sync downloads a release when the versioned asset is missing', function () {
+    config()->set('services.client_downloads.disk', 'r2_downloads');
+    config()->set('services.client_downloads.prefix', 'clients');
+    config()->set('services.client_downloads.targets', [
+        'custom-client' => [
+            'repo' => 'example/project',
+            'label' => 'Custom Client',
+            'patterns' => ['/custom-release\.zip$/i'],
+            'latest_name' => 'custom-client.zip',
+        ],
+    ]);
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://api.github.com/repos/example/project/releases/latest' => Http::response([
+            'tag_name' => 'v1.2.3',
+            'assets' => [
+                [
+                    'name' => 'custom-release.zip',
+                    'browser_download_url' => 'https://downloads.example.com/custom-release.zip',
+                    'size' => 123,
+                ],
+            ],
+        ]),
+        'https://downloads.example.com/custom-release.zip' => Http::response('client-binary'),
+    ]);
+
+    $versioned_path = 'clients/custom-client/1.2.3/custom-release.zip';
+    $latest_path = 'clients/custom-client/custom-client.zip';
+    $uploaded_paths = [];
+    $disk = Mockery::mock(FilesystemAdapter::class);
+    $disk->shouldReceive('exists')
+        ->once()
+        ->with('clients/manifest.json')
+        ->andReturn(false);
+    $disk->shouldReceive('exists')
+        ->once()
+        ->with($versioned_path)
+        ->andReturn(false);
+    $disk->shouldReceive('put')
+        ->twice()
+        ->withArgs(function (string $path, mixed $contents, array $options) use (&$uploaded_paths, $latest_path, $versioned_path): bool {
+            if (! is_resource($contents) || ! in_array($path, [$versioned_path, $latest_path], true)) {
+                return false;
+            }
+
+            $uploaded_paths[] = $path;
+
+            return $options === [
+                'visibility' => 'private',
+                'ContentType' => 'application/octet-stream',
+            ];
+        })
+        ->andReturn(true);
+    $disk->shouldReceive('put')
+        ->once()
+        ->withArgs(fn (string $path, mixed $contents): bool => is_string($contents)
+            && $path === 'clients/manifest.json')
+        ->andReturn(true);
+
+    Storage::shouldReceive('disk')
+        ->with('r2_downloads')
+        ->andReturn($disk);
+
+    app(ClientDownloadMirrorService::class)->sync();
+
+    expect($uploaded_paths)->toBe([$versioned_path, $latest_path]);
+    Http::assertSentCount(2);
+});
+
+test('dry run does not access the client download disk', function () {
+    config()->set('services.client_downloads.disk', 'r2_downloads');
+    config()->set('services.client_downloads.prefix', 'clients');
+    config()->set('services.client_downloads.targets', [
+        'custom-client' => [
+            'repo' => 'example/project',
+            'label' => 'Custom Client',
+            'patterns' => ['/custom-release\.zip$/i'],
+            'latest_name' => 'custom-client.zip',
+        ],
+    ]);
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://api.github.com/repos/example/project/releases/latest' => Http::response([
+            'tag_name' => 'v1.2.3',
+            'assets' => [
+                [
+                    'name' => 'custom-release.zip',
+                    'browser_download_url' => 'https://downloads.example.com/custom-release.zip',
+                    'size' => 123,
+                ],
+            ],
+        ]),
+    ]);
+
+    Storage::shouldReceive('disk')->never();
+
+    $manifest = app(ClientDownloadMirrorService::class)->sync(true);
+
+    expect($manifest['assets']['custom-client']['versioned_path'])
+        ->toBe('clients/custom-client/1.2.3/custom-release.zip');
+    Http::assertSentCount(1);
 });
 
 test('it generates temporary urls with the configured mirrored path and download headers', function () {

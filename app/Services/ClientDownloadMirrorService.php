@@ -16,6 +16,7 @@ class ClientDownloadMirrorService
     public function sync(bool $dry_run = false): array
     {
         $releases = [];
+        $mirrored_assets = $dry_run ? [] : $this->manifestAssets();
         $synced_assets = [];
 
         foreach ($this->targetsByRepository() as $repo => $targets) {
@@ -29,7 +30,8 @@ class ClientDownloadMirrorService
                     throw new RuntimeException('No matching asset found for '.$key.' in '.$repo.' '.$release['tag_name']);
                 }
 
-                $synced_assets[$key] = $this->syncAsset($key, $target, $release, $asset, $dry_run);
+                $mirrored_asset = is_array($mirrored_assets[$key] ?? null) ? $mirrored_assets[$key] : null;
+                $synced_assets[$key] = $this->syncAsset($key, $target, $release, $asset, $dry_run, $mirrored_asset);
             }
         }
 
@@ -154,52 +156,60 @@ class ClientDownloadMirrorService
         }
     }
 
-    private function syncAsset(string $key, array $target, array $release, array $asset, bool $dry_run): array
-    {
+    private function syncAsset(
+        string $key,
+        array $target,
+        array $release,
+        array $asset,
+        bool $dry_run,
+        ?array $mirrored_asset,
+    ): array {
         $asset_name = (string) $asset['name'];
         $version = ltrim((string) $release['tag_name'], 'v');
         $versioned_path = $this->path($key.'/'.$version.'/'.$asset_name);
         $latest_path = $this->path($key.'/'.$target['latest_name']);
         $digest = $this->normalizeSha256($asset['digest'] ?? null);
 
-        if (! $dry_run && ! $this->disk()->exists($versioned_path)) {
-            $temporary_path = $this->downloadAsset((string) $asset['browser_download_url']);
-            $actual_digest = hash_file('sha256', $temporary_path);
+        if (! $dry_run && ! $this->isCurrentMirror($mirrored_asset, $versioned_path, $latest_path)) {
+            if (! $this->disk()->exists($versioned_path)) {
+                $temporary_path = $this->downloadAsset((string) $asset['browser_download_url']);
+                $actual_digest = hash_file('sha256', $temporary_path);
 
-            if ($digest !== null && ! hash_equals($digest, $actual_digest)) {
-                @unlink($temporary_path);
+                if ($digest !== null && ! hash_equals($digest, $actual_digest)) {
+                    @unlink($temporary_path);
 
-                throw new RuntimeException('Checksum mismatch for '.$asset_name);
-            }
+                    throw new RuntimeException('Checksum mismatch for '.$asset_name);
+                }
 
-            $stream = fopen($temporary_path, 'rb');
-            if ($stream === false) {
-                @unlink($temporary_path);
+                $stream = fopen($temporary_path, 'rb');
+                if ($stream === false) {
+                    @unlink($temporary_path);
 
-                throw new RuntimeException('Unable to open downloaded asset: '.$temporary_path);
-            }
+                    throw new RuntimeException('Unable to open downloaded asset: '.$temporary_path);
+                }
 
-            try {
-                $this->disk()->put($versioned_path, $stream, $this->uploadOptions($asset_name));
-                rewind($stream);
+                try {
+                    $this->disk()->put($versioned_path, $stream, $this->uploadOptions($asset_name));
+                    rewind($stream);
+                    $this->disk()->put($latest_path, $stream, $this->uploadOptions($asset_name));
+                } finally {
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
+
+                    @unlink($temporary_path);
+                }
+            } else {
+                $stream = $this->disk()->readStream($versioned_path);
+                if ($stream === false) {
+                    throw new RuntimeException('Unable to read mirrored asset: '.$versioned_path);
+                }
+
                 $this->disk()->put($latest_path, $stream, $this->uploadOptions($asset_name));
-            } finally {
+
                 if (is_resource($stream)) {
                     fclose($stream);
                 }
-
-                @unlink($temporary_path);
-            }
-        } elseif (! $dry_run) {
-            $stream = $this->disk()->readStream($versioned_path);
-            if ($stream === false) {
-                throw new RuntimeException('Unable to read mirrored asset: '.$versioned_path);
-            }
-
-            $this->disk()->put($latest_path, $stream, $this->uploadOptions($asset_name));
-
-            if (is_resource($stream)) {
-                fclose($stream);
             }
         }
 
@@ -214,6 +224,14 @@ class ClientDownloadMirrorService
             'latest_path' => $latest_path,
             'source_url' => $asset['browser_download_url'] ?? null,
         ];
+    }
+
+    private function isCurrentMirror(?array $mirrored_asset, string $versioned_path, string $latest_path): bool
+    {
+        return ($mirrored_asset['versioned_path'] ?? null) === $versioned_path
+            && ($mirrored_asset['latest_path'] ?? null) === $latest_path
+            && $this->disk()->exists($versioned_path)
+            && $this->disk()->exists($latest_path);
     }
 
     private function fetchLatestRelease(string $repo): array
