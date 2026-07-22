@@ -44,3 +44,29 @@ test('inertia network interruptions are handled before they reach sentry', funct
         ->toContain('window.YAP_TRANSLATIONS?.common?.network_error')
         ->toContain('showToast(');
 });
+
+test('sentry receives runtime release and environment context', function () {
+    $view = file_get_contents(resource_path('views/app.blade.php'));
+    $bootstrap = file_get_contents(resource_path('js/bootstrap.js'));
+
+    expect($view)
+        ->toContain('name="sentry-environment"')
+        ->toContain('name="sentry-release"')
+        ->and($bootstrap)
+        ->toContain("document.querySelector('meta[name=\"sentry-environment\"]')")
+        ->toContain("document.querySelector('meta[name=\"sentry-release\"]')")
+        ->toContain('environment: sentryEnvironment')
+        ->toContain('release: sentryRelease');
+});
+
+test('production builds upload hidden source maps and remove local map files', function () {
+    $vite_config = file_get_contents(base_path('vite.config.js'));
+
+    expect($vite_config)
+        ->toContain("from '@sentry/vite-plugin'")
+        ->toContain("sourcemap: sentrySourceMapsEnabled ? 'hidden' : false")
+        ->toContain("assets: './public/build/**'")
+        ->toContain("filesToDeleteAfterUpload: './public/build/**/*.map'")
+        ->toContain('authToken: env.SENTRY_AUTH_TOKEN')
+        ->not->toContain('VITE_SENTRY_AUTH_TOKEN');
+});
