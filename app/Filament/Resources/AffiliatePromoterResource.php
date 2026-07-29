@@ -31,7 +31,7 @@ class AffiliatePromoterResource extends Resource
             ])
             ->components([
                 TextInput::make('user_id')->required()->numeric(),
-                TextInput::make('code')->required()->maxLength(255),
+                TextInput::make('code')->required()->maxLength(255)->disabled()->dehydrated(false),
                 Select::make('status')->required()->options([
                     AffiliatePromoter::STATUS_ACTIVE => 'Active',
                     AffiliatePromoter::STATUS_BLOCKED => 'Blocked',

@@ -51,5 +51,9 @@ class AppServiceProvider extends ServiceProvider
                 abort(429, 'Too many requests.');
             });
         });
+
+        RateLimiter::for('affiliate-code', function (Request $request) {
+            return Limit::perHour(5)->by($request->user()?->id ?: $request->ip());
+        });
     }
 }

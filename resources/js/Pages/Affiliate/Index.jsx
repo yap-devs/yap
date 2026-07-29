@@ -1,19 +1,43 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import {Head} from '@inertiajs/react';
+import {Head, router, useForm} from '@inertiajs/react';
 import {formatPrice} from '@/Utils/formatPrice';
 import {trans} from '@/Utils/i18n';
 import {useState} from 'react';
 
 export default function Index({auth, affiliate}) {
-  const [copied, setCopied] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(null);
+  const [actionCode, setActionCode] = useState(null);
+  const {data, setData, post, processing, errors, reset} = useForm({code: ''});
 
-  const copyLink = async () => {
-    await navigator.clipboard.writeText(affiliate.promoter.url);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1800);
+  const copyLink = async (url, code) => {
+    await navigator.clipboard.writeText(url);
+    setCopiedCode(code);
+    setTimeout(() => setCopiedCode(null), 1800);
+  };
+
+  const createCode = (event) => {
+    event.preventDefault();
+    post(route('affiliate.codes.store'), {
+      preserveScroll: true,
+      onSuccess: () => reset('code'),
+    });
+  };
+
+  const updateCode = (code, action) => {
+    if (action === 'disable' && !window.confirm(trans('affiliate.deactivate_code_confirm', {code: code.code}))) {
+      return;
+    }
+
+    setActionCode(code.id);
+    router.patch(route(`affiliate.codes.${action}`, code.id), {}, {
+      preserveScroll: true,
+      onFinish: () => setActionCode(null),
+    });
   };
 
   const rate = (affiliate.current_level.commission_rate * 100).toFixed(0);
+  const activeCodes = affiliate.codes.filter((code) => code.status === 'active');
+  const inactiveCodes = affiliate.codes.filter((code) => code.status === 'disabled');
 
   const prompt = (referral) => {
     return trans(`affiliate.prompts.${referral.prompt_key}`, {
@@ -22,6 +46,25 @@ export default function Index({auth, affiliate}) {
       date: referral.commission_expires_at || '-',
       days: affiliate.rules.pending_days,
     });
+  };
+
+  const codeAvailabilityMessage = () => {
+    if (affiliate.promoter.status !== 'active') {
+      return trans('affiliate.code_account_blocked');
+    }
+
+    if (affiliate.code_quota.creation_available_at) {
+      return trans('affiliate.code_cooldown_until', {date: affiliate.code_quota.creation_available_at});
+    }
+
+    if (affiliate.next_level) {
+      return trans('affiliate.code_unlock_next_level', {
+        level: affiliate.next_level.name,
+        maximum: affiliate.next_level.maximum_referral_codes,
+      });
+    }
+
+    return trans('affiliate.code_limit_reached');
   };
 
   return (
@@ -33,10 +76,10 @@ export default function Index({auth, affiliate}) {
 
       <div className="py-12">
         <div className="max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-6">
-          <div className="bg-gradient-to-br from-slate-900 via-indigo-900 to-slate-800 text-white shadow-sm sm:rounded-lg p-6">
-            <p className="text-sm uppercase tracking-wide text-indigo-200">{trans('affiliate.hero_label')}</p>
+          <div className="bg-gray-900 text-white shadow-sm sm:rounded-lg p-6">
+            <p className="text-sm uppercase tracking-wide text-emerald-300">{trans('affiliate.hero_label')}</p>
             <h3 className="mt-2 text-3xl font-bold">{trans('affiliate.hero_title')}</h3>
-            <p className="mt-3 max-w-3xl text-indigo-100">{trans('affiliate.hero_body')}</p>
+            <p className="mt-3 max-w-3xl text-gray-200">{trans('affiliate.hero_body')}</p>
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <input
                 readOnly
@@ -45,20 +88,90 @@ export default function Index({auth, affiliate}) {
               />
               <button
                 type="button"
-                onClick={copyLink}
-                className="rounded-lg bg-white px-5 py-3 font-semibold text-indigo-900 hover:bg-indigo-50"
+                onClick={() => copyLink(affiliate.promoter.url, 'system')}
+                className="rounded-lg bg-white px-5 py-3 font-semibold text-gray-900 hover:bg-gray-100"
               >
-                {copied ? trans('affiliate.copied') : trans('affiliate.copy_link')}
+                {copiedCode === 'system' ? trans('affiliate.copied') : trans('affiliate.copy_link')}
               </button>
             </div>
           </div>
 
-          <div className="grid gap-4 md:grid-cols-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
             <StatCard label={trans('affiliate.current_level')} value={affiliate.current_level.name}/>
             <StatCard label={trans('affiliate.current_rate')} value={`${rate}%`}/>
             <StatCard label={trans('affiliate.valid_referrals')} value={affiliate.stats.valid_referral_count}/>
             <StatCard label={trans('affiliate.pending_commission')} value={formatPrice(affiliate.stats.pending_commission)}/>
+            <StatCard
+              label={trans('affiliate.code_slots')}
+              value={`${affiliate.code_quota.active_count} / ${affiliate.code_quota.maximum}`}
+            />
           </div>
+
+          <section className="bg-white shadow-sm sm:rounded-lg">
+            <div className="flex flex-col gap-4 border-b border-gray-200 p-6 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">{trans('affiliate.referral_codes_title')}</h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  {trans('affiliate.referral_codes_quota', {
+                    active: affiliate.code_quota.active_count,
+                    maximum: affiliate.code_quota.maximum,
+                  })}
+                </p>
+              </div>
+
+              <form className="flex w-full flex-col gap-2 sm:flex-row lg:max-w-xl" onSubmit={createCode}>
+                <div className="min-w-0 flex-1">
+                  <label className="sr-only" htmlFor="referral-code">{trans('affiliate.custom_code')}</label>
+                  <input
+                    id="referral-code"
+                    type="text"
+                    value={data.code}
+                    onChange={(event) => setData('code', event.target.value.toLowerCase())}
+                    placeholder={trans('affiliate.code_placeholder')}
+                    disabled={!affiliate.code_quota.can_create || processing}
+                    className="w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-emerald-500 focus:ring-emerald-500 disabled:bg-gray-100"
+                  />
+                  {errors.code && <p className="mt-1 text-sm text-red-600">{errors.code}</p>}
+                </div>
+                <button
+                  type="submit"
+                  disabled={!affiliate.code_quota.can_create || processing}
+                  className="h-10 rounded-md bg-emerald-700 px-4 text-sm font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-gray-300"
+                >
+                  {trans('affiliate.create_code')}
+                </button>
+              </form>
+            </div>
+
+            {!affiliate.code_quota.can_create && (
+              <div className="border-b border-gray-200 bg-gray-50 px-6 py-3 text-sm text-gray-700">
+                {codeAvailabilityMessage()}
+              </div>
+            )}
+
+            <ReferralCodeList
+              codes={activeCodes}
+              copiedCode={copiedCode}
+              actionCode={actionCode}
+              onCopy={copyLink}
+              onUpdate={updateCode}
+            />
+
+            {inactiveCodes.length > 0 && (
+              <details className="border-t border-gray-200">
+                <summary className="cursor-pointer px-6 py-4 text-sm font-semibold text-gray-700 hover:bg-gray-50">
+                  {trans('affiliate.inactive_codes', {count: inactiveCodes.length})}
+                </summary>
+                <ReferralCodeList
+                  codes={inactiveCodes}
+                  copiedCode={copiedCode}
+                  actionCode={actionCode}
+                  onCopy={copyLink}
+                  onUpdate={updateCode}
+                />
+              </details>
+            )}
+          </section>
 
           {affiliate.next_level && (
             <div className="bg-white shadow-sm sm:rounded-lg p-6">
@@ -101,6 +214,7 @@ export default function Index({auth, affiliate}) {
                     <th className="py-2">{trans('affiliate.level')}</th>
                     <th className="py-2">{trans('affiliate.requirement')}</th>
                     <th className="py-2">{trans('affiliate.rate')}</th>
+                    <th className="py-2">{trans('affiliate.code_slots')}</th>
                   </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -114,6 +228,7 @@ export default function Index({auth, affiliate}) {
                         })}
                       </td>
                       <td className="py-2 text-gray-700">{(level.commission_rate * 100).toFixed(0)}%</td>
+                      <td className="py-2 text-gray-700">{level.maximum_referral_codes}</td>
                     </tr>
                   ))}
                   </tbody>
@@ -162,6 +277,70 @@ export default function Index({auth, affiliate}) {
   );
 }
 
+function ReferralCodeList({codes, copiedCode, actionCode, onCopy, onUpdate}) {
+  return (
+    <div className="divide-y divide-gray-100">
+      {codes.map((code) => (
+        <div key={code.id} className="p-6">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+            <div className="min-w-0 flex-1">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="break-all font-mono text-base font-semibold text-gray-900">{code.code}</span>
+                <span className={`rounded px-2 py-0.5 text-xs font-medium ${code.type === 'system' ? 'bg-gray-900 text-white' : 'bg-emerald-100 text-emerald-800'}`}>
+                  {trans(code.type === 'system' ? 'affiliate.default_code' : 'affiliate.custom_code')}
+                </span>
+                <span className={`rounded px-2 py-0.5 text-xs font-medium ${code.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                  {trans(`affiliate.code_status.${code.status}`)}
+                </span>
+              </div>
+              <div className="mt-3 flex min-w-0 flex-col gap-2 sm:flex-row">
+                <input
+                  readOnly
+                  value={code.url}
+                  className="min-w-0 flex-1 rounded-md border-gray-300 bg-gray-50 text-sm text-gray-700"
+                />
+                <button
+                  type="button"
+                  onClick={() => onCopy(code.url, code.id)}
+                  className="h-10 rounded-md border border-gray-300 bg-white px-4 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  {copiedCode === code.id ? trans('affiliate.copied') : trans('affiliate.copy_link')}
+                </button>
+                {code.type === 'custom' && (
+                  <button
+                    type="button"
+                    onClick={() => onUpdate(code, code.status === 'active' ? 'disable' : 'enable')}
+                    disabled={actionCode === code.id}
+                    className={`h-10 rounded-md px-4 text-sm font-semibold disabled:cursor-wait disabled:opacity-50 ${code.status === 'active' ? 'border border-red-200 bg-white text-red-700 hover:bg-red-50' : 'bg-gray-900 text-white hover:bg-gray-800'}`}
+                  >
+                    {trans(code.status === 'active' ? 'affiliate.deactivate_code' : 'affiliate.reactivate_code')}
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <dl className="grid grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4 xl:w-auto xl:min-w-[32rem]">
+              <CodeStat label={trans('affiliate.registrations')} value={code.registration_count}/>
+              <CodeStat label={trans('affiliate.valid_referrals')} value={code.valid_referral_count}/>
+              <CodeStat label={trans('affiliate.pending_commission')} value={formatPrice(code.pending_commission)}/>
+              <CodeStat label={trans('affiliate.credited_commission')} value={formatPrice(code.credited_commission)}/>
+            </dl>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CodeStat({label, value}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs text-gray-500">{label}</dt>
+      <dd className="mt-1 truncate text-sm font-semibold text-gray-900">{value}</dd>
+    </div>
+  );
+}
+
 function StatCard({label, value}) {
   return (
     <div className="bg-white shadow-sm sm:rounded-lg p-5">
@@ -176,7 +355,7 @@ function ProgressItem({label, current, target, remaining}) {
     <div className="rounded-lg border border-gray-200 p-4">
       <p className="font-medium text-gray-900">{label}</p>
       <p className="mt-2 text-sm text-gray-600">{trans('affiliate.progress_current', {current, target})}</p>
-      <p className="mt-1 text-sm text-indigo-600">{trans('affiliate.progress_remaining', {remaining})}</p>
+      <p className="mt-1 text-sm text-emerald-700">{trans('affiliate.progress_remaining', {remaining})}</p>
     </div>
   );
 }

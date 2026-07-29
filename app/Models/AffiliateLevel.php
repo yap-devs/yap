@@ -20,7 +20,12 @@ class AffiliateLevel extends Model
         'minimum_self_paid_amount',
         'minimum_valid_referrals',
         'commission_rate',
+        'maximum_referral_codes',
         'status',
+    ];
+
+    protected $attributes = [
+        'maximum_referral_codes' => 1,
     ];
 
     protected function casts(): array
@@ -28,6 +33,7 @@ class AffiliateLevel extends Model
         return [
             'minimum_self_paid_amount' => 'decimal:2',
             'commission_rate' => 'decimal:4',
+            'maximum_referral_codes' => 'integer',
         ];
     }
 }

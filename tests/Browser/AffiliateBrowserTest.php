@@ -15,6 +15,7 @@ test('affiliate page renders invite dashboard in a browser', function () {
         ->assertSee('Affiliate')
         ->assertSee('Invite friends')
         ->assertSee('Current Level')
+        ->assertSee('Referral Codes')
         ->assertSee('Copy Link')
         ->assertNoJavaScriptErrors();
 });

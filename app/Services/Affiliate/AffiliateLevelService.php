@@ -52,6 +52,7 @@ class AffiliateLevelService
             'minimum_self_paid_amount' => 0,
             'minimum_valid_referrals' => 0,
             'commission_rate' => 0,
+            'maximum_referral_codes' => 1,
             'status' => AffiliateLevel::STATUS_ACTIVE,
         ]);
     }

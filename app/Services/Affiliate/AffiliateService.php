@@ -6,9 +6,11 @@ use App\Jobs\GenerateClashProfileLink;
 use App\Models\AffiliateCommission;
 use App\Models\AffiliatePromoter;
 use App\Models\AffiliateReferral;
+use App\Models\AffiliateReferralCode;
 use App\Models\Payment;
 use App\Models\User;
 use App\Models\UserPackage;
+use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\DB;
@@ -18,27 +20,42 @@ class AffiliateService
 {
     public const COOKIE_NAME = 'affiliate_ref';
 
-    public function __construct(private readonly AffiliateLevelService $levelService) {}
+    public function __construct(
+        private readonly AffiliateLevelService $levelService,
+        private readonly AffiliateReferralCodeService $referralCodeService,
+    ) {}
 
     public function ensurePromoter(User $user): AffiliatePromoter
     {
-        return DB::transaction(function () use ($user): AffiliatePromoter {
-            User::query()->where('id', $user->id)->lockForUpdate()->first();
+        for ($attempt = 0; $attempt < 5; $attempt++) {
+            try {
+                return DB::transaction(function () use ($user): AffiliatePromoter {
+                    User::query()->where('id', $user->id)->lockForUpdate()->first();
 
-            $promoter = AffiliatePromoter::query()
-                ->where('user_id', $user->id)
-                ->first();
+                    $promoter = AffiliatePromoter::query()
+                        ->where('user_id', $user->id)
+                        ->first();
 
-            if ($promoter) {
-                return $promoter;
+                    if (! $promoter) {
+                        $promoter = AffiliatePromoter::create([
+                            'user_id' => $user->id,
+                            'code' => $this->generateCode(),
+                            'status' => AffiliatePromoter::STATUS_ACTIVE,
+                        ]);
+                    }
+
+                    $this->referralCodeService->ensurePrimaryCode($promoter);
+
+                    return $promoter;
+                });
+            } catch (UniqueConstraintViolationException $exception) {
+                if ($attempt === 4) {
+                    throw $exception;
+                }
             }
+        }
 
-            return AffiliatePromoter::create([
-                'user_id' => $user->id,
-                'code' => $this->generateCode($user),
-                'status' => AffiliatePromoter::STATUS_ACTIVE,
-            ]);
-        });
+        throw new \RuntimeException('Unable to create a unique affiliate promoter code.');
     }
 
     public function captureReferral(Request $request): void
@@ -47,15 +64,19 @@ class AffiliateService
             return;
         }
 
-        $code = $request->query('ref');
-        if (! is_string($code) || $code === '') {
+        $code = $this->normalizeCode($request->query('ref'));
+        if (! $code) {
             return;
         }
 
-        $promoter = AffiliatePromoter::query()
+        $referral_code = AffiliateReferralCode::query()
             ->where('code', $code)
-            ->where('status', AffiliatePromoter::STATUS_ACTIVE)
+            ->where('status', AffiliateReferralCode::STATUS_ACTIVE)
             ->first();
+        $promoter = $referral_code ? AffiliatePromoter::query()
+            ->where('id', $referral_code->promoter_id)
+            ->where('status', AffiliatePromoter::STATUS_ACTIVE)
+            ->first() : null;
 
         if (! $promoter) {
             return;
@@ -84,8 +105,8 @@ class AffiliateService
             return;
         }
 
-        $code = $request->cookie(self::COOKIE_NAME);
-        if (! is_string($code) || $code === '') {
+        $code = $this->normalizeCode($request->cookie(self::COOKIE_NAME));
+        if (! $code) {
             return;
         }
 
@@ -94,11 +115,16 @@ class AffiliateService
                 return;
             }
 
-            $promoter = AffiliatePromoter::query()
+            $referral_code = AffiliateReferralCode::query()
                 ->where('code', $code)
-                ->where('status', AffiliatePromoter::STATUS_ACTIVE)
+                ->where('status', AffiliateReferralCode::STATUS_ACTIVE)
                 ->lockForUpdate()
                 ->first();
+            $promoter = $referral_code ? AffiliatePromoter::query()
+                ->where('id', $referral_code->promoter_id)
+                ->where('status', AffiliatePromoter::STATUS_ACTIVE)
+                ->lockForUpdate()
+                ->first() : null;
 
             if (! $promoter || (int) $promoter->user_id === (int) $user->id) {
                 return;
@@ -304,13 +330,25 @@ class AffiliateService
             && (float) $payment->amount >= (float) config('affiliate.minimum_referred_first_payment_amount');
     }
 
-    private function generateCode(User $user): string
+    private function generateCode(): string
     {
         do {
             $code = Str::lower(Str::random(8));
-        } while (AffiliatePromoter::query()->where('code', $code)->exists());
+        } while (
+            AffiliatePromoter::query()->where('code', $code)->exists()
+            || AffiliateReferralCode::query()->where('code', $code)->exists()
+        );
 
         return $code;
+    }
+
+    private function normalizeCode(mixed $value): ?string
+    {
+        if (! is_string($value) || trim($value) === '') {
+            return null;
+        }
+
+        return Str::lower(trim($value));
     }
 
     private function hashNullable(?string $value): ?string

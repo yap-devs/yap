@@ -40,6 +40,7 @@ class AffiliateLevelResource extends Resource
                 TextInput::make('minimum_self_paid_amount')->required()->numeric()->prefix('$'),
                 TextInput::make('minimum_valid_referrals')->required()->numeric(),
                 TextInput::make('commission_rate')->required()->numeric()->helperText('0.10 means 10%'),
+                TextInput::make('maximum_referral_codes')->required()->numeric()->minValue(1),
                 Select::make('status')->required()->options([
                     AffiliateLevel::STATUS_ACTIVE => 'Active',
                     AffiliateLevel::STATUS_DISABLED => 'Disabled',
@@ -56,6 +57,7 @@ class AffiliateLevelResource extends Resource
                 TextColumn::make('minimum_self_paid_amount')->money()->sortable(),
                 TextColumn::make('minimum_valid_referrals')->numeric()->sortable(),
                 TextColumn::make('commission_rate')->formatStateUsing(fn ($state): string => ((float) $state * 100).'%'),
+                TextColumn::make('maximum_referral_codes')->numeric()->sortable(),
                 TextColumn::make('status')->badge(),
                 TextColumn::make('created_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),

@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AffiliateController;
+use App\Http\Controllers\AffiliateReferralCodeController;
 use App\Http\Controllers\AiController;
 use App\Http\Controllers\AlipayController;
 use App\Http\Controllers\BalanceDetailController;
@@ -124,6 +125,13 @@ Route::group(['prefix' => 'package', 'middleware' => ['auth']], function () {
 
 Route::group(['prefix' => 'affiliate', 'middleware' => ['auth']], function () {
     Route::get('/', [AffiliateController::class, 'index'])->name('affiliate');
+    Route::post('/codes', [AffiliateReferralCodeController::class, 'store'])
+        ->middleware('throttle:affiliate-code')
+        ->name('affiliate.codes.store');
+    Route::patch('/codes/{affiliate_referral_code}/disable', [AffiliateReferralCodeController::class, 'disable'])
+        ->name('affiliate.codes.disable');
+    Route::patch('/codes/{affiliate_referral_code}/enable', [AffiliateReferralCodeController::class, 'enable'])
+        ->name('affiliate.codes.enable');
 });
 
 Route::group(['prefix' => 'bepusdt', 'middleware' => ['auth']], function () {

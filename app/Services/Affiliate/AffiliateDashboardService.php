@@ -4,6 +4,7 @@ namespace App\Services\Affiliate;
 
 use App\Models\AffiliateCommission;
 use App\Models\AffiliateReferral;
+use App\Models\AffiliateReferralCode;
 use App\Models\User;
 use Illuminate\Support\Facades\URL;
 
@@ -11,6 +12,7 @@ class AffiliateDashboardService
 {
     public function __construct(
         private readonly AffiliateLevelService $levelService,
+        private readonly AffiliateReferralCodeService $referralCodeService,
         private readonly AffiliateService $affiliateService,
     ) {}
 
@@ -21,6 +23,31 @@ class AffiliateDashboardService
         $next_level = $this->levelService->nextLevel($user);
         $self_paid_total = $this->levelService->selfPaidTotal($user);
         $valid_referral_count = $this->levelService->validReferralCount($user);
+        $code_quota = $this->referralCodeService->quota($promoter, $user);
+
+        $codes = $promoter->referralCodes()
+            ->withCount([
+                'referrals as registration_count',
+                'referrals as valid_referral_count' => fn ($query) => $query
+                    ->whereIn('status', [
+                        AffiliateReferral::STATUS_QUALIFIED,
+                        AffiliateReferral::STATUS_EARNING,
+                        AffiliateReferral::STATUS_EXPIRED,
+                    ])
+                    ->whereNotNull('qualified_at'),
+            ])
+            ->withSum([
+                'commissions as pending_commission' => fn ($query) => $query
+                    ->where('affiliate_commissions.status', AffiliateCommission::STATUS_PENDING),
+            ], 'amount')
+            ->withSum([
+                'commissions as credited_commission' => fn ($query) => $query
+                    ->where('affiliate_commissions.status', AffiliateCommission::STATUS_CREDITED),
+            ], 'amount')
+            ->orderByDesc('type')
+            ->orderBy('created_at')
+            ->get()
+            ->map(fn (AffiliateReferralCode $referral_code): array => $this->formatCode($referral_code));
 
         $referrals = $promoter->referrals()
             ->with(['referred:id,name,email,github_nickname', 'commissions'])
@@ -55,10 +82,16 @@ class AffiliateDashboardService
                 'pending_commission' => number_format((float) $promoter->commissions()->where('status', AffiliateCommission::STATUS_PENDING)->sum('amount'), 2, '.', ''),
                 'credited_commission' => number_format((float) $promoter->commissions()->where('status', AffiliateCommission::STATUS_CREDITED)->sum('amount'), 2, '.', ''),
             ],
+            'codes' => $codes,
+            'code_quota' => [
+                ...$code_quota,
+                'can_create' => $promoter->status === $promoter::STATUS_ACTIVE && $code_quota['available_count'] > 0,
+            ],
             'current_level' => [
                 'level' => $current_level->level,
                 'name' => $current_level->name,
                 'commission_rate' => (float) ($promoter->custom_commission_rate ?? $current_level->commission_rate),
+                'maximum_referral_codes' => (int) $current_level->maximum_referral_codes,
             ],
             'next_level' => $next_level ? [
                 'level' => $next_level->level,
@@ -68,6 +101,7 @@ class AffiliateDashboardService
                 'remaining_self_paid_amount' => number_format(max((float) $next_level->minimum_self_paid_amount - $self_paid_total, 0), 2, '.', ''),
                 'remaining_valid_referrals' => max($next_level->minimum_valid_referrals - $valid_referral_count, 0),
                 'commission_rate' => (float) $next_level->commission_rate,
+                'maximum_referral_codes' => (int) $next_level->maximum_referral_codes,
             ] : null,
             'levels' => $this->levelService->levels()->map(fn ($level): array => [
                 'level' => $level->level,
@@ -75,6 +109,7 @@ class AffiliateDashboardService
                 'minimum_self_paid_amount' => (string) $level->minimum_self_paid_amount,
                 'minimum_valid_referrals' => $level->minimum_valid_referrals,
                 'commission_rate' => (float) $level->commission_rate,
+                'maximum_referral_codes' => (int) $level->maximum_referral_codes,
             ]),
             'referrals' => $referrals,
             'commissions' => $commissions,
@@ -83,7 +118,27 @@ class AffiliateDashboardService
                 'minimum_referred_first_payment_amount' => number_format((float) config('affiliate.minimum_referred_first_payment_amount'), 2, '.', ''),
                 'pending_days' => (int) config('affiliate.pending_days'),
                 'commission_expires_days' => (int) config('affiliate.commission_expires_days'),
+                'referral_code_cooldown_hours' => (int) config('affiliate.referral_code_cooldown_hours'),
             ],
+        ];
+    }
+
+    private function formatCode(AffiliateReferralCode $referral_code): array
+    {
+        return [
+            'id' => $referral_code->id,
+            'code' => $referral_code->code,
+            'type' => $referral_code->type,
+            'status' => $referral_code->status,
+            'url' => URL::to('/?ref='.$referral_code->code),
+            'registration_count' => $referral_code->registration_count,
+            'valid_referral_count' => $referral_code->valid_referral_count,
+            'pending_commission' => number_format((float) $referral_code->pending_commission, 2, '.', ''),
+            'credited_commission' => number_format((float) $referral_code->credited_commission, 2, '.', ''),
+            'disabled_at' => $referral_code->disabled_at?->toDateTimeString(),
+            'cooldown_until' => $referral_code->disabled_at
+                ? $referral_code->disabled_at->copy()->addHours((int) config('affiliate.referral_code_cooldown_hours'))->toDateTimeString()
+                : null,
         ];
     }
 

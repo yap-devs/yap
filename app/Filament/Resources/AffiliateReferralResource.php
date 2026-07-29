@@ -34,7 +34,7 @@ class AffiliateReferralResource extends Resource
                 TextInput::make('promoter_id')->required()->numeric(),
                 TextInput::make('referrer_user_id')->required()->numeric(),
                 TextInput::make('referred_user_id')->required()->numeric(),
-                TextInput::make('code')->required()->maxLength(255),
+                TextInput::make('code')->required()->maxLength(255)->disabled()->dehydrated(false),
                 Select::make('status')->required()->options([
                     AffiliateReferral::STATUS_REGISTERED => 'Registered',
                     AffiliateReferral::STATUS_QUALIFIED => 'Qualified',

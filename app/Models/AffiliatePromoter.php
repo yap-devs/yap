@@ -42,6 +42,11 @@ class AffiliatePromoter extends Model
         return $this->hasMany(AffiliateReferral::class, 'promoter_id');
     }
 
+    public function referralCodes()
+    {
+        return $this->hasMany(AffiliateReferralCode::class, 'promoter_id');
+    }
+
     public function commissions()
     {
         return $this->hasMany(AffiliateCommission::class, 'promoter_id');

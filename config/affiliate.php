@@ -18,4 +18,16 @@ return [
     'pending_days' => env('AFFILIATE_PENDING_DAYS', 7),
 
     'commission_expires_days' => env('AFFILIATE_COMMISSION_EXPIRES_DAYS', 90),
+
+    'referral_code_cooldown_hours' => 24,
+
+    'reserved_referral_codes' => [
+        'admin',
+        'affiliate',
+        'api',
+        'login',
+        'official',
+        'register',
+        'support',
+    ],
 ];

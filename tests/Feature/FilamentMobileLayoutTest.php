@@ -3,6 +3,7 @@
 use App\Filament\Resources\AffiliateCommissionResource;
 use App\Filament\Resources\AffiliateLevelResource;
 use App\Filament\Resources\AffiliatePromoterResource;
+use App\Filament\Resources\AffiliateReferralCodes\AffiliateReferralCodeResource;
 use App\Filament\Resources\AffiliateReferralResource;
 use App\Filament\Resources\RelayServerResource;
 use App\Filament\Resources\UserResource;
@@ -51,6 +52,7 @@ test('resource table is stacked on mobile for :dataset', function (string $resou
     'vmess servers' => [VmessServerResource::class],
     'relay servers' => [RelayServerResource::class],
     'affiliate promoters' => [AffiliatePromoterResource::class],
+    'affiliate referral codes' => [AffiliateReferralCodeResource::class],
     'affiliate referrals' => [AffiliateReferralResource::class],
     'affiliate commissions' => [AffiliateCommissionResource::class],
     'affiliate levels' => [AffiliateLevelResource::class],
