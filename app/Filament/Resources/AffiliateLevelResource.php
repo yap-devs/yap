@@ -40,7 +40,12 @@ class AffiliateLevelResource extends Resource
                 TextInput::make('minimum_self_paid_amount')->required()->numeric()->prefix('$'),
                 TextInput::make('minimum_valid_referrals')->required()->numeric(),
                 TextInput::make('commission_rate')->required()->numeric()->helperText('0.10 means 10%'),
-                TextInput::make('maximum_referral_codes')->required()->numeric()->minValue(1),
+                TextInput::make('maximum_referral_codes')
+                    ->label('Referral code limit')
+                    ->helperText('Includes the permanent system code.')
+                    ->required()
+                    ->numeric()
+                    ->minValue(1),
                 Select::make('status')->required()->options([
                     AffiliateLevel::STATUS_ACTIVE => 'Active',
                     AffiliateLevel::STATUS_DISABLED => 'Disabled',
