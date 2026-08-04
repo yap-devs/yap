@@ -30,6 +30,14 @@ function validV2rayConfig(): string
     ], JSON_THROW_ON_ERROR);
 }
 
+test('invalid server addresses are rejected before creating ssh commands', function (string $server, string $message) {
+    expect(fn () => new V2rayService($server))
+        ->toThrow(UnexpectedValueException::class, $message);
+})->with([
+    'shell payload in hostname' => ['node.example.com;id', 'Invalid V2ray server host.'],
+    'invalid port' => ['node.example.com:70000', 'Invalid V2ray server port.'],
+]);
+
 test('user payload is uploaded as json and never appears in remote commands', function () {
     $payload = "attacker@example.com'; touch /tmp/injected; #";
     $commands = [];

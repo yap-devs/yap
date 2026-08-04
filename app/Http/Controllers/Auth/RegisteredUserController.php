@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Rules\SafeEmail;
 use App\Services\Affiliate\AffiliateService;
 use App\Services\TurnstileService;
 use Illuminate\Auth\Events\Registered;
@@ -12,6 +13,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -42,7 +44,15 @@ class RegisteredUserController extends Controller
     ): RedirectResponse {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+            'email' => [
+                'required',
+                'string',
+                'lowercase',
+                'max:255',
+                Rule::email()->rfcCompliant(strict: true),
+                new SafeEmail,
+                Rule::unique(User::class),
+            ],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'cf-turnstile-response' => ['required', 'string', 'max:2048'],
         ]);

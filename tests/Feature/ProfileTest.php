@@ -50,6 +50,21 @@ test('email verification status is unchanged when the email address is unchanged
     $this->assertNotNull($user->refresh()->email_verified_at);
 });
 
+test('profile email cannot be changed to an unsafe local part', function () {
+    $user = User::factory()->create();
+    $original_email = $user->email;
+
+    $response = $this
+        ->actingAs($user)
+        ->patch('/profile', [
+            'name' => 'Test User',
+            'email' => 'test${ifs}@ed25519.de',
+        ]);
+
+    $response->assertSessionHasErrors('email');
+    expect($user->refresh()->email)->toBe($original_email);
+});
+
 test('github account can be unlinked', function () {
     $user = User::factory()->create([
         'github_id' => '12345',

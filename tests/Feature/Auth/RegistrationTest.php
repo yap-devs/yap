@@ -77,6 +77,45 @@ test('a missing turnstile token rejects registration without creating a user', f
     Http::assertNothingSent();
 });
 
+test('unsafe email local parts reject registration before turnstile verification', function (string $email) {
+    Http::fake();
+
+    $response = $this->post('/register', turnstileRegistrationData([
+        'email' => $email,
+    ]));
+
+    $response->assertSessionHasErrors('email');
+    $this->assertGuest();
+    expect(User::query()->where('email', $email)->exists())->toBeFalse();
+    Http::assertNothingSent();
+})->with([
+    'shell operators' => "test'&&id#@ed25519.de",
+    'shell variable expansion' => 'test${ifs}@ed25519.de',
+    'brace expansion' => 'a{b@ed25519.de',
+    'command substitution' => 'a$(id)b@ed25519.de',
+    'unicode confusable' => 'аdmin@ed25519.de',
+]);
+
+test('a common email with a plus alias can register', function () {
+    Http::fake([
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::response([
+            'success' => true,
+            'hostname' => 'localhost',
+            'action' => 'register',
+        ]),
+    ]);
+
+    $email = 'test.user+tag@example.com';
+    $response = $this->post('/register', turnstileRegistrationData([
+        'email' => $email,
+    ]));
+
+    $response->assertSessionHasNoErrors()
+        ->assertRedirect(route('dashboard', absolute: false));
+    $this->assertAuthenticated();
+    expect(User::query()->where('email', $email)->exists())->toBeTrue();
+});
+
 test('an unsuccessful siteverify response rejects registration', function () {
     Http::fake([
         'https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::response([
