@@ -9,8 +9,25 @@ use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Psr\Log\LoggerInterface;
 
 test('a failed node does not stop later nodes and the job throws a summary', function () {
+    $job_logger = Mockery::mock(LoggerInterface::class);
+    $job_logger->shouldReceive('error')->once()->with(
+        '[GenerateClashProfileLink] Failed to update a V2ray server.',
+        Mockery::on(fn (array $context): bool => $context['servers'] === [[
+            'id' => 11,
+            'name' => 'First node',
+        ], [
+            'id' => 13,
+            'name' => 'First node relay',
+        ]]
+            && $context['exception'] instanceof RuntimeException
+            && $context['exception']->getMessage() === 'node failure'),
+    );
+    Log::shouldReceive('driver')->once()->with('job')->andReturn($job_logger);
+
     $first_service = Mockery::mock(V2rayService::class);
     $first_service->shouldReceive('addOrRemoveUsers')->once()->andThrow(new RuntimeException('node failure'));
 
@@ -34,16 +51,32 @@ test('a failed node does not stop later nodes and the job throws a summary', fun
         'uuid' => 'second-user-id',
         'email' => 'second@example.com',
     ]);
-    $first_server = new VmessServer(['internal_server' => 'first.example.com']);
-    $second_server = new VmessServer(['internal_server' => 'second.example.com']);
+    $first_server = new VmessServer([
+        'id' => 11,
+        'name' => 'First node',
+        'internal_server' => 'first.example.com',
+    ]);
+    $second_server = new VmessServer([
+        'id' => 12,
+        'name' => 'Second node',
+        'internal_server' => 'second.example.com',
+    ]);
+    $first_server_relay = new VmessServer([
+        'id' => 13,
+        'name' => 'First node relay',
+        'internal_server' => 'first.example.com',
+    ]);
     $job = new GenerateClashProfileLink;
     $method = new ReflectionMethod($job, 'processV2Ray');
 
     expect(fn () => $method->invoke($job, [
         [$first_user, [$first_server]],
         [$second_user, [$second_server]],
-    ], new Collection([$first_server, $second_server])))
-        ->toThrow(RuntimeException::class, 'Failed to update 1 V2ray server(s)');
+    ], new Collection([$first_server, $first_server_relay, $second_server])))
+        ->toThrow(
+            RuntimeException::class,
+            'Failed to update 1 V2ray server(s): First node (id=11), First node relay (id=13): node failure.',
+        );
 });
 
 test('all provided nodes are synchronized and stable user labels are used for statistics', function () {

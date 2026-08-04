@@ -5,6 +5,7 @@ namespace App\Services;
 use JsonException;
 use RuntimeException;
 use Spatie\Ssh\Ssh;
+use stdClass;
 use Symfony\Component\Process\Process;
 use Throwable;
 use UnexpectedValueException;
@@ -37,7 +38,10 @@ class V2rayService
         $current_config_json = $read_process->getOutput();
         $current_config = $this->decodeConfig($current_config_json);
 
-        $current_users = $current_config['inbounds'][0]['settings']['clients'] ?? [];
+        $current_users = array_map(
+            fn (mixed $user): mixed => is_object($user) ? get_object_vars($user) : $user,
+            $current_config->inbounds[0]->settings->clients ?? [],
+        );
         if ($current_users === $users) {
             logger()->driver('job')->info('[V2rayService] V2ray users are already current.', [
                 'server' => $this->internal_server,
@@ -46,7 +50,7 @@ class V2rayService
             return;
         }
 
-        $current_config['inbounds'][0]['settings']['clients'] = $users;
+        $current_config->inbounds[0]->settings->clients = $users;
         $encoded_config = json_encode($current_config, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
         $deployment_id = bin2hex(random_bytes(16));
         $remote_temp_path = "/tmp/yap-v2ray-$deployment_id.json";
@@ -148,20 +152,22 @@ class V2rayService
         return [$host, $port];
     }
 
-    private function decodeConfig(string $config): array
+    private function decodeConfig(string $config): stdClass
     {
         try {
-            $decoded_config = json_decode($config, true, 512, JSON_THROW_ON_ERROR);
+            $decoded_config = json_decode($config, false, 512, JSON_THROW_ON_ERROR);
         } catch (JsonException $exception) {
             throw new UnexpectedValueException('The current V2ray configuration is not valid JSON.', previous: $exception);
         }
 
-        throw_if(! is_array($decoded_config), UnexpectedValueException::class, 'The current V2ray configuration has an invalid structure.');
+        throw_if(! $decoded_config instanceof stdClass, UnexpectedValueException::class, 'The current V2ray configuration has an invalid structure.');
 
-        $settings = $decoded_config['inbounds'][0]['settings'] ?? null;
-        $clients = is_array($settings) ? ($settings['clients'] ?? []) : null;
+        $inbounds = $decoded_config->inbounds ?? null;
+        $first_inbound = is_array($inbounds) ? ($inbounds[0] ?? null) : null;
+        $settings = $first_inbound instanceof stdClass ? ($first_inbound->settings ?? null) : null;
+        $clients = $settings instanceof stdClass ? ($settings->clients ?? []) : null;
 
-        throw_if(! is_array($settings), UnexpectedValueException::class, 'The current V2ray configuration is missing inbound settings.');
+        throw_if(! $settings instanceof stdClass, UnexpectedValueException::class, 'The current V2ray configuration is missing inbound settings.');
         throw_if(! is_array($clients), UnexpectedValueException::class, 'The current V2ray configuration has invalid clients.');
 
         return $decoded_config;
@@ -219,7 +225,7 @@ class V2rayService
             default => 'V2ray configuration deployment failed.',
         };
 
-        throw new RuntimeException($message);
+        throw new RuntimeException("$message (exit code {$process->getExitCode()}).");
     }
 
     private function assertProcessSucceeded(Process $process, string $operation): void

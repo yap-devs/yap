@@ -27,6 +27,15 @@ function validV2rayConfig(): string
             ],
         ]],
         'outbounds' => [],
+        'policy' => [
+            'levels' => (object) [
+                '0' => [
+                    'statsUserDownlink' => true,
+                    'statsUserUplink' => true,
+                ],
+            ],
+        ],
+        'stats' => (object) [],
     ], JSON_THROW_ON_ERROR);
 }
 
@@ -66,16 +75,31 @@ test('user payload is uploaded as json and never appears in remote commands', fu
         'email' => $payload,
     ]]);
 
-    $decoded_config = json_decode($uploaded_config, true, 512, JSON_THROW_ON_ERROR);
+    $decoded_config = json_decode($uploaded_config, false, 512, JSON_THROW_ON_ERROR);
     $all_commands = implode("\n", $commands);
 
-    expect($decoded_config['inbounds'][0]['settings']['clients'][0]['email'])->toBe($payload)
+    expect($decoded_config->inbounds[0]->settings->clients[0]->email)->toBe($payload)
+        ->and($decoded_config->policy->levels)->toBeInstanceOf(stdClass::class)
+        ->and($decoded_config->policy->levels->{'0'}->statsUserUplink)->toBeTrue()
+        ->and($decoded_config->stats)->toBeInstanceOf(stdClass::class)
         ->and($uploaded_destination)->toMatch('#^/tmp/yap-v2ray-[a-f0-9]{32}\.json$#')
         ->and($all_commands)->not->toContain($payload)
         ->and($all_commands)->toContain('flock -w 30')
         ->and($all_commands)->toContain('/usr/local/bin/v2ray test -config')
         ->and($all_commands)->toContain('systemctl is-active --quiet v2ray')
         ->and($all_commands)->toContain('mv -f');
+});
+
+test('current users are compared without rewriting an unchanged configuration', function () {
+    $ssh = Mockery::mock(Ssh::class);
+    $ssh->shouldReceive('execute')->once()->with('cat /usr/local/etc/v2ray/config.json')
+        ->andReturn(v2rayProcess(true, validV2rayConfig()));
+    $ssh->shouldNotReceive('upload');
+
+    (new V2rayService('node-1.example.com', $ssh))->addOrRemoveUsers([[
+        'id' => 'old-user-id',
+        'email' => 'old@example.com',
+    ]]);
 });
 
 test('invalid current configs fail closed without uploading', function (string $config) {
@@ -142,8 +166,8 @@ test('deployment stage failures throw sanitized exceptions', function (int $exit
         'email' => 'user@example.com',
     ]]))->toThrow(RuntimeException::class, $message);
 })->with([
-    'config validation' => [20, 'V2ray rejected the uploaded configuration.'],
-    'deployment' => [23, 'V2ray configuration deployment failed.'],
-    'restart with successful rollback' => [40, 'the previous configuration was restored'],
-    'rollback restart' => [31, 'V2ray configuration rollback failed.'],
+    'config validation' => [20, 'V2ray rejected the uploaded configuration. (exit code 20).'],
+    'deployment' => [23, 'V2ray configuration deployment failed. (exit code 23).'],
+    'restart with successful rollback' => [40, 'the previous configuration was restored. (exit code 40).'],
+    'rollback restart' => [31, 'V2ray configuration rollback failed. (exit code 31).'],
 ]);

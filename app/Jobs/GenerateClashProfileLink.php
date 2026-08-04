@@ -103,12 +103,17 @@ class GenerateClashProfileLink implements ShouldBeUniqueUntilProcessing, ShouldQ
         // Multiple vmess_servers may share the same internal_server (different entry points),
         // so we must avoid adding the same user multiple times.
         $server_user_map = [];
+        $server_context_map = [];
         foreach ($vmess_servers as $server) {
             if (empty($server->internal_server)) {
                 continue;
             }
 
             $server_user_map[$server->internal_server] = [];
+            $server_context_map[$server->internal_server][] = [
+                'id' => $server->getKey(),
+                'name' => $server->name,
+            ];
         }
 
         foreach ($result as $item) {
@@ -137,17 +142,22 @@ class GenerateClashProfileLink implements ShouldBeUniqueUntilProcessing, ShouldQ
         $failed_servers = [];
 
         foreach ($server_user_map as $internal_server => $users) {
-            $server_reference = substr(hash('sha256', $internal_server), 0, 12);
+            $server_context = $server_context_map[$internal_server];
+            $server_description = implode(', ', array_map(
+                fn (array $server): string => "{$server['name']} (id={$server['id']})",
+                $server_context,
+            ));
 
             try {
                 $v2ray = app()->make(V2rayService::class, [
                     'internal_server' => $internal_server,
                 ]);
                 $v2ray->addOrRemoveUsers($users);
-            } catch (Throwable) {
-                $failed_servers[] = $server_reference;
+            } catch (Throwable $exception) {
+                $failed_servers[] = "$server_description: {$exception->getMessage()}";
                 logger()->driver('job')->error('[GenerateClashProfileLink] Failed to update a V2ray server.', [
-                    'server_reference' => $server_reference,
+                    'servers' => $server_context,
+                    'exception' => $exception,
                 ]);
             }
         }
