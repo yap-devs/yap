@@ -1,4 +1,4 @@
-import {useEffect} from 'react';
+import {useEffect, useRef} from 'react';
 import GuestLayout from '@/Layouts/GuestLayout';
 import InputError from '@/Components/InputError';
 import InputLabel from '@/Components/InputLabel';
@@ -7,24 +7,83 @@ import TextInput from '@/Components/TextInput';
 import {Head, Link, useForm} from '@inertiajs/react';
 import {trans} from '@/Utils/i18n';
 
-export default function Register() {
+const TURNSTILE_SCRIPT_ID = 'cloudflare-turnstile-script';
+
+export default function Register({turnstileSiteKey}) {
+  const turnstileContainerRef = useRef(null);
+  const turnstileWidgetIdRef = useRef(null);
   const {data, setData, post, processing, errors, reset} = useForm({
     name: '',
     email: '',
     password: '',
     password_confirmation: '',
+    'cf-turnstile-response': '',
   });
 
   useEffect(() => {
+    let isCancelled = false;
+
+    const renderTurnstile = () => {
+      if (
+        isCancelled
+        || !turnstileSiteKey
+        || !window.turnstile
+        || !turnstileContainerRef.current
+        || turnstileWidgetIdRef.current !== null
+      ) {
+        return;
+      }
+
+      turnstileWidgetIdRef.current = window.turnstile.render(turnstileContainerRef.current, {
+        sitekey: turnstileSiteKey,
+        action: 'register',
+        callback: (token) => setData('cf-turnstile-response', token),
+        'expired-callback': () => setData('cf-turnstile-response', ''),
+        'error-callback': () => setData('cf-turnstile-response', ''),
+      });
+    };
+
+    let script = document.getElementById(TURNSTILE_SCRIPT_ID);
+    if (!script) {
+      script = document.createElement('script');
+      script.id = TURNSTILE_SCRIPT_ID;
+      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      script.async = true;
+      script.defer = true;
+      document.head.appendChild(script);
+    }
+
+    if (window.turnstile) {
+      renderTurnstile();
+    } else {
+      script.addEventListener('load', renderTurnstile);
+    }
+
     return () => {
+      isCancelled = true;
+      script.removeEventListener('load', renderTurnstile);
+
+      if (window.turnstile && turnstileWidgetIdRef.current !== null) {
+        window.turnstile.remove(turnstileWidgetIdRef.current);
+        turnstileWidgetIdRef.current = null;
+      }
+
       reset('password', 'password_confirmation');
     };
-  }, []);
+  }, [turnstileSiteKey]);
 
   const submit = (e) => {
     e.preventDefault();
 
-    post(route('register'));
+    post(route('register'), {
+      onFinish: () => {
+        setData('cf-turnstile-response', '');
+
+        if (window.turnstile && turnstileWidgetIdRef.current !== null) {
+          window.turnstile.reset(turnstileWidgetIdRef.current);
+        }
+      },
+    });
   };
 
   return (
@@ -100,6 +159,15 @@ export default function Register() {
           <InputError message={errors.password_confirmation} className="mt-2"/>
         </div>
 
+        <div
+          ref={turnstileContainerRef}
+          className="cf-turnstile mt-4"
+          data-sitekey={turnstileSiteKey}
+          data-action="turnstile-spin-v2"
+        />
+
+        <InputError message={errors['cf-turnstile-response']} className="mt-2"/>
+
         <div className="flex items-center justify-end mt-4">
           <Link
             href={route('login')}
@@ -108,7 +176,7 @@ export default function Register() {
             {trans('auth.already_registered')}
           </Link>
 
-          <PrimaryButton className="ms-4" disabled={processing}>
+          <PrimaryButton className="ms-4" disabled={processing || !data['cf-turnstile-response']}>
             {trans('auth.register')}
           </PrimaryButton>
         </div>

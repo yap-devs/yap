@@ -12,6 +12,7 @@ use App\Services\Affiliate\AffiliateService;
 use Database\Seeders\AffiliateLevelSeeder;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 
 test('referred registration is visible before payment', function () {
     $this->withoutVite();
@@ -147,6 +148,19 @@ test('pending commission is credited after hold period', function () {
 
 test('default referral code remains compatible with cookie registration', function () {
     $this->withoutVite();
+    config([
+        'yap.turnstile.site_key' => 'test-site-key',
+        'yap.turnstile.secret_key' => 'test-secret-key',
+        'yap.turnstile.hostname' => 'localhost',
+        'yap.turnstile.action' => 'register',
+    ]);
+    Http::fake([
+        'https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::response([
+            'success' => true,
+            'hostname' => 'localhost',
+            'action' => 'register',
+        ]),
+    ]);
     $this->seed(AffiliateLevelSeeder::class);
     $referrer = User::factory()->create();
     $promoter = app(AffiliateService::class)->ensurePromoter($referrer);
@@ -164,6 +178,7 @@ test('default referral code remains compatible with cookie registration', functi
         'email' => 'referred@example.com',
         'password' => 'password',
         'password_confirmation' => 'password',
+        'cf-turnstile-response' => 'valid-token',
     ])->assertRedirect(route('dashboard', absolute: false));
 
     $referred = User::query()->where('email', 'referred@example.com')->sole();

@@ -55,5 +55,12 @@ class AppServiceProvider extends ServiceProvider
         RateLimiter::for('affiliate-code', function (Request $request) {
             return Limit::perHour(5)->by($request->user()?->id ?: $request->ip());
         });
+
+        RateLimiter::for('registration', function (Request $request) {
+            return [
+                Limit::perMinute(3)->by('registration:minute:'.$request->ip()),
+                Limit::perHour(10)->by('registration:hour:'.$request->ip()),
+            ];
+        });
     }
 }

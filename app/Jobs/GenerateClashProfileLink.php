@@ -7,30 +7,55 @@ use App\Models\VmessServer;
 use App\Services\SubscriptionService;
 use App\Services\V2rayService;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Cache;
+use RuntimeException;
 use Throwable;
 
-class GenerateClashProfileLink implements ShouldQueue
+class GenerateClashProfileLink implements ShouldBeUniqueUntilProcessing, ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    private $vmess_servers;
+    public int $tries = 3;
 
-    /**
-     * Create a new job instance.
-     */
-    public function __construct()
-    {
-        //
-    }
+    public int $timeout = 300;
+
+    public int $uniqueFor = 600;
+
+    private Collection $vmess_servers;
 
     /**
      * Execute the job.
      */
-    public function handle(SubscriptionService $subscription_service)
+    public function handle(SubscriptionService $subscription_service): void
+    {
+        Cache::lock('generate-clash-profile-link:processing', 330)->block(
+            1,
+            fn () => $this->generate($subscription_service),
+        );
+    }
+
+    /**
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        logger()->driver('job')->error('[GenerateClashProfileLink] Job failed after all attempts.', [
+            'exception' => $exception === null ? null : $exception::class,
+        ]);
+    }
+
+    private function generate(SubscriptionService $subscription_service): void
     {
         $this->vmess_servers = VmessServer::where('enabled', true)->with('relays')->get();
 
@@ -72,7 +97,7 @@ class GenerateClashProfileLink implements ShouldQueue
         return [$user, $servers->all()];
     }
 
-    private function processV2Ray(array $result)
+    private function processV2Ray(array $result): void
     {
         // ['internal_server' => $users] - deduplicate users by uuid per internal_server
         // Multiple vmess_servers may share the same internal_server (different entry points),
@@ -101,16 +126,28 @@ class GenerateClashProfileLink implements ShouldQueue
         // Convert associative arrays back to indexed arrays
         $server_user_map = array_map('array_values', $server_user_map);
 
+        $failed_servers = [];
+
         foreach ($server_user_map as $internal_server => $users) {
+            $server_reference = substr(hash('sha256', $internal_server), 0, 12);
+
             try {
-                $v2ray = new V2rayService($internal_server);
+                $v2ray = app()->make(V2rayService::class, [
+                    'internal_server' => $internal_server,
+                ]);
                 $v2ray->addOrRemoveUsers($users);
-            } catch (Throwable $e) {
-                logger()->driver('job')->log(
-                    'error',
-                    "[GenerateClashProfileLink] Failed to update V2ray server: $internal_server, error: {$e->getMessage()}"
-                );
+            } catch (Throwable) {
+                $failed_servers[] = $server_reference;
+                logger()->driver('job')->error('[GenerateClashProfileLink] Failed to update a V2ray server.', [
+                    'server_reference' => $server_reference,
+                ]);
             }
+        }
+
+        if ($failed_servers !== []) {
+            throw new RuntimeException(
+                'Failed to update '.count($failed_servers).' V2ray server(s): '.implode(', ', $failed_servers).'.'
+            );
         }
     }
 }
