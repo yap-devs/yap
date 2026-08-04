@@ -9,11 +9,18 @@ use App\Services\Affiliate\AffiliateService;
 use App\Services\PaymentFulfillmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\RateLimiter;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\InvalidStateException;
 
 class GithubController extends Controller
 {
+    private const GITHUB_LINK_ACTION_BIND = 'bind';
+
+    private const GITHUB_LINK_ACTION_UNLINK = 'unlink';
+
+    private const GITHUB_LINK_ATTEMPTS_PER_DAY = 2;
+
     public function redirect()
     {
         return Socialite::driver('github')->redirect();
@@ -27,9 +34,19 @@ class GithubController extends Controller
             return redirect()->route('profile.edit');
         }
 
-        abort_if(User::where('github_id', $user->id)->exists(), 403, 'This GitHub account has been linked to another user.');
+        /** @var User $authenticated_user */
+        $authenticated_user = $request->user();
+        $linked_user = User::withTrashed()->where('github_id', $user->id)->first();
 
-        $request->user()->update([
+        abort_if($linked_user !== null && ! $linked_user->is($authenticated_user), 403, 'This GitHub account has been linked to another user.');
+
+        if ((string) $authenticated_user->github_id === (string) $user->id) {
+            return redirect()->route('profile.edit');
+        }
+
+        $this->hitGithubLinkRateLimit($request, $user->id, self::GITHUB_LINK_ACTION_BIND);
+
+        $authenticated_user->update([
             'github_id' => $user->id,
             'github_nickname' => $user->nickname,
             'github_token' => $user->token,
@@ -43,14 +60,29 @@ class GithubController extends Controller
 
     public function destroy(Request $request)
     {
-        $request->user()->update([
-            'github_id' => null,
-            'github_nickname' => '',
-            'github_token' => '',
-            'github_created_at' => null,
-        ]);
+        /** @var User $user */
+        $user = $request->user();
 
-        GenerateClashProfileLink::dispatch();
+        if ($user->github_id === null) {
+            return redirect()->route('profile.edit');
+        }
+
+        $github_id = $user->github_id;
+        $this->hitGithubLinkRateLimit($request, $github_id, self::GITHUB_LINK_ACTION_UNLINK);
+
+        $updated = User::query()
+            ->whereKey($user->getKey())
+            ->where('github_id', $github_id)
+            ->update([
+                'github_id' => null,
+                'github_nickname' => '',
+                'github_token' => '',
+                'github_created_at' => null,
+            ]);
+
+        if ($updated === 1) {
+            GenerateClashProfileLink::dispatch();
+        }
 
         return redirect()->route('profile.edit');
     }
@@ -117,5 +149,29 @@ class GithubController extends Controller
         }
 
         return response()->json(['message' => __('messages.errors.ok')]);
+    }
+
+    private function hitGithubLinkRateLimit(Request $request, int|string $github_id, string $action): void
+    {
+        $user_id = $request->user()->getAuthIdentifier();
+        $limits = [
+            ['key' => 'github-link:day:'.$action.':user:'.$user_id, 'attempts' => self::GITHUB_LINK_ATTEMPTS_PER_DAY, 'decay' => 86400],
+            ['key' => 'github-link:day:'.$action.':github:'.$github_id, 'attempts' => self::GITHUB_LINK_ATTEMPTS_PER_DAY, 'decay' => 86400],
+        ];
+
+        foreach ($limits as $limit) {
+            $attempts = RateLimiter::hit($limit['key'], $limit['decay']);
+
+            if ($attempts <= $limit['attempts']) {
+                continue;
+            }
+
+            logger()->driver('throttle')->warning('RateLimiter [github-link]: '.$request->path(), [
+                'user_id' => $user_id,
+                'ip' => $request->ip(),
+            ]);
+
+            abort(429, 'Too many GitHub account changes.');
+        }
     }
 }
