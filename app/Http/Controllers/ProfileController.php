@@ -40,6 +40,10 @@ class ProfileController extends Controller
 
         $request->user()->save();
 
+        if ($request->user()->wasChanged('email')) {
+            GenerateClashProfileLink::dispatch();
+        }
+
         return Redirect::route('profile.edit');
     }
 

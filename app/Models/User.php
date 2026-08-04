@@ -146,4 +146,9 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->id === 1;
     }
+
+    public function v2rayStatsLabel(): string
+    {
+        return 'user-'.$this->getKey();
+    }
 }

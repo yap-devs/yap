@@ -66,7 +66,7 @@ class GenerateClashProfileLink implements ShouldBeUniqueUntilProcessing, ShouldQ
         foreach ($users as $user) {
             $result[] = $this->preProcessUser($user, $subscription_service);
         }
-        $this->processV2Ray($result);
+        $this->processV2Ray($result, $this->vmess_servers);
     }
 
     /**
@@ -97,15 +97,23 @@ class GenerateClashProfileLink implements ShouldBeUniqueUntilProcessing, ShouldQ
         return [$user, $servers->all()];
     }
 
-    private function processV2Ray(array $result): void
+    private function processV2Ray(array $result, Collection $vmess_servers): void
     {
         // ['internal_server' => $users] - deduplicate users by uuid per internal_server
         // Multiple vmess_servers may share the same internal_server (different entry points),
         // so we must avoid adding the same user multiple times.
         $server_user_map = [];
+        foreach ($vmess_servers as $server) {
+            if (empty($server->internal_server)) {
+                continue;
+            }
+
+            $server_user_map[$server->internal_server] = [];
+        }
+
         foreach ($result as $item) {
             /** @var User $user */
-            /** @var VmessServer $servers */
+            /** @var array<int, VmessServer> $servers */
             [$user, $servers] = $item;
             if (empty($servers)) {
                 continue;
@@ -118,7 +126,7 @@ class GenerateClashProfileLink implements ShouldBeUniqueUntilProcessing, ShouldQ
 
                 $server_user_map[$server->internal_server][$user->uuid] = [
                     'id' => $user->uuid,
-                    'email' => $user->email,
+                    'email' => $user->v2rayStatsLabel(),
                 ];
             }
         }

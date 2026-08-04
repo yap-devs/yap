@@ -1,6 +1,8 @@
 <?php
 
+use App\Jobs\GenerateClashProfileLink;
 use App\Models\User;
+use Illuminate\Support\Facades\Queue;
 
 test('profile page is displayed', function () {
     $user = User::factory()->create();
@@ -14,6 +16,7 @@ test('profile page is displayed', function () {
 
 test('profile information can be updated', function () {
     $user = User::factory()->create();
+    Queue::fake();
 
     $response = $this
         ->actingAs($user)
@@ -31,10 +34,12 @@ test('profile information can be updated', function () {
     $this->assertSame('Test User', $user->name);
     $this->assertSame('test@example.com', $user->email);
     $this->assertNull($user->email_verified_at);
+    Queue::assertPushed(GenerateClashProfileLink::class);
 });
 
 test('email verification status is unchanged when the email address is unchanged', function () {
     $user = User::factory()->create();
+    Queue::fake();
 
     $response = $this
         ->actingAs($user)
@@ -48,11 +53,13 @@ test('email verification status is unchanged when the email address is unchanged
         ->assertRedirect('/profile');
 
     $this->assertNotNull($user->refresh()->email_verified_at);
+    Queue::assertNotPushed(GenerateClashProfileLink::class);
 });
 
 test('profile email cannot be changed to an unsafe local part', function () {
     $user = User::factory()->create();
     $original_email = $user->email;
+    Queue::fake();
 
     $response = $this
         ->actingAs($user)
@@ -63,6 +70,7 @@ test('profile email cannot be changed to an unsafe local part', function () {
 
     $response->assertSessionHasErrors('email');
     expect($user->refresh()->email)->toBe($original_email);
+    Queue::assertNotPushed(GenerateClashProfileLink::class);
 });
 
 test('github account can be unlinked', function () {

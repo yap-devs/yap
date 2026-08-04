@@ -66,11 +66,15 @@ class UpdateStatCommand extends Command
 
                 $stats = Arr::get($all_stats, $vmess_server->id, []);
 
-                if (! $stats || ! isset($stats['user'][$user->email])) {
+                if (! $stats) {
                     continue;
                 }
 
-                $user_stat = $stats['user'][$user->email];
+                $user_stat = $stats['user'][$user->v2rayStatsLabel()] ?? $stats['user'][$user->email] ?? null;
+                if ($user_stat === null) {
+                    continue;
+                }
+
                 $uplink = Arr::get($user_stat, 'uplink', 0) * $vmess_server->rate;
                 $downlink = Arr::get($user_stat, 'downlink', 0) * $vmess_server->rate;
 
@@ -282,7 +286,9 @@ class UpdateStatCommand extends Command
             $fetched_internal_servers[$vmess_server->internal_server] = true;
 
             try {
-                $v2ray = new V2rayService($vmess_server->internal_server);
+                $v2ray = app()->make(V2rayService::class, [
+                    'internal_server' => $vmess_server->internal_server,
+                ]);
                 $stats[$vmess_server->id] = $v2ray->getStats(reset: true);
             } catch (Throwable $e) {
                 logger()->driver('job')->log(

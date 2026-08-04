@@ -7,6 +7,7 @@ use App\Services\SubscriptionService;
 use App\Services\V2rayService;
 use Illuminate\Contracts\Cache\LockTimeoutException;
 use Illuminate\Contracts\Queue\ShouldBeUniqueUntilProcessing;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Cache;
 
 test('a failed node does not stop later nodes and the job throws a summary', function () {
@@ -41,7 +42,44 @@ test('a failed node does not stop later nodes and the job throws a summary', fun
     expect(fn () => $method->invoke($job, [
         [$first_user, [$first_server]],
         [$second_user, [$second_server]],
-    ]))->toThrow(RuntimeException::class, 'Failed to update 1 V2ray server(s)');
+    ], new Collection([$first_server, $second_server])))
+        ->toThrow(RuntimeException::class, 'Failed to update 1 V2ray server(s)');
+});
+
+test('all provided nodes are synchronized and stable user labels are used for statistics', function () {
+    $assigned_service = Mockery::mock(V2rayService::class);
+    $assigned_service->shouldReceive('addOrRemoveUsers')->once()->with([[
+        'id' => 'user-id',
+        'email' => 'user-123',
+    ]]);
+
+    $empty_service = Mockery::mock(V2rayService::class);
+    $empty_service->shouldReceive('addOrRemoveUsers')->once()->with([]);
+
+    $services = [
+        'assigned.example.com' => $assigned_service,
+        'empty.example.com' => $empty_service,
+    ];
+
+    app()->bind(V2rayService::class, function ($app, array $parameters) use ($services) {
+        return $services[$parameters['internal_server']];
+    });
+
+    $user = User::factory()->make([
+        'id' => 123,
+        'uuid' => 'user-id',
+        'email' => 'user@example.com',
+    ]);
+    $assigned_server = new VmessServer(['internal_server' => 'assigned.example.com']);
+    $empty_server = new VmessServer(['internal_server' => 'empty.example.com']);
+    $job = new GenerateClashProfileLink;
+    $method = new ReflectionMethod($job, 'processV2Ray');
+
+    $method->invoke(
+        $job,
+        [[$user, [$assigned_server]]],
+        new Collection([$assigned_server, $empty_server]),
+    );
 });
 
 test('the generation job is unique while queued and has retry settings', function () {
