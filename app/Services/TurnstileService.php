@@ -13,12 +13,15 @@ class TurnstileService
     {
         $site_key = config('yap.turnstile.site_key');
         $secret_key = config('yap.turnstile.secret_key');
-        $hostname = config('yap.turnstile.hostname');
+        $configured_hostnames = config('yap.turnstile.hostname');
         $action = config('yap.turnstile.action');
+        $hostnames = is_string($configured_hostnames)
+            ? array_values(array_filter(array_map('trim', explode(',', $configured_hostnames))))
+            : [];
 
         if (! is_string($site_key) || $site_key === ''
             || ! is_string($secret_key) || $secret_key === ''
-            || ! is_string($hostname) || $hostname === ''
+            || $hostnames === []
             || ! is_string($action) || $action === '') {
             logger()->warning('Turnstile verification is not configured.');
 
@@ -53,7 +56,7 @@ class TurnstileService
         return is_array($result)
             && ($result['success'] ?? false) === true
             && is_string($result['hostname'] ?? null)
-            && hash_equals($hostname, $result['hostname'])
+            && in_array($result['hostname'], $hostnames, true)
             && is_string($result['action'] ?? null)
             && hash_equals($action, $result['action']);
     }

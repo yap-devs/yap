@@ -9,7 +9,7 @@ beforeEach(function () {
     config([
         'yap.turnstile.site_key' => 'test-site-key',
         'yap.turnstile.secret_key' => 'test-secret-key',
-        'yap.turnstile.hostname' => 'localhost',
+        'yap.turnstile.hostname' => 'localhost, register.example.com, ',
         'yap.turnstile.action' => 'register',
     ]);
 
@@ -37,11 +37,11 @@ test('registration screen exposes only the public turnstile site key', function 
         );
 });
 
-test('new users can register after successful turnstile verification', function () {
+test('new users can register from any configured turnstile hostname', function (string $hostname) {
     Http::fake([
         'https://challenges.cloudflare.com/turnstile/v0/siteverify' => Http::response([
             'success' => true,
-            'hostname' => 'localhost',
+            'hostname' => $hostname,
             'action' => 'register',
         ]),
     ]);
@@ -59,7 +59,10 @@ test('new users can register after successful turnstile verification', function 
             && $request['response'] === 'valid-token'
             && $request['remoteip'] === '203.0.113.10';
     });
-});
+})->with([
+    'first hostname' => 'localhost',
+    'second hostname' => 'register.example.com',
+]);
 
 test('a missing turnstile token rejects registration without creating a user', function () {
     Http::fake();
@@ -135,8 +138,8 @@ test('siteverify hostname and action must match', function (array $turnstile_res
     ]],
 ]);
 
-test('missing turnstile configuration fails closed', function (string $config_key) {
-    config([$config_key => '']);
+test('missing turnstile configuration fails closed', function (string $config_key, string $value) {
+    config([$config_key => $value]);
     Http::fake();
 
     $response = $this->post('/register', turnstileRegistrationData());
@@ -146,10 +149,10 @@ test('missing turnstile configuration fails closed', function (string $config_ke
     expect(User::query()->where('email', 'test@example.com')->exists())->toBeFalse();
     Http::assertNothingSent();
 })->with([
-    'site key' => 'yap.turnstile.site_key',
-    'secret key' => 'yap.turnstile.secret_key',
-    'hostname' => 'yap.turnstile.hostname',
-    'action' => 'yap.turnstile.action',
+    'site key' => ['yap.turnstile.site_key', ''],
+    'secret key' => ['yap.turnstile.secret_key', ''],
+    'hostnames' => ['yap.turnstile.hostname', ' , '],
+    'action' => ['yap.turnstile.action', ''],
 ]);
 
 test('registration post requests are rate limited by ip', function () {

@@ -35,7 +35,7 @@ return [
     'ssh_private_key_path' => env('YAP_SSH_PRIVATE_KEY_PATH', '/root/.ssh/id_ed25519'),
     'turnstile' => [
         'site_key' => env('TURNSTILE_SITE_KEY', ''),
-        'secret_key' => env('TURNSTILE_SECRET', env('TURNSTILE_SECRET_KEY', '')),
+        'secret_key' => env('TURNSTILE_SECRET', ''),
         'hostname' => env('TURNSTILE_HOSTNAME', ''),
         'action' => 'register',
     ],
