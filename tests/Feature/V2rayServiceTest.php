@@ -86,6 +86,9 @@ test('user payload is uploaded as json and never appears in remote commands', fu
         ->and($all_commands)->not->toContain($payload)
         ->and($all_commands)->toContain('flock -w 30')
         ->and($all_commands)->toContain('/usr/local/bin/v2ray test -config')
+        ->and($all_commands)->toMatch('#chmod 644 /tmp/yap-v2ray-[a-f0-9]{32}\.json#')
+        ->and($all_commands)->toMatch('#chmod 644 /tmp/yap-v2ray-restore-[a-f0-9]{32}\.json#')
+        ->and($all_commands)->not->toContain('chmod 600')
         ->and($all_commands)->toContain('systemctl is-active --quiet v2ray')
         ->and($all_commands)->toContain('mv -f');
 });

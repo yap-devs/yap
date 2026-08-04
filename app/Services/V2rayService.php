@@ -198,10 +198,11 @@ class V2rayService
             ."if [ \"\${current_hash%% *}\" != $expected_config_hash ]; then exit 19; fi; "
             ."if ! /usr/local/bin/v2ray test -config $remote_temp_path >/dev/null 2>&1; then exit 20; fi; "
             .'if ! cp --preserve=mode,ownership '.self::CONFIG_PATH." $backup_path; then exit 21; fi; "
-            ."if ! chmod 600 $remote_temp_path; then exit 22; fi; "
+            ."if ! chmod 644 $remote_temp_path; then exit 22; fi; "
             ."if ! mv -f $remote_temp_path ".self::CONFIG_PATH.'; then exit 23; fi; '
             .'if systemctl restart v2ray >/dev/null 2>&1 && systemctl is-active --quiet v2ray; then exit 0; fi; '
             ."if ! cp --preserve=mode,ownership $backup_path $remote_restore_path; then exit 30; fi; "
+            ."if ! chmod 644 $remote_restore_path; then exit 30; fi; "
             ."if ! mv -f $remote_restore_path ".self::CONFIG_PATH.'; then exit 30; fi; '
             .'if ! systemctl restart v2ray >/dev/null 2>&1; then exit 31; fi; '
             ."if ! systemctl is-active --quiet v2ray; then exit 32; fi; exit 40'";
