@@ -33,11 +33,49 @@ test('clash subscription keeps yaml route compatibility', function () {
         ->assertHeader('Content-Type', 'application/x-yaml')
         ->assertHeader('Subscription-Userinfo', 'upload=0; download=0; total=70368744177664; expire=612894867');
 
-    expect($response->getContent())
+    $content = $response->getContent();
+    $config = yaml_parse($content);
+    $final_rule_index = array_search('MATCH,Proxy', $config['rules'], true);
+    $direct_rules = [
+        'DOMAIN-SUFFIX,servicewechat.com,DIRECT',
+        'DOMAIN-SUFFIX,wechat.com,DIRECT',
+        'DOMAIN-SUFFIX,local,DIRECT',
+        'DOMAIN-SUFFIX,localhost,DIRECT',
+        'IP-CIDR,169.254.0.0/16,DIRECT,no-resolve',
+        'IP-CIDR6,::1/128,DIRECT,no-resolve',
+        'IP-CIDR6,fc00::/7,DIRECT,no-resolve',
+        'IP-CIDR6,fe80::/10,DIRECT,no-resolve',
+        'DOMAIN-SUFFIX,doubao.com,DIRECT',
+        'DOMAIN-SUFFIX,zijieapi.com,DIRECT',
+        'DOMAIN-SUFFIX,tgalileo.com,DIRECT',
+        'DOMAIN-SUFFIX,qianwen.com,DIRECT',
+        'DOMAIN-SUFFIX,windows.com,DIRECT',
+        'DOMAIN-SUFFIX,msftconnecttest.com,DIRECT',
+        'DOMAIN-SUFFIX,msftncsi.com,DIRECT',
+        'DOMAIN-SUFFIX,bilivideo.com,DIRECT',
+        'DOMAIN-SUFFIX,dingtalkapps.com,DIRECT',
+        'DOMAIN-SUFFIX,xiaohongshu.com,DIRECT',
+        'DOMAIN-SUFFIX,xhscdn.com,DIRECT',
+        'DOMAIN-SUFFIX,meituan.net,DIRECT',
+        'DOMAIN-SUFFIX,larkenterprise.com,DIRECT',
+        'DOMAIN-SUFFIX,microsoftvvare.net,DIRECT',
+    ];
+
+    expect($content)
         ->toContain('proxies:')
         ->toContain('name: Tokyo[1x]')
         ->toContain('server: tokyo.example.com')
-        ->toContain('uuid: '.$user->uuid);
+        ->toContain('uuid: '.$user->uuid)
+        ->and($config['dns']['enable'])->toBeFalse()
+        ->and($final_rule_index)->toBeInt();
+
+    foreach ($direct_rules as $direct_rule) {
+        $direct_rule_index = array_search($direct_rule, $config['rules'], true);
+
+        expect($direct_rule_index)
+            ->toBeInt()
+            ->toBeLessThan($final_rule_index);
+    }
 });
 
 test('universal subscription returns base64 encoded vmess links', function () {

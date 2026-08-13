@@ -382,6 +382,22 @@ rules:
   - DOMAIN-SUFFIX,feizhu.com,DIRECT
   - DOMAIN-SUFFIX,fliggy.com,DIRECT
 
+  # Direct services observed in node logs
+  - DOMAIN-SUFFIX,doubao.com,DIRECT
+  - DOMAIN-SUFFIX,zijieapi.com,DIRECT
+  - DOMAIN-SUFFIX,tgalileo.com,DIRECT
+  - DOMAIN-SUFFIX,qianwen.com,DIRECT
+  - DOMAIN-SUFFIX,windows.com,DIRECT
+  - DOMAIN-SUFFIX,msftconnecttest.com,DIRECT
+  - DOMAIN-SUFFIX,msftncsi.com,DIRECT
+  - DOMAIN-SUFFIX,bilivideo.com,DIRECT
+  - DOMAIN-SUFFIX,dingtalkapps.com,DIRECT
+  - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT
+  - DOMAIN-SUFFIX,xhscdn.com,DIRECT
+  - DOMAIN-SUFFIX,meituan.net,DIRECT
+  - DOMAIN-SUFFIX,larkenterprise.com,DIRECT
+  - DOMAIN-SUFFIX,microsoftvvare.net,DIRECT
+
   # DNS
   - DOMAIN,dns.google,Proxy
   - IP-CIDR,1.1.1.1/32,Proxy,no-resolve
@@ -391,12 +407,18 @@ rules:
   - IP-CIDR,114.114.114.114/32,DIRECT,no-resolve
 
   # LAN
+  - DOMAIN-SUFFIX,local,DIRECT
+  - DOMAIN-SUFFIX,localhost,DIRECT
   - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,17.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
   - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
   - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR6,::1/128,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
 
   - DOMAIN-SUFFIX,cn,DIRECT
   - GEOIP,CN,DIRECT
