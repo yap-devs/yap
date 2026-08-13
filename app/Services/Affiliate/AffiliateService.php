@@ -253,14 +253,15 @@ class AffiliateService
     public function creditPendingCommissions(): int
     {
         $credited = 0;
+        $should_sync_clash_profile = false;
 
         AffiliateCommission::query()
             ->where('status', AffiliateCommission::STATUS_PENDING)
             ->where('hold_until', '<=', now())
             ->orderBy('id')
-            ->chunkById(100, function ($commissions) use (&$credited): void {
+            ->chunkById(100, function ($commissions) use (&$credited, &$should_sync_clash_profile): void {
                 foreach ($commissions as $commission) {
-                    DB::transaction(function () use ($commission, &$credited): void {
+                    DB::transaction(function () use ($commission, &$credited, &$should_sync_clash_profile): void {
                         $commission = AffiliateCommission::query()->lockForUpdate()->find($commission->id);
                         if (! $commission || $commission->status !== AffiliateCommission::STATUS_PENDING) {
                             return;
@@ -287,10 +288,17 @@ class AffiliateService
                         }
 
                         /** @var User|null $referrer */
-                        $referrer = User::query()->lockForUpdate()->find($commission->referrer_user_id);
+                        $referrer = User::query()
+                            ->with(['packages' => function ($query) {
+                                $query->available();
+                            }])
+                            ->lockForUpdate()
+                            ->find($commission->referrer_user_id);
                         if (! $referrer) {
                             return;
                         }
+                        $is_valid_initial = $referrer->is_valid;
+                        $is_low_priority_initial = $referrer->is_low_priority;
 
                         $referrer->increment('balance', $commission->amount);
                         $balance_detail = $referrer->balanceDetails()->create([
@@ -305,11 +313,21 @@ class AffiliateService
                         ]);
 
                         $promoter->increment('total_commission_amount', $commission->amount);
-                        GenerateClashProfileLink::dispatch();
+                        $referrer->refresh();
+                        $referrer->load(['packages' => function ($query) {
+                            $query->available();
+                        }]);
+                        $should_sync_clash_profile = $should_sync_clash_profile
+                            || $referrer->is_valid !== $is_valid_initial
+                            || $referrer->is_low_priority !== $is_low_priority_initial;
                         $credited++;
                     });
                 }
             });
+
+        if ($should_sync_clash_profile) {
+            GenerateClashProfileLink::dispatch();
+        }
 
         return $credited;
     }

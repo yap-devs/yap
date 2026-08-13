@@ -1,5 +1,6 @@
 <?php
 
+use App\Jobs\GenerateClashProfileLink;
 use App\Models\AffiliateCommission;
 use App\Models\AffiliateLevel;
 use App\Models\AffiliateReferral;
@@ -11,6 +12,7 @@ use App\Services\Affiliate\AffiliateDashboardService;
 use App\Services\Affiliate\AffiliateService;
 use Database\Seeders\AffiliateLevelSeeder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 
@@ -108,8 +110,10 @@ test('qualified payment enables package commission without crediting immediately
 });
 
 test('pending commission is credited after hold period', function () {
+    Bus::fake();
+
     $this->seed(AffiliateLevelSeeder::class);
-    $referrer = User::factory()->create();
+    $referrer = User::factory()->create(['balance' => 0]);
     $referred = User::factory()->create();
     $promoter = app(AffiliateService::class)->ensurePromoter($referrer);
 
@@ -144,6 +148,49 @@ test('pending commission is credited after hold period', function () {
     expect($credited)->toBe(1);
     expect((float) $referrer->refresh()->balance)->toBe(2.0);
     expect(AffiliateCommission::first()->status)->toBe(AffiliateCommission::STATUS_CREDITED);
+    Bus::assertDispatched(GenerateClashProfileLink::class);
+});
+
+test('pending commission skips clash profile sync when user service status is unchanged', function () {
+    Bus::fake();
+
+    $this->seed(AffiliateLevelSeeder::class);
+    $referrer = User::factory()->create(['balance' => 1]);
+    $referred = User::factory()->create();
+    $promoter = app(AffiliateService::class)->ensurePromoter($referrer);
+
+    $referral = AffiliateReferral::create([
+        'promoter_id' => $promoter->id,
+        'referrer_user_id' => $referrer->id,
+        'referred_user_id' => $referred->id,
+        'code' => $promoter->code,
+        'status' => AffiliateReferral::STATUS_EARNING,
+        'registered_at' => now(),
+        'qualified_at' => now(),
+        'commission_expires_at' => now()->addDays(30),
+    ]);
+
+    AffiliateCommission::create([
+        'referral_id' => $referral->id,
+        'promoter_id' => $promoter->id,
+        'referrer_user_id' => $referrer->id,
+        'referred_user_id' => $referred->id,
+        'source_type' => AffiliateCommission::SOURCE_PACKAGE_PURCHASE,
+        'source_id' => 456,
+        'affiliate_level' => 3,
+        'base_amount' => 10,
+        'commission_rate' => 0.2,
+        'amount' => 2,
+        'status' => AffiliateCommission::STATUS_PENDING,
+        'hold_until' => now()->subMinute(),
+    ]);
+
+    $credited = app(AffiliateService::class)->creditPendingCommissions();
+
+    expect($credited)->toBe(1)
+        ->and((float) $referrer->refresh()->balance)->toBe(3.0)
+        ->and(AffiliateCommission::first()->status)->toBe(AffiliateCommission::STATUS_CREDITED);
+    Bus::assertNotDispatched(GenerateClashProfileLink::class);
 });
 
 test('default referral code remains compatible with cookie registration', function () {
