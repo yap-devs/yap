@@ -41,10 +41,31 @@ test('clash subscription keeps yaml route compatibility', function () {
         'DOMAIN-SUFFIX,wechat.com,DIRECT',
         'DOMAIN-SUFFIX,local,DIRECT',
         'DOMAIN-SUFFIX,localhost,DIRECT',
+        'DOMAIN-SUFFIX,localhost.localdomain,DIRECT',
+        'DOMAIN-SUFFIX,localdomain,DIRECT',
+        'DOMAIN-SUFFIX,home.arpa,DIRECT',
+        'DOMAIN-SUFFIX,lan,DIRECT',
+        'DOMAIN-SUFFIX,internal,DIRECT',
+        'DOMAIN-SUFFIX,intranet,DIRECT',
+        'DOMAIN-SUFFIX,corp,DIRECT',
+        'DOMAIN-SUFFIX,private,DIRECT',
+        'DOMAIN-SUFFIX,router.asus.com,DIRECT',
+        'DOMAIN-SUFFIX,tplinkwifi.net,DIRECT',
+        'DOMAIN-SUFFIX,tplogin.cn,DIRECT',
+        'DOMAIN-SUFFIX,tendawifi.com,DIRECT',
+        'DOMAIN-SUFFIX,router.ctc,DIRECT',
+        'DOMAIN-SUFFIX,my.router,DIRECT',
+        'DOMAIN-SUFFIX,fritz.box,DIRECT',
+        'DOMAIN-SUFFIX,myrouter.local,DIRECT',
+        'DOMAIN-SUFFIX,routerlogin.net,DIRECT',
+        'DOMAIN-SUFFIX,linksyssmartwifi.com,DIRECT',
+        'DOMAIN-SUFFIX,synology.me,DIRECT',
+        'DOMAIN-SUFFIX,myqnapcloud.com,DIRECT',
         'IP-CIDR,169.254.0.0/16,DIRECT,no-resolve',
         'IP-CIDR6,::1/128,DIRECT,no-resolve',
         'IP-CIDR6,fc00::/7,DIRECT,no-resolve',
         'IP-CIDR6,fe80::/10,DIRECT,no-resolve',
+        'GEOIP,PRIVATE,DIRECT',
         'DOMAIN-SUFFIX,doubao.com,DIRECT',
         'DOMAIN-SUFFIX,zijieapi.com,DIRECT',
         'DOMAIN-SUFFIX,tgalileo.com,DIRECT',
@@ -67,7 +88,8 @@ test('clash subscription keeps yaml route compatibility', function () {
         ->toContain('server: tokyo.example.com')
         ->toContain('uuid: '.$user->uuid)
         ->and($config['dns']['enable'])->toBeFalse()
-        ->and($final_rule_index)->toBeInt();
+        ->and($final_rule_index)->toBeInt()
+        ->and($config['rules'])->toHaveCount(count(array_unique($config['rules'])));
 
     foreach ($direct_rules as $direct_rule) {
         $direct_rule_index = array_search($direct_rule, $config['rules'], true);

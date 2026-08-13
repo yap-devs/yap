@@ -72,7 +72,6 @@ rules:
   - DOMAIN-SUFFIX,ppsimg.com,DIRECT
   - DOMAIN-SUFFIX,qiyi.com,DIRECT
   - DOMAIN-SUFFIX,qiyipic.com,DIRECT
-  - DOMAIN-SUFFIX,qy.net,DIRECT
 
   # > NeteaseMusic
   - DOMAIN-SUFFIX,163yun.com,DIRECT
@@ -125,16 +124,11 @@ rules:
   - DOMAIN-SUFFIX,byteimg.com,DIRECT
   - DOMAIN-SUFFIX,feiliao.com,DIRECT
   - DOMAIN-SUFFIX,gifshow.com,DIRECT
-  - DOMAIN-SUFFIX,huoshan.com,DIRECT
   - DOMAIN-SUFFIX,iesdouyin.com,DIRECT
-  - DOMAIN-SUFFIX,ixigua.com,DIRECT
   - DOMAIN-SUFFIX,kspkg.com,DIRECT
-  - DOMAIN-SUFFIX,pstatp.com,DIRECT
-  - DOMAIN-SUFFIX,snssdk.com,DIRECT
   - DOMAIN-SUFFIX,wukong.com,DIRECT
   - DOMAIN-SUFFIX,zijieimg.com,DIRECT
   - DOMAIN-SUFFIX,zjbyte.com,DIRECT
-  - DOMAIN-SUFFIX,zjcdn.com,DIRECT
 
   # > Bilibili
   - DOMAIN-KEYWORD,bili,DIRECT
@@ -225,12 +219,8 @@ rules:
   - DOMAIN-SUFFIX,miwifi.com,DIRECT
   - DOMAIN-SUFFIX,mob.com,DIRECT
   - DOMAIN-SUFFIX,netease.com,DIRECT
-  - DOMAIN-SUFFIX,office.com,DIRECT
-  - DOMAIN-SUFFIX,office365.com,DIRECT
   - DOMAIN-KEYWORD,officecdn,DIRECT
   - DOMAIN-SUFFIX,oschina.net,DIRECT
-  - DOMAIN-SUFFIX,ppsimg.com,DIRECT
-  - DOMAIN-SUFFIX,pstatp.com,DIRECT
   - DOMAIN-SUFFIX,qcloud.com,DIRECT
   - DOMAIN-SUFFIX,qdaily.com,DIRECT
   - DOMAIN-SUFFIX,qdmm.com,DIRECT
@@ -238,10 +228,6 @@ rules:
   - DOMAIN-SUFFIX,qhres.com,DIRECT
   - DOMAIN-SUFFIX,qidian.com,DIRECT
   - DOMAIN-SUFFIX,qihucdn.com,DIRECT
-  - DOMAIN-SUFFIX,qiniu.com,DIRECT
-  - DOMAIN-SUFFIX,qiniucdn.com,DIRECT
-  - DOMAIN-SUFFIX,qiyipic.com,DIRECT
-  - DOMAIN-SUFFIX,qq.com,DIRECT
   - DOMAIN-SUFFIX,qqurl.com,DIRECT
   - DOMAIN-SUFFIX,rarbg.to,DIRECT
   - DOMAIN-SUFFIX,ruguoapp.com,DIRECT
@@ -255,16 +241,13 @@ rules:
   - DOMAIN-SUFFIX,speedtest.net,DIRECT
   - DOMAIN-SUFFIX,sspai.com,DIRECT
   - DOMAIN-SUFFIX,suning.com,DIRECT
-  - DOMAIN-SUFFIX,taobao.com,DIRECT
   - DOMAIN-SUFFIX,tenpay.com,DIRECT
-  - DOMAIN-SUFFIX,tmall.com,DIRECT
   - DOMAIN-SUFFIX,tudou.com,DIRECT
   - DOMAIN-SUFFIX,umetrip.com,DIRECT
   - DOMAIN-SUFFIX,upaiyun.com,DIRECT
   - DOMAIN-SUFFIX,upyun.com,DIRECT
   - DOMAIN-SUFFIX,veryzhun.com,DIRECT
   - DOMAIN-SUFFIX,weather.com,DIRECT
-  - DOMAIN-SUFFIX,weibo.com,DIRECT
   - DOMAIN-SUFFIX,xiami.com,DIRECT
   - DOMAIN-SUFFIX,xiami.net,DIRECT
   - DOMAIN-SUFFIX,xiaomicp.com,DIRECT
@@ -279,7 +262,6 @@ rules:
   - DOMAIN-SUFFIX,youdao.com,DIRECT
   - DOMAIN-SUFFIX,youku.com,DIRECT
   - DOMAIN-SUFFIX,zealer.com,DIRECT
-  - DOMAIN-SUFFIX,zhihu.com,DIRECT
   - DOMAIN-SUFFIX,zhimg.com,DIRECT
   - DOMAIN-SUFFIX,zimuzu.tv,DIRECT
 
@@ -293,9 +275,7 @@ rules:
   - DOMAIN-SUFFIX,imqq.com,DIRECT
   - DOMAIN-SUFFIX,myapp.com,DIRECT
   - DOMAIN-SUFFIX,myqcloud.com,DIRECT
-  - DOMAIN-SUFFIX,qcloud.com,DIRECT
   - DOMAIN-SUFFIX,qcloudimg.com,DIRECT
-  - DOMAIN-SUFFIX,qq.com,DIRECT
   - DOMAIN-SUFFIX,qqmail.com,DIRECT
   - DOMAIN-SUFFIX,qzone.com,DIRECT
   - DOMAIN-SUFFIX,servicewechat.com,DIRECT
@@ -308,7 +288,6 @@ rules:
   - DOMAIN-SUFFIX,tencentcs.com,DIRECT
   - DOMAIN-SUFFIX,tencentmusic.com,DIRECT
   - DOMAIN-SUFFIX,tencentyun.com,DIRECT
-  - DOMAIN-SUFFIX,tenpay.com,DIRECT
   - DOMAIN-SUFFIX,wechat.com,DIRECT
   - DOMAIN-SUFFIX,wegame.com,DIRECT
   - DOMAIN-SUFFIX,weiyun.com,DIRECT
@@ -367,14 +346,12 @@ rules:
   - DOMAIN-SUFFIX,juhuasuan.com,DIRECT
   - DOMAIN-SUFFIX,lingshoujia.com,DIRECT
   - DOMAIN-SUFFIX,pailitao.com,DIRECT
-  - DOMAIN-SUFFIX,taobao.com,DIRECT
   - DOMAIN-SUFFIX,taobao.org,DIRECT
   - DOMAIN-SUFFIX,taobaocdn.com,DIRECT
   - DOMAIN-SUFFIX,taobizhong.com,DIRECT
   - DOMAIN-SUFFIX,taopiaopiao.com,DIRECT
   - DOMAIN-SUFFIX,tbcache.com,DIRECT
   - DOMAIN-SUFFIX,tburl.in,DIRECT
-  - DOMAIN-SUFFIX,tmall.com,DIRECT
   - DOMAIN-SUFFIX,tmall.ru,DIRECT
   - DOMAIN-SUFFIX,tmalltv.com,DIRECT
   - DOMAIN-SUFFIX,tmjl.ai,DIRECT
@@ -409,6 +386,26 @@ rules:
   # LAN
   - DOMAIN-SUFFIX,local,DIRECT
   - DOMAIN-SUFFIX,localhost,DIRECT
+  - DOMAIN-SUFFIX,localhost.localdomain,DIRECT
+  - DOMAIN-SUFFIX,localdomain,DIRECT
+  - DOMAIN-SUFFIX,home.arpa,DIRECT
+  - DOMAIN-SUFFIX,lan,DIRECT
+  - DOMAIN-SUFFIX,internal,DIRECT
+  - DOMAIN-SUFFIX,intranet,DIRECT
+  - DOMAIN-SUFFIX,corp,DIRECT
+  - DOMAIN-SUFFIX,private,DIRECT
+  - DOMAIN-SUFFIX,router.asus.com,DIRECT
+  - DOMAIN-SUFFIX,tplinkwifi.net,DIRECT
+  - DOMAIN-SUFFIX,tplogin.cn,DIRECT
+  - DOMAIN-SUFFIX,tendawifi.com,DIRECT
+  - DOMAIN-SUFFIX,router.ctc,DIRECT
+  - DOMAIN-SUFFIX,my.router,DIRECT
+  - DOMAIN-SUFFIX,fritz.box,DIRECT
+  - DOMAIN-SUFFIX,myrouter.local,DIRECT
+  - DOMAIN-SUFFIX,routerlogin.net,DIRECT
+  - DOMAIN-SUFFIX,linksyssmartwifi.com,DIRECT
+  - DOMAIN-SUFFIX,synology.me,DIRECT
+  - DOMAIN-SUFFIX,myqnapcloud.com,DIRECT
   - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,17.0.0.0/8,DIRECT,no-resolve
@@ -421,6 +418,7 @@ rules:
   - IP-CIDR6,fe80::/10,DIRECT,no-resolve
 
   - DOMAIN-SUFFIX,cn,DIRECT
+  - GEOIP,PRIVATE,DIRECT
   - GEOIP,CN,DIRECT
 
   # Final
