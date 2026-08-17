@@ -9,11 +9,6 @@ external-controller: 127.0.0.1:9090
 dns:
   enable: false
 
-hosts:
-  '.local': 127.0.0.1
-  '*.clash.dev': 127.0.0.1
-  'alpha.clash.dev': '::1'
-
 rules:
   - DOMAIN-SUFFIX,linkedin.com,Proxy
 
@@ -359,22 +354,6 @@ rules:
   - DOMAIN-SUFFIX,feizhu.com,DIRECT
   - DOMAIN-SUFFIX,fliggy.com,DIRECT
 
-  # Direct services observed in node logs
-  - DOMAIN-SUFFIX,doubao.com,DIRECT
-  - DOMAIN-SUFFIX,zijieapi.com,DIRECT
-  - DOMAIN-SUFFIX,tgalileo.com,DIRECT
-  - DOMAIN-SUFFIX,qianwen.com,DIRECT
-  - DOMAIN-SUFFIX,windows.com,DIRECT
-  - DOMAIN-SUFFIX,msftconnecttest.com,DIRECT
-  - DOMAIN-SUFFIX,msftncsi.com,DIRECT
-  - DOMAIN-SUFFIX,bilivideo.com,DIRECT
-  - DOMAIN-SUFFIX,dingtalkapps.com,DIRECT
-  - DOMAIN-SUFFIX,xiaohongshu.com,DIRECT
-  - DOMAIN-SUFFIX,xhscdn.com,DIRECT
-  - DOMAIN-SUFFIX,meituan.net,DIRECT
-  - DOMAIN-SUFFIX,larkenterprise.com,DIRECT
-  - DOMAIN-SUFFIX,microsoftvvare.net,DIRECT
-
   # DNS
   - DOMAIN,dns.google,Proxy
   - IP-CIDR,1.1.1.1/32,Proxy,no-resolve
@@ -389,26 +368,8 @@ rules:
   - DOMAIN-SUFFIX,localhost.localdomain,DIRECT
   - DOMAIN-SUFFIX,localdomain,DIRECT
   - DOMAIN-SUFFIX,home.arpa,DIRECT
-  - DOMAIN-SUFFIX,lan,DIRECT
-  - DOMAIN-SUFFIX,internal,DIRECT
-  - DOMAIN-SUFFIX,intranet,DIRECT
-  - DOMAIN-SUFFIX,corp,DIRECT
-  - DOMAIN-SUFFIX,private,DIRECT
-  - DOMAIN-SUFFIX,router.asus.com,DIRECT
-  - DOMAIN-SUFFIX,tplinkwifi.net,DIRECT
-  - DOMAIN-SUFFIX,tplogin.cn,DIRECT
-  - DOMAIN-SUFFIX,tendawifi.com,DIRECT
-  - DOMAIN-SUFFIX,router.ctc,DIRECT
-  - DOMAIN-SUFFIX,my.router,DIRECT
-  - DOMAIN-SUFFIX,fritz.box,DIRECT
-  - DOMAIN-SUFFIX,myrouter.local,DIRECT
-  - DOMAIN-SUFFIX,routerlogin.net,DIRECT
-  - DOMAIN-SUFFIX,linksyssmartwifi.com,DIRECT
-  - DOMAIN-SUFFIX,synology.me,DIRECT
-  - DOMAIN-SUFFIX,myqnapcloud.com,DIRECT
   - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
-  - IP-CIDR,17.0.0.0/8,DIRECT,no-resolve
   - IP-CIDR,100.64.0.0/10,DIRECT,no-resolve
   - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
   - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
@@ -420,6 +381,8 @@ rules:
   - DOMAIN-SUFFIX,cn,DIRECT
   - GEOIP,PRIVATE,DIRECT
   - GEOIP,CN,DIRECT
+
+  # Add deployment-specific routing in app/ClashYamlCustomizer.php.
 
   # Final
   - MATCH,Proxy

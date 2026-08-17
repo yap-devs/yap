@@ -4,10 +4,10 @@ use App\Jobs\GenerateClashProfileLink;
 use App\Jobs\UpdateUserUuid;
 use App\Models\User;
 use App\Models\VmessServer;
+use App\Services\ClashService;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
@@ -44,42 +44,16 @@ test('clash subscription keeps yaml route compatibility', function () {
         'DOMAIN-SUFFIX,localhost.localdomain,DIRECT',
         'DOMAIN-SUFFIX,localdomain,DIRECT',
         'DOMAIN-SUFFIX,home.arpa,DIRECT',
-        'DOMAIN-SUFFIX,lan,DIRECT',
-        'DOMAIN-SUFFIX,internal,DIRECT',
-        'DOMAIN-SUFFIX,intranet,DIRECT',
-        'DOMAIN-SUFFIX,corp,DIRECT',
-        'DOMAIN-SUFFIX,private,DIRECT',
-        'DOMAIN-SUFFIX,router.asus.com,DIRECT',
-        'DOMAIN-SUFFIX,tplinkwifi.net,DIRECT',
-        'DOMAIN-SUFFIX,tplogin.cn,DIRECT',
-        'DOMAIN-SUFFIX,tendawifi.com,DIRECT',
-        'DOMAIN-SUFFIX,router.ctc,DIRECT',
-        'DOMAIN-SUFFIX,my.router,DIRECT',
-        'DOMAIN-SUFFIX,fritz.box,DIRECT',
-        'DOMAIN-SUFFIX,myrouter.local,DIRECT',
-        'DOMAIN-SUFFIX,routerlogin.net,DIRECT',
-        'DOMAIN-SUFFIX,linksyssmartwifi.com,DIRECT',
-        'DOMAIN-SUFFIX,synology.me,DIRECT',
-        'DOMAIN-SUFFIX,myqnapcloud.com,DIRECT',
+        'IP-CIDR,127.0.0.0/8,DIRECT,no-resolve',
+        'IP-CIDR,10.0.0.0/8,DIRECT,no-resolve',
+        'IP-CIDR,100.64.0.0/10,DIRECT,no-resolve',
         'IP-CIDR,169.254.0.0/16,DIRECT,no-resolve',
+        'IP-CIDR,172.16.0.0/12,DIRECT,no-resolve',
+        'IP-CIDR,192.168.0.0/16,DIRECT,no-resolve',
         'IP-CIDR6,::1/128,DIRECT,no-resolve',
         'IP-CIDR6,fc00::/7,DIRECT,no-resolve',
         'IP-CIDR6,fe80::/10,DIRECT,no-resolve',
         'GEOIP,PRIVATE,DIRECT',
-        'DOMAIN-SUFFIX,doubao.com,DIRECT',
-        'DOMAIN-SUFFIX,zijieapi.com,DIRECT',
-        'DOMAIN-SUFFIX,tgalileo.com,DIRECT',
-        'DOMAIN-SUFFIX,qianwen.com,DIRECT',
-        'DOMAIN-SUFFIX,windows.com,DIRECT',
-        'DOMAIN-SUFFIX,msftconnecttest.com,DIRECT',
-        'DOMAIN-SUFFIX,msftncsi.com,DIRECT',
-        'DOMAIN-SUFFIX,bilivideo.com,DIRECT',
-        'DOMAIN-SUFFIX,dingtalkapps.com,DIRECT',
-        'DOMAIN-SUFFIX,xiaohongshu.com,DIRECT',
-        'DOMAIN-SUFFIX,xhscdn.com,DIRECT',
-        'DOMAIN-SUFFIX,meituan.net,DIRECT',
-        'DOMAIN-SUFFIX,larkenterprise.com,DIRECT',
-        'DOMAIN-SUFFIX,microsoftvvare.net,DIRECT',
     ];
 
     expect($content)
@@ -97,6 +71,23 @@ test('clash subscription keeps yaml route compatibility', function () {
         expect($direct_rule_index)
             ->toBeInt()
             ->toBeLessThan($final_rule_index);
+    }
+});
+
+test('public clash template excludes deployment-specific routes', function () {
+    $template = yaml_parse_file(resource_path('clash-conf-template.yaml'));
+    $deployment_rules = [
+        'DOMAIN-SUFFIX,router.asus.com,DIRECT',
+        'DOMAIN-SUFFIX,synology.me,DIRECT',
+        'DOMAIN-SUFFIX,internal,DIRECT',
+        'DOMAIN-SUFFIX,microsoftvvare.net,DIRECT',
+        'IP-CIDR,17.0.0.0/8,DIRECT,no-resolve',
+    ];
+
+    expect($template)->toBeArray();
+
+    foreach ($deployment_rules as $deployment_rule) {
+        expect($template['rules'])->not->toContain($deployment_rule);
     }
 });
 
@@ -237,41 +228,25 @@ test('gen sub link command forgets invalid user subscription caches', function (
         ->and(Cache::has($universal_key))->toBeFalse();
 });
 
-test('clash subscription falls back when yaml customizer fails', function () {
-    $customizer_path = app_path('ClashYamlCustomizer.php');
-    $customizer_exists = File::exists($customizer_path);
-    $customizer_contents = $customizer_exists ? File::get($customizer_path) : null;
+test('clash generation fails when yaml customizer fails', function () {
+    $user = User::factory()->create([
+        'balance' => 1,
+        'uuid' => (string) Str::uuid(),
+    ]);
+    $server = VmessServer::create([
+        'name' => 'Tokyo',
+        'server' => 'tokyo.example.com',
+        'port' => 443,
+        'rate' => 1,
+        'internal_server' => 'internal.example.com',
+        'enabled' => true,
+    ]);
 
-    File::put($customizer_path, "<?php\n\nreturn function (string \$path): void {\n    throw new RuntimeException('Customizer failed.');\n};\n");
-
-    try {
-        $user = User::factory()->create([
-            'balance' => 1,
-            'uuid' => (string) Str::uuid(),
-        ]);
-        VmessServer::create([
-            'name' => 'Tokyo',
-            'server' => 'tokyo.example.com',
-            'port' => 443,
-            'rate' => 1,
-            'internal_server' => 'internal.example.com',
-            'enabled' => true,
-        ]);
-        app(SubscriptionService::class)->warmCache($user);
-
-        $response = $this->get(route('subscription.clash', ['uuid' => $user->uuid]));
-
-        $response->assertOk();
-        expect($response->getContent())
-            ->toContain('proxies:')
-            ->toContain('uuid: '.$user->uuid);
-    } finally {
-        if ($customizer_exists) {
-            File::put($customizer_path, $customizer_contents);
-        } else {
-            File::delete($customizer_path);
-        }
-    }
+    expect(fn () => (new ClashService(
+        $user,
+        base_path('tests/Fixtures/ClashYamlCustomizerThrows.php'),
+    ))->genConf(collect([$server])))
+        ->toThrow(RuntimeException::class, 'Customizer failed.');
 });
 
 test('uuid rotation clears fixed subscription caches before async rebuild', function () {

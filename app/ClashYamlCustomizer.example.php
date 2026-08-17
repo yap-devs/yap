@@ -1,6 +1,7 @@
 <?php
 
-return function (string $path) {
-    // $path is the path of the yaml file
-    // you can read the file and modify inplace
+return function (string $path): void {
+    // This ignored deployment hook may modify the generated YAML in place.
+    // Keep product defaults in the public template and deployment-specific rules here.
+    // Throw on invalid state so the subscription cache rebuild fails visibly.
 };
