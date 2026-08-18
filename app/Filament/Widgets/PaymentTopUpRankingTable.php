@@ -8,6 +8,7 @@ use App\Services\AdminDashboardReportService;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
+use Illuminate\Database\Eloquent\Builder;
 
 class PaymentTopUpRankingTable extends TableWidget
 {
@@ -35,7 +36,9 @@ class PaymentTopUpRankingTable extends TableWidget
                     ->label('User')
                     ->description(fn (Payment $record): string => (string) $record->user_email)
                     ->wrap()
-                    ->searchable(),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('users.name', 'like', "%{$search}%")
+                        ->orWhere('users.email', 'like', "%{$search}%")),
                 TextColumn::make('top_up_count')
                     ->label('Orders')
                     ->alignEnd()

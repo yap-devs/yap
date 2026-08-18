@@ -1,9 +1,12 @@
 <?php
 
+use App\Filament\Widgets\PaymentTopUpPeriodRankingTable;
+use App\Filament\Widgets\PaymentTopUpRankingTable;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\AdminDashboardReportService;
 use Carbon\CarbonImmutable;
+use Livewire\Livewire;
 
 test('payment top up ranking is scoped to the selected period', function () {
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-06-04 12:00:00'));
@@ -66,6 +69,42 @@ test('payment top up ranking is scoped to the selected period', function () {
         ->and((int) $rows[1]->user_id)->toBe($second_user->id)
         ->and((float) $rows[1]->total_top_up)->toBe(8.0);
 });
+
+test('admin can search payment top up ranking by user email in :dataset', function (string $widget) {
+    CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-18 17:28:27'));
+
+    $this->actingAs(User::factory()->create(['id' => 1]));
+
+    $matching_user = User::factory()->create([
+        'name' => 'Matching User',
+        'email' => '17505446818@163.com',
+    ]);
+    $other_user = User::factory()->create([
+        'name' => 'Other User',
+        'email' => 'other@example.com',
+    ]);
+
+    $matching_payment = $matching_user->payments()->create([
+        'gateway' => Payment::GATEWAY_ALIPAY,
+        'status' => Payment::STATUS_PAID,
+        'amount' => 10,
+        'created_at' => now(),
+    ]);
+    $other_payment = $other_user->payments()->create([
+        'gateway' => Payment::GATEWAY_STRIPE,
+        'status' => Payment::STATUS_PAID,
+        'amount' => 20,
+        'created_at' => now(),
+    ]);
+
+    Livewire::test($widget)
+        ->searchTable('17505446818@163.com')
+        ->assertCanSeeTableRecords([$matching_payment])
+        ->assertCanNotSeeTableRecords([$other_payment]);
+})->with([
+    'top up ranking page' => [PaymentTopUpPeriodRankingTable::class],
+    'dashboard' => [PaymentTopUpRankingTable::class],
+]);
 
 test('payment top up ranking supports month quarter and half year periods', function (string $period, float $expected_total) {
     CarbonImmutable::setTestNow(CarbonImmutable::parse('2026-08-15 12:00:00'));

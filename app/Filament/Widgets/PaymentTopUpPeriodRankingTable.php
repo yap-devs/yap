@@ -61,7 +61,9 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
                     ->label('User')
                     ->description(fn (Payment $record): string => (string) $record->user_email)
                     ->wrap()
-                    ->searchable(),
+                    ->searchable(query: fn (Builder $query, string $search): Builder => $query
+                        ->where('users.name', 'like', "%{$search}%")
+                        ->orWhere('users.email', 'like', "%{$search}%")),
                 TextColumn::make('top_up_count')
                     ->label('Orders')
                     ->alignEnd()
