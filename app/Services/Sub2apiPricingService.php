@@ -156,17 +156,56 @@ class Sub2apiPricingService
                 $mapping = json_decode($mapping, true) ?: [];
             }
 
-            if (! is_array($mapping)) {
+            if (is_array($mapping) && $mapping !== []) {
+                foreach (array_keys($mapping) as $model) {
+                    $models[] = $model;
+                }
+
                 continue;
             }
 
-            foreach (array_keys($mapping) as $model) {
-                $models[] = $model;
+            $account_id = (int) ($account['id'] ?? 0);
+            if ($account_id <= 0) {
+                continue;
+            }
+
+            try {
+                $account_models = $this->sub2api_service->request('get', '/api/v1/admin/accounts/'.$account_id.'/models');
+                $models = array_merge($models, $this->extractModelNames($account_models));
+            } catch (Throwable $e) {
+                Log::warning('Failed to fetch AI account models.', [
+                    'account_id' => $account_id,
+                    'message' => $e->getMessage(),
+                ]);
             }
         }
 
         $models = array_values(array_unique($models));
         sort($models, SORT_NATURAL);
+
+        return $models;
+    }
+
+    private function extractModelNames(array $account_models): array
+    {
+        $items = $account_models['models'] ?? (array_is_list($account_models) ? $account_models : []);
+        if (! is_array($items)) {
+            return [];
+        }
+
+        $models = [];
+        foreach ($items as $item) {
+            $model = null;
+            if (is_string($item)) {
+                $model = $item;
+            } elseif (is_array($item)) {
+                $model = $item['id'] ?? $item['name'] ?? $item['model'] ?? null;
+            }
+
+            if (is_string($model) && $model !== '') {
+                $models[] = $model;
+            }
+        }
 
         return $models;
     }

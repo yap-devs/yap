@@ -82,6 +82,89 @@ test('it fetches and caches ai model pricing with the group multiplier', functio
     Http::assertSentCount(4);
 });
 
+test('it fetches ai model pricing from account models when mappings are empty', function () {
+    config()->set('services.sub2api.enabled', true);
+    config()->set('services.sub2api.base_url', 'https://ai.test');
+    config()->set('services.sub2api.admin_email', 'admin@example.com');
+    config()->set('services.sub2api.admin_password', 'password');
+    config()->set('services.sub2api.default_group_id', 2);
+
+    Cache::forget('sub2api_access_token');
+    Cache::forget('sub2api_pricing:group:2');
+
+    Http::preventStrayRequests();
+    Http::fake([
+        'https://ai.test/api/v1/auth/login' => Http::response([
+            'code' => 0,
+            'data' => [
+                'access_token' => 'token',
+                'expires_in' => 3600,
+            ],
+        ]),
+        'https://ai.test/api/v1/admin/groups/2' => Http::response([
+            'code' => 0,
+            'data' => [
+                'id' => 2,
+                'name' => 'OpenAI',
+                'rate_multiplier' => 0.07,
+            ],
+        ]),
+        'https://ai.test/api/v1/admin/accounts/10/models' => Http::response([
+            'code' => 0,
+            'data' => [
+                'models' => ['gpt-5.6'],
+            ],
+        ]),
+        'https://ai.test/api/v1/admin/accounts/11/models' => Http::response([
+            'code' => 0,
+            'data' => [
+                'models' => [
+                    ['id' => 'gpt-5.5'],
+                    ['id' => 'gpt-5.6'],
+                ],
+            ],
+        ]),
+        'https://ai.test/api/v1/admin/accounts*' => Http::response([
+            'code' => 0,
+            'data' => [
+                'items' => [
+                    [
+                        'id' => 10,
+                        'credentials' => [
+                            'model_mapping' => [],
+                        ],
+                    ],
+                    [
+                        'id' => 11,
+                        'credentials' => [
+                            'model_mapping' => [],
+                        ],
+                    ],
+                ],
+            ],
+        ]),
+        'https://ai.test/api/v1/admin/channels/model-pricing*' => Http::response([
+            'code' => 0,
+            'data' => [
+                'found' => true,
+                'input_price' => 0.0000025,
+                'output_price' => 0.000015,
+                'cache_read_price' => 0.00000025,
+                'cache_write_price' => 0,
+            ],
+        ]),
+    ]);
+
+    $guide = app(Sub2apiPricingService::class)->refreshPricingGuide();
+
+    expect($guide['available'])->toBeTrue()
+        ->and($guide['group_multiplier'])->toBe(0.07)
+        ->and($guide['models'])->toHaveCount(2)
+        ->and(array_column($guide['models'], 'model'))->toBe(['gpt-5.5', 'gpt-5.6']);
+
+    Http::assertSentCount(7);
+});
+
 test('it reserves one async pricing refresh while cache is missing', function () {
     config()->set('services.sub2api.enabled', true);
     config()->set('services.sub2api.default_group_id', 2);
