@@ -614,10 +614,10 @@ class AdminDashboardReportService
 
         $base_query = $this->getReportableAiUsageQuery();
 
-        $today_cost = round((float) (clone $base_query)->where('created_at', '>=', $today_start)->sum('amount'), 2);
-        $today_requests = (int) (clone $base_query)->where('created_at', '>=', $today_start)->count();
-        $month_cost = round((float) (clone $base_query)->where('created_at', '>=', $month_start)->sum('amount'), 2);
-        $seven_day_cost = round((float) (clone $base_query)->where('created_at', '>=', $seven_days_ago)->sum('amount'), 2);
+        $today_cost = round((float) (clone $base_query)->where('usage_created_at', '>=', $today_start)->sum('amount'), 2);
+        $today_requests = (int) (clone $base_query)->where('usage_created_at', '>=', $today_start)->count();
+        $month_cost = round((float) (clone $base_query)->where('usage_created_at', '>=', $month_start)->sum('amount'), 2);
+        $seven_day_cost = round((float) (clone $base_query)->where('usage_created_at', '>=', $seven_days_ago)->sum('amount'), 2);
         $active_keys = (int) $this->getReportableUsersQuery()->whereNotNull('sub2api_key_id')->where('sub2api_key_status', 'active')->count();
         $total_keys = (int) $this->getReportableUsersQuery()->whereNotNull('sub2api_key_id')->count();
 
@@ -637,10 +637,10 @@ class AdminDashboardReportService
     public function getAiDailyCostSeries(int $days = 7): Collection
     {
         $rows = $this->getReportableAiUsageQuery()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
+            ->selectRaw("DATE_FORMAT(usage_created_at, '%Y-%m-%d') as period")
             ->selectRaw('SUM(amount) as total_cost')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
-            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
+            ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
+            ->groupByRaw("DATE_FORMAT(usage_created_at, '%Y-%m-%d')")
             ->orderBy('period')
             ->get();
 
@@ -661,7 +661,7 @@ class AdminDashboardReportService
             ->selectRaw('users.email as user_email')
             ->selectRaw('COUNT(*) as request_count')
             ->selectRaw('SUM(sub2api_usage_records.amount) as total_cost')
-            ->where('sub2api_usage_records.created_at', '>=', CarbonImmutable::now()->startOfDay())
+            ->where('sub2api_usage_records.usage_created_at', '>=', CarbonImmutable::now()->startOfDay())
             ->groupBy('sub2api_usage_records.user_id', 'users.name', 'users.email')
             ->orderByDesc('total_cost');
     }
@@ -669,10 +669,10 @@ class AdminDashboardReportService
     public function getAiMonthlyCostSeries(int $months = 12): Collection
     {
         $rows = $this->getReportableAiUsageQuery()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
+            ->selectRaw("DATE_FORMAT(usage_created_at, '%Y-%m') as period")
             ->selectRaw('SUM(amount) as total_cost')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
-            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+            ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+            ->groupByRaw("DATE_FORMAT(usage_created_at, '%Y-%m')")
             ->orderBy('period')
             ->get();
 
@@ -688,7 +688,7 @@ class AdminDashboardReportService
             ->selectRaw('COALESCE(model, \'unknown\') as model_name')
             ->selectRaw('COUNT(*) as request_count')
             ->selectRaw('SUM(amount) as total_cost')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+            ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
             ->groupByRaw('COALESCE(model, \'unknown\')')
             ->orderByDesc('total_cost')
             ->get()
@@ -702,10 +702,10 @@ class AdminDashboardReportService
     public function getAiDailyRequestSeries(int $days = 7): Collection
     {
         $rows = $this->getReportableAiUsageQuery()
-            ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
+            ->selectRaw("DATE_FORMAT(usage_created_at, '%Y-%m-%d') as period")
             ->selectRaw('COUNT(*) as total_requests')
-            ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
-            ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
+            ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
+            ->groupByRaw("DATE_FORMAT(usage_created_at, '%Y-%m-%d')")
             ->orderBy('period')
             ->get();
 
