@@ -3,10 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
-use App\Models\UserPackage;
 use App\Notifications\PackageExpireReminder;
-use App\Notifications\PackageLowTrafficReminder;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class PackageStatusNotificationCommand extends Command
@@ -23,47 +20,32 @@ class PackageStatusNotificationCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Notify users about package status (expiration and low traffic).';
+    protected $description = 'Notify users whose package expires tomorrow.';
 
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
-        $users = User::all();
-        // Define the threshold for low traffic warning (10%)
-        $lowTrafficThreshold = 0.10;
-
-        foreach ($users as $user) {
-            $latest_active_user_package = $user->packages()
+        User::query()
+            ->with(['packages' => fn ($query) => $query
                 ->available()
-                ->orderBy('ended_at', 'desc')
-                ->first();
+                ->orderByDesc('ended_at')
+                ->limit(1)])
+            ->chunkById(100, function ($users): void {
+                /** @var User $user */
+                foreach ($users as $user) {
+                    $latest_active_user_package = $user->packages->first();
 
-            if (! $latest_active_user_package) {
-                continue;
-            }
+                    if (! $latest_active_user_package?->ended_at?->isTomorrow()) {
+                        continue;
+                    }
 
-            // Check if package expires tomorrow
-            if (Carbon::parse($latest_active_user_package->ended_at)->isTomorrow()) {
-                logger()->driver('job')->info("User $user->id will have their package expire tomorrow, sending email to remind them.");
-                // Send email to remind user of package expiration
-                $user->notify(new PackageExpireReminder($user));
-            }
-
-            // Check if package is running low on traffic
-            if ($latest_active_user_package->package && $latest_active_user_package->package->traffic_limit > 0) {
-                $totalTraffic = $latest_active_user_package->package->traffic_limit;
-                $remainingTraffic = $latest_active_user_package->remaining_traffic;
-                $remainingPercentage = $remainingTraffic / $totalTraffic;
-
-                if ($remainingPercentage <= $lowTrafficThreshold) {
-                    $percentRemaining = round($remainingPercentage * 100);
-                    logger()->driver('job')->info("User $user->id is running low on package traffic ($percentRemaining% remaining), sending email to notify them.");
-                    // Send email to notify user of low remaining traffic
-                    $user->notify(new PackageLowTrafficReminder($user, $latest_active_user_package, $remainingPercentage));
+                    logger()->driver('job')->info("User $user->id will have their package expire tomorrow, queueing email reminder.");
+                    $user->notify(new PackageExpireReminder);
                 }
-            }
-        }
+            });
+
+        return self::SUCCESS;
     }
 }

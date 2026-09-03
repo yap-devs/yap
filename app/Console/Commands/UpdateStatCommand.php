@@ -115,7 +115,7 @@ class UpdateStatCommand extends Command
             Cache::forget('today_traffic_'.$user->id);
         }
 
-        if (now()->hour == 0) {
+        if (now()->hour === 0 && now()->minute < 10) {
             $this->updateBalanceDaily($users);
         }
 

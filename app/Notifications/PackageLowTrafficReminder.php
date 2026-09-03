@@ -2,23 +2,26 @@
 
 namespace App\Notifications;
 
-use App\Models\User;
-use App\Models\UserPackage;
 use Illuminate\Bus\Queueable;
+use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class PackageLowTrafficReminder extends Notification
+class PackageLowTrafficReminder extends Notification implements ShouldQueue
 {
     use Queueable;
+
+    public int $tries = 3;
+
+    public int $timeout = 30;
 
     /**
      * Create a new notification instance.
      */
     public function __construct(
-        public User $user,
-        public UserPackage $userPackage,
-        public float $remainingPercentage
+        public int $remaining_traffic,
+        public int $total_traffic,
+        public float $remaining_percentage,
     ) {
         //
     }
@@ -38,22 +41,32 @@ class PackageLowTrafficReminder extends Notification
      */
     public function toMail(object $notifiable): MailMessage
     {
-        $remainingGB = round($this->userPackage->remaining_traffic / 1024 / 1024 / 1024, 2);
-        $totalGB = round($this->userPackage->package->traffic_limit / 1024 / 1024 / 1024, 2);
-        $percentRemaining = round($this->remainingPercentage * 100);
+        $remaining_gb = round($this->remaining_traffic / 1024 / 1024 / 1024, 2);
+        $total_gb = round($this->total_traffic / 1024 / 1024 / 1024, 2);
+        $percent_remaining = round($this->remaining_percentage * 100);
 
         return (new MailMessage)
             ->subject(__('messages.notifications.package_low_subject'))
-            ->greeting(__('messages.notifications.greeting', ['name' => $this->user->name]))
+            ->greeting(__('messages.notifications.greeting', ['name' => $notifiable->name]))
             ->line(__('messages.notifications.package_low_line_1'))
             ->line(__('messages.notifications.package_low_line_2', [
-                'remaining' => $remainingGB,
-                'total' => $totalGB,
-                'percent' => $percentRemaining,
+                'remaining' => $remaining_gb,
+                'total' => $total_gb,
+                'percent' => $percent_remaining,
             ]))
             ->line(__('messages.notifications.package_low_line_3'))
             ->action(__('messages.notifications.purchase_data'), url('/package'))
             ->line(__('messages.notifications.thanks'));
+    }
+
+    /**
+     * Calculate the number of seconds to wait before retrying the notification.
+     *
+     * @return array<int, int>
+     */
+    public function backoff(): array
+    {
+        return [60, 300];
     }
 
     /**
