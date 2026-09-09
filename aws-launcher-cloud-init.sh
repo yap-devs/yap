@@ -9,6 +9,7 @@ export HOME=/root
 # Detect default user (admin for Debian/AmazonLinux, ubuntu for Ubuntu)
 DEFAULT_USER="admin"
 if [ -d "/home/ubuntu" ]; then DEFAULT_USER="ubuntu"; fi
+if [ -d "/home/debian" ]; then DEFAULT_USER="debian"; fi
 
 # Setup root ssh directory
 mkdir -p /root/.ssh

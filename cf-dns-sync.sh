@@ -11,6 +11,8 @@
 #   -              Read IPs from stdin (pipe)
 #   --lightsail-ids Read and rotate AWS Lightsail IPv4 addresses by instance ID/name
 #   --lightsail-tags Read and rotate AWS Lightsail IPv4 addresses by tags
+#   --ntt-id         Replace a WebARENA Indigo instance, test it, then switch DNS
+#   --ntt-name       Find the current WebARENA Indigo instance by name keyword
 #
 # Dependencies: dig, curl, jq, grep (extended regex), aws (Lightsail mode)
 #
@@ -47,11 +49,21 @@ CHECK_TIMEOUT=3
 SOURCE_MODE="source"
 LIGHTSAIL_IDS=""
 LIGHTSAIL_TAGS=""
+NTT_INSTANCE_ID=""
+NTT_NAME_FILTER=""
+NTT_LAUNCHER="${NTT_LAUNCHER:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/ntt-launcher.sh}"
+NTT_INIT_SCRIPT="${NTT_INIT_SCRIPT:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/aws-launcher-cloud-init.sh}"
+NTT_INSTANCE_NAME=""
+NTT_SSH_KEY_NAME="${NTT_SSH_KEY_NAME:-}"
+NTT_CREATED_INSTANCE_ID=""
+NTT_CLEANUP_ACTIVE=false
+NTT_LOCK_DIR=""
 INSTANCE_SSH_USER="${LIGHTSAIL_SSH_USER:-}"
 INSTANCE_SSH_KEY="${LIGHTSAIL_SSH_KEY:-}"
 PROBE_TIMEOUT=3
 SSH_CONNECT_TIMEOUT=8
 STATIC_IP_READY_TIMEOUT=60
+NTT_READY_TIMEOUT="${NTT_READY_TIMEOUT:-900}"
 RETURN_PROBE_ROUNDS=2
 RETURN_PROBE_CARRIER_MIN_OK=2
 RETURN_PROBE_MIN_CARRIERS=2
@@ -115,8 +127,8 @@ print_result() { log_line "$CYAN" "RESULT" "$1"; }
 CF_API="https://api.cloudflare.com/client/v4"
 
 check_deps() {
-    local required=(curl jq)
-    if [ "$SOURCE_MODE" != "lightsail" ]; then
+    local required=(curl jq timeout)
+    if [ "$SOURCE_MODE" != "lightsail" ] && [ "$SOURCE_MODE" != "ntt" ]; then
         required+=(dig)
     fi
 
@@ -141,6 +153,17 @@ check_deps() {
         fi
 
         print_info "Auth: AWS CLI"
+    fi
+
+    if [ "$SOURCE_MODE" == "ntt" ]; then
+        for cmd in ssh base64; do
+            if ! command -v "$cmd" &>/dev/null; then
+                print_err "Missing dependency: $cmd"
+                exit 1
+            fi
+        done
+        [ -x "$NTT_LAUNCHER" ] || { print_err "NTT launcher is not executable: ${NTT_LAUNCHER}"; exit 1; }
+        [ -r "$NTT_INIT_SCRIPT" ] || { print_err "NTT init script is not readable: ${NTT_INIT_SCRIPT}"; exit 1; }
     fi
 
     if [ "$SKIP_DNS_SYNC" != "true" ]; then
@@ -385,7 +408,7 @@ validate_positive_int() {
 }
 
 validate_lightsail_probe_options() {
-    [ "$SOURCE_MODE" != "lightsail" ] && return 0
+    [ "$SOURCE_MODE" != "lightsail" ] && [ "$SOURCE_MODE" != "ntt" ] && return 0
 
     validate_positive_int "--probe-timeout" "$PROBE_TIMEOUT"
     validate_positive_int "--probe-rounds" "$RETURN_PROBE_ROUNDS"
@@ -394,7 +417,7 @@ validate_lightsail_probe_options() {
     validate_positive_int "--probe-total-min-ok" "$RETURN_PROBE_TOTAL_MIN_OK"
     validate_positive_int "--ssh-timeout" "$SSH_CONNECT_TIMEOUT"
     validate_positive_int "--static-ip-ready-timeout" "$STATIC_IP_READY_TIMEOUT"
-    validate_positive_int "--max-attempts" "$LIGHTSAIL_MAX_ATTEMPTS"
+    [ "$SOURCE_MODE" != "lightsail" ] || validate_positive_int "--max-attempts" "$LIGHTSAIL_MAX_ATTEMPTS"
 
     if [ "$RETURN_PROBE_CARRIER_MIN_OK" -gt 5 ]; then
         print_err "--probe-carrier-min-ok cannot exceed 5"
@@ -484,6 +507,21 @@ instance_ssh() {
     fi
 
     ssh "${args[@]}" "$target" "$command"
+}
+
+instance_ssh_script() {
+    local ip=$1
+    local script_file=$2
+    local target
+    target=$(build_instance_ssh_target "$ip")
+    local args=(
+        -o BatchMode=yes
+        -o StrictHostKeyChecking=accept-new
+        -o ConnectTimeout="$SSH_CONNECT_TIMEOUT"
+    )
+    [ -n "$INSTANCE_SSH_KEY" ] && args+=(-i "$INSTANCE_SSH_KEY")
+    [ -n "$INSTANCE_SSH_HOST_KEY_ALIAS" ] && args+=(-o HostKeyAlias="$INSTANCE_SSH_HOST_KEY_ALIAS")
+    ssh "${args[@]}" "$target" 'sudo -n bash -s' < "$script_file"
 }
 
 wait_for_instance_ssh() {
@@ -1153,6 +1191,169 @@ collect_lightsail_ips() {
     COLLECTED_LIGHTSAIL_IPS="$resolved"
 }
 
+cleanup_ntt_candidate() {
+    [ "$NTT_CLEANUP_ACTIVE" == "true" ] || return 0
+    [ -n "$NTT_CREATED_INSTANCE_ID" ] || return 0
+    print_warn "Removing uncommitted NTT candidate ${NTT_CREATED_INSTANCE_ID}" >&2
+    "$NTT_LAUNCHER" --json delete "$NTT_CREATED_INSTANCE_ID" >/dev/null || true
+}
+
+release_ntt_lock() {
+    [ -n "$NTT_LOCK_DIR" ] || return 0
+    rm -f "${NTT_LOCK_DIR}/pid"
+    rmdir "$NTT_LOCK_DIR" 2>/dev/null || true
+    NTT_LOCK_DIR=""
+}
+
+cleanup_ntt_exit() {
+    cleanup_ntt_candidate
+    release_ntt_lock
+}
+
+collect_ntt_ip() {
+    local old_instance old_ip old_name launch_name created new_ip init_status previous_boot_id current_boot_id elapsed
+    old_instance=$("$NTT_LAUNCHER" --json get "$NTT_INSTANCE_ID") \
+        || { print_err "NTT instance not found: ${NTT_INSTANCE_ID}" >&2; return 1; }
+    old_ip=$(jq -r '.ip // empty' <<< "$old_instance")
+    old_name=$(jq -r '.instance_name' <<< "$old_instance")
+    [ -n "$old_ip" ] || { print_err "NTT instance ${NTT_INSTANCE_ID} has no IPv4 address" >&2; return 1; }
+    launch_name=${NTT_INSTANCE_NAME:-"${old_name}-$(date +%m%d%H%M%S)"}
+
+    if [ "$DRY_RUN" == "true" ]; then
+        print_warn "[DRY-RUN] Would create, initialize, probe, and replace NTT instance ${NTT_INSTANCE_ID}" >&2
+        COLLECTED_LIGHTSAIL_IPS=$(jq -n --arg ip "$old_ip" '{A: [$ip], AAAA: []}')
+        return 0
+    fi
+
+    print_info "Creating NTT replacement before releasing ${NTT_INSTANCE_ID}" >&2
+    local launch_args=(--json launch --name "$launch_name")
+    [ -z "$NTT_SSH_KEY_NAME" ] || launch_args+=(--ssh-key "$NTT_SSH_KEY_NAME")
+    created=$("$NTT_LAUNCHER" "${launch_args[@]}") || return 1
+    NTT_CREATED_INSTANCE_ID=$(jq -r '.id // empty' <<< "$created")
+    new_ip=$(jq -r '.ip // empty' <<< "$created")
+    if [ -z "$NTT_CREATED_INSTANCE_ID" ] || [ -z "$new_ip" ]; then
+        print_err "NTT launcher returned an incomplete instance" >&2
+        return 1
+    fi
+    NTT_CLEANUP_ACTIVE=true
+    trap cleanup_ntt_exit EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+
+    if [ "$new_ip" == "$old_ip" ]; then
+        print_err "NTT replacement reused old IPv4 ${old_ip}; keeping old instance and rejecting candidate" >&2
+        return 1
+    fi
+
+    INSTANCE_SSH_HOST_KEY_ALIAS="ntt-${NTT_CREATED_INSTANCE_ID}"
+    print_info "Waiting for NTT SSH at ${new_ip}" >&2
+    local previous_ready_timeout=$STATIC_IP_READY_TIMEOUT
+    STATIC_IP_READY_TIMEOUT=$NTT_READY_TIMEOUT
+    if ! wait_for_instance_ssh "$new_ip"; then
+        STATIC_IP_READY_TIMEOUT=$previous_ready_timeout
+        print_err "NTT candidate SSH did not become ready within ${NTT_READY_TIMEOUT}s" >&2
+        return 1
+    fi
+
+    print_info "Installing relay software on NTT candidate ${NTT_CREATED_INSTANCE_ID}" >&2
+    previous_boot_id=$(instance_ssh "$new_ip" 'cat /proc/sys/kernel/random/boot_id') || return 1
+    init_status=0
+    instance_ssh_script "$new_ip" "$NTT_INIT_SCRIPT" || init_status=$?
+    if [ "$init_status" -ne 0 ]; then
+        print_warn "SSH disconnected during NTT initialization; waiting for the scripted reboot" >&2
+    fi
+    sleep 10
+    elapsed=0
+    current_boot_id=$previous_boot_id
+    while [ "$elapsed" -lt "$NTT_READY_TIMEOUT" ]; do
+        current_boot_id=$(instance_ssh "$new_ip" 'cat /proc/sys/kernel/random/boot_id' 2>/dev/null || true)
+        if [ -n "$current_boot_id" ] && [ "$current_boot_id" != "$previous_boot_id" ]; then
+            break
+        fi
+        sleep 5
+        elapsed=$((elapsed + 5))
+    done
+    STATIC_IP_READY_TIMEOUT=$previous_ready_timeout
+    if [ -z "$current_boot_id" ] || [ "$current_boot_id" == "$previous_boot_id" ]; then
+        print_err "NTT candidate did not complete its initialization reboot" >&2
+        return 1
+    fi
+    if ! instance_ssh "$new_ip" 'sudo -n test -f /root/install_complete'; then
+        print_err "NTT initialization completion marker is missing" >&2
+        return 1
+    fi
+
+    if ! probe_return_path_from_instance "$new_ip"; then
+        print_err "NTT candidate failed return-path probes" >&2
+        return 1
+    fi
+    if [ -n "$CHECK_PORT" ] && ! check_tcp "$new_ip" "$CHECK_PORT"; then
+        print_err "NTT candidate ${new_ip}:${CHECK_PORT} failed TCP health check" >&2
+        return 1
+    fi
+
+    print_result "Prepared NTT replacement ${NTT_INSTANCE_ID} (${old_ip}) -> ${NTT_CREATED_INSTANCE_ID} (${new_ip})" >&2
+    COLLECTED_LIGHTSAIL_IPS=$(jq -n --arg ip "$new_ip" '{A: [$ip], AAAA: []}')
+}
+
+resolve_ntt_instance_id() {
+    [ -z "$NTT_INSTANCE_ID" ] || return 0
+    local instances matches count
+    instances=$("$NTT_LAUNCHER" --json list) || return 1
+    matches=$(jq --arg keyword "$NTT_NAME_FILTER" \
+        '[.[] | select((.instance_name // "") | contains($keyword))]' <<< "$instances")
+    count=$(jq 'length' <<< "$matches")
+    if [ "$count" -eq 0 ]; then
+        print_err "No NTT instance name contains '${NTT_NAME_FILTER}'" >&2
+        return 1
+    fi
+    if [ "$count" -ne 1 ]; then
+        print_err "NTT name keyword '${NTT_NAME_FILTER}' matched ${count} instances; refusing ambiguous rotation" >&2
+        jq -r '.[] | "  id=\(.id) name=\(.instance_name) ip=\(.ip // \"pending\")"' <<< "$matches" >&2
+        return 1
+    fi
+    NTT_INSTANCE_ID=$(jq -r '.[0].id' <<< "$matches")
+    print_info "Matched NTT instance ${NTT_INSTANCE_ID} by name keyword '${NTT_NAME_FILTER}'" >&2
+}
+
+acquire_ntt_lock() {
+    [ "$SOURCE_MODE" == "ntt" ] || return 0
+    local lock_key=${NTT_NAME_FILTER:-$NTT_INSTANCE_ID}
+    lock_key=$(printf '%s' "$lock_key" | tr -c 'A-Za-z0-9_.-' '_')
+    NTT_LOCK_DIR="/tmp/cf-dns-sync-ntt-${lock_key}.lock"
+    [ ! -f "$NTT_LOCK_DIR" ] || rm -f "$NTT_LOCK_DIR"
+    if ! mkdir "$NTT_LOCK_DIR" 2>/dev/null; then
+        local lock_pid=""
+        [ ! -r "${NTT_LOCK_DIR}/pid" ] || lock_pid=$(<"${NTT_LOCK_DIR}/pid")
+        if [ -n "$lock_pid" ] && kill -0 "$lock_pid" 2>/dev/null; then
+            print_err "Another NTT rotation is already running for '${lock_key}' (PID ${lock_pid})"
+            exit 1
+        fi
+        rm -f "${NTT_LOCK_DIR}/pid"
+        rmdir "$NTT_LOCK_DIR" 2>/dev/null || true
+        mkdir "$NTT_LOCK_DIR" 2>/dev/null \
+            || { print_err "Could not acquire NTT rotation lock for '${lock_key}'"; exit 1; }
+    fi
+    printf '%s\n' "$$" > "${NTT_LOCK_DIR}/pid"
+    trap cleanup_ntt_exit EXIT
+    trap 'exit 130' INT
+    trap 'exit 143' TERM
+}
+
+finalize_ntt_rotation() {
+    [ "$SOURCE_MODE" == "ntt" ] || return 0
+    [ "$DRY_RUN" == "true" ] && return 0
+    NTT_CLEANUP_ACTIVE=false
+    release_ntt_lock
+    trap - EXIT INT TERM
+    print_info "DNS is updated; stopping and deleting old NTT instance ${NTT_INSTANCE_ID}" >&2
+    if ! "$NTT_LAUNCHER" --json delete "$NTT_INSTANCE_ID" >/dev/null; then
+        print_warn "DNS points to the healthy replacement, but old NTT instance ${NTT_INSTANCE_ID} could not be deleted" >&2
+        return 0
+    fi
+    print_result "NTT rotation complete: new instance=${NTT_CREATED_INSTANCE_ID}" >&2
+}
+
 # Get existing DNS records for the target domain
 get_existing_records() {
     local zone_id=$1
@@ -1415,12 +1616,16 @@ show_help() {
     echo "  <command> | $0 - <target-domain> [options]"
     echo "  $0 --lightsail-ids ID[,ID...] <target-domain> [options]"
     echo "  $0 --lightsail-tags KEY=VALUE[,KEY=VALUE...] <target-domain> [options]"
+    echo "  $0 --ntt-id INSTANCE_ID <target-domain> [options]"
+    echo "  $0 --ntt-name KEYWORD <target-domain> [options]"
     echo ""
     echo "Source (first argument):"
     echo "  domain.com         Resolve IPs via dig (A + AAAA records)"
     echo "  -                  Read from stdin, auto-extract all IPs"
     echo "  --lightsail-ids    Match AWS Lightsail instances by name, ARN, or support code"
     echo "  --lightsail-tags   Match AWS Lightsail instances by tags; all tags must match"
+    echo "  --ntt-id           Replace a WebARENA Indigo instance by numeric ID or name"
+    echo "  --ntt-name         Find exactly one Indigo instance whose name contains KEYWORD"
     echo ""
     echo "Options:"
     echo "  --check-port PORT  Filter out IPs where TCP port is unreachable"
@@ -1437,6 +1642,11 @@ show_help() {
     echo "  --max-attempts N          Max Lightsail static IP candidates to test (default: 10)"
     echo "  --allow-probe-outage      Allow temporary outage while candidate IPs are probed"
     echo "  --force-rotate-ip  Always rotate Lightsail static IPs before DNS sync"
+    echo "  --ntt-init-script PATH  Script installed via SSH before NTT probes"
+    echo "  --ntt-instance-name NAME  Name for the replacement NTT instance"
+    echo "  --ntt-ssh-key NAME  Indigo SSH key name for replacement instances"
+    echo "  --ntt-launcher PATH  NTT launcher path (default: ./ntt-launcher.sh)"
+    echo "  --ntt-ready-timeout N  Max seconds for NTT SSH/init readiness (default: 900)"
     echo "  --probe-ssh-hosts/--probe-port/--probe-min-ok are deprecated and ignored"
     echo "  --ttl N            TTL in seconds (default: 60)"
     echo "  --proxied          Enable Cloudflare proxy (default: off)"
@@ -1452,6 +1662,8 @@ show_help() {
     echo "  AWS credentials must be configured for Lightsail mode"
     echo "  LIGHTSAIL_SSH_USER  Optional default for --instance-ssh-user"
     echo "  LIGHTSAIL_SSH_KEY   Optional default for --instance-ssh-key"
+    echo "  NTT_AUTH_FILE       Indigo auth.json path used by ntt-launcher.sh"
+    echo "  NTT_SSH_KEY_NAME    Default Indigo SSH key name"
     echo "  Lightsail rotation temporarily detaches the current static IP while each candidate is probed"
     echo ""
     echo "Examples:"
@@ -1477,6 +1689,9 @@ show_help() {
     echo "  $0 --lightsail-ids ls-a,ls-b target.example.com"
     echo "  $0 --lightsail-tags role=proxy,env=prod target.example.com --instance-ssh-key ~/.ssh/lightsail.pem"
     echo "  $0 --lightsail-tags role=proxy target.example.com --force-rotate-ip --allow-probe-outage"
+    echo ""
+    echo "  # Replace NTT instance only after the new relay passes initialization and probes"
+    echo "  $0 --ntt-name relay-prod relay.example.com --instance-ssh-user debian --instance-ssh-key ~/.ssh/id_rsa --check-port 443"
 }
 
 main() {
@@ -1522,6 +1737,40 @@ main() {
             --lightsail-tags)
                 SOURCE_MODE="lightsail"
                 LIGHTSAIL_TAGS="$2"
+                shift 2
+                ;;
+            --ntt-id)
+                SOURCE_MODE="ntt"
+                NTT_INSTANCE_ID="$2"
+                [ -n "$INSTANCE_SSH_USER" ] || INSTANCE_SSH_USER="${NTT_SSH_USER:-debian}"
+                [ -n "$INSTANCE_SSH_KEY" ] || INSTANCE_SSH_KEY="${NTT_SSH_KEY:-${HOME}/.ssh/id_rsa}"
+                shift 2
+                ;;
+            --ntt-name)
+                SOURCE_MODE="ntt"
+                NTT_NAME_FILTER="$2"
+                [ -n "$INSTANCE_SSH_USER" ] || INSTANCE_SSH_USER="${NTT_SSH_USER:-debian}"
+                [ -n "$INSTANCE_SSH_KEY" ] || INSTANCE_SSH_KEY="${NTT_SSH_KEY:-${HOME}/.ssh/id_rsa}"
+                shift 2
+                ;;
+            --ntt-init-script)
+                NTT_INIT_SCRIPT="$2"
+                shift 2
+                ;;
+            --ntt-instance-name)
+                NTT_INSTANCE_NAME="$2"
+                shift 2
+                ;;
+            --ntt-ssh-key)
+                NTT_SSH_KEY_NAME="$2"
+                shift 2
+                ;;
+            --ntt-launcher)
+                NTT_LAUNCHER="$2"
+                shift 2
+                ;;
+            --ntt-ready-timeout)
+                NTT_READY_TIMEOUT="$2"
                 shift 2
                 ;;
             --instance-ssh-user)
@@ -1604,7 +1853,7 @@ main() {
                 shift
                 ;;
             *)
-                if [ "$SOURCE_MODE" == "lightsail" ] && [ -z "$target_domain" ]; then
+                if { [ "$SOURCE_MODE" == "lightsail" ] || [ "$SOURCE_MODE" == "ntt" ]; } && [ -z "$target_domain" ]; then
                     target_domain="$1"
                 elif [ -z "$source_domain" ]; then
                     source_domain="$1"
@@ -1619,7 +1868,7 @@ main() {
         esac
     done
 
-    if [ "$SOURCE_MODE" == "lightsail" ] && [ -z "$target_domain" ] && [ -n "$source_domain" ]; then
+    if { [ "$SOURCE_MODE" == "lightsail" ] || [ "$SOURCE_MODE" == "ntt" ]; } && [ -z "$target_domain" ] && [ -n "$source_domain" ]; then
         target_domain="$source_domain"
         source_domain=""
     fi
@@ -1631,6 +1880,13 @@ main() {
             show_help
             exit 1
         fi
+    elif [ "$SOURCE_MODE" == "ntt" ]; then
+        if { [ -z "$NTT_INSTANCE_ID" ] && [ -z "$NTT_NAME_FILTER" ]; } || [ -z "$target_domain" ]; then
+            print_err "NTT instance ID/name keyword and target are required"
+            show_help
+            exit 1
+        fi
+        validate_positive_int "--ntt-ready-timeout" "$NTT_READY_TIMEOUT"
     elif [ -z "$source_domain" ] || [ -z "$target_domain" ]; then
         print_err "Both source and target are required"
         echo ""
@@ -1640,9 +1896,11 @@ main() {
 
     validate_lightsail_probe_options
     check_deps
+    acquire_ntt_lock
+    [ "$SOURCE_MODE" != "ntt" ] || resolve_ntt_instance_id
 
     local zone_id=""
-    if [ "$SOURCE_MODE" == "lightsail" ] && [ "$SKIP_DNS_SYNC" != "true" ]; then
+    if { [ "$SOURCE_MODE" == "lightsail" ] || [ "$SOURCE_MODE" == "ntt" ]; } && [ "$SKIP_DNS_SYNC" != "true" ]; then
         if [ "$DEBUG" == "true" ]; then
             echo ""
             echo -e "${CYAN}=== Step 0: Find Cloudflare zone for target ===${NC}"
@@ -1675,6 +1933,10 @@ main() {
         fi
         collect_lightsail_ips "$LIGHTSAIL_IDS" "$LIGHTSAIL_TAGS" "$zone_id" "$target_domain"
         resolved="$COLLECTED_LIGHTSAIL_IPS"
+    elif [ "$SOURCE_MODE" == "ntt" ]; then
+        print_info "Preparing replacement for WebARENA Indigo instance ${NTT_INSTANCE_ID}"
+        collect_ntt_ip
+        resolved="$COLLECTED_LIGHTSAIL_IPS"
     elif [ "$source_domain" == "-" ]; then
         # Read from stdin
         print_info "Reading IPs from stdin..."
@@ -1697,8 +1959,8 @@ main() {
     ipv6_count=$(echo "$resolved" | jq '.AAAA | length')
 
     if [ "$ipv4_count" -eq 0 ] && [ "$ipv6_count" -eq 0 ]; then
-        if [ "$SOURCE_MODE" == "lightsail" ]; then
-            print_err "No IPv4 addresses collected from Lightsail"
+        if [ "$SOURCE_MODE" == "lightsail" ] || [ "$SOURCE_MODE" == "ntt" ]; then
+            print_err "No IPv4 addresses collected from ${SOURCE_MODE}"
         else
             print_err "No IPs resolved from ${source_domain}"
         fi
@@ -1720,7 +1982,7 @@ main() {
     fi
 
     # Health check: filter by TCP port reachability
-    if [ -n "$CHECK_PORT" ] && [ "$SOURCE_MODE" != "lightsail" ]; then
+    if [ -n "$CHECK_PORT" ] && [ "$SOURCE_MODE" != "lightsail" ] && [ "$SOURCE_MODE" != "ntt" ]; then
         if [ "$DEBUG" == "true" ]; then
             echo ""
             echo -e "${CYAN}=== Health Check: TCP port ${CHECK_PORT} ===${NC}"
@@ -1748,6 +2010,8 @@ main() {
                 echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
                 echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
                 echo -e "  Return probe: ${RETURN_PROBE_ROUNDS} round(s), >=${RETURN_PROBE_MIN_CARRIERS}/3 carriers, >=${RETURN_PROBE_TOTAL_MIN_OK}/15 total"
+            elif [ "$SOURCE_MODE" == "ntt" ]; then
+                echo -e "  Source:  WebARENA Indigo (old instance: ${NTT_INSTANCE_ID})"
             else
                 echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
             fi
@@ -1828,6 +2092,8 @@ main() {
         clear_lightsail_cleanup_trap
     fi
 
+    finalize_ntt_rotation
+
     # Summary
     local compact_ips
     compact_ips=$(echo "$resolved" | jq -r '.A + .AAAA | join(",")')
@@ -1836,6 +2102,8 @@ main() {
         echo -e "${CYAN}============================================${NC}"
         if [ "$SOURCE_MODE" == "lightsail" ]; then
             echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
+        elif [ "$SOURCE_MODE" == "ntt" ]; then
+            echo -e "  Source:  WebARENA Indigo (${NTT_INSTANCE_ID} -> ${NTT_CREATED_INSTANCE_ID})"
         else
             echo -e "  Source:  $([ "$source_domain" == "-" ] && echo "stdin" || echo "$source_domain")"
         fi
