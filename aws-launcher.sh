@@ -21,7 +21,9 @@ CYAN='\033[0;36m'
 NC='\033[0m'
 
 # Configuration
-DEFAULT_BUNDLE="nano_3_0"
+# Tokyo proxy default: $24/month, 4 GB RAM, 2 vCPUs, 80 GB SSD, 4 TB transfer.
+# Smaller bundles can incur expensive transfer overage charges.
+DEFAULT_BUNDLE="medium_3_0"
 DEFAULT_BLUEPRINT="debian_12"
 KEY_PAIR_NAME="id_ed25519"
 
