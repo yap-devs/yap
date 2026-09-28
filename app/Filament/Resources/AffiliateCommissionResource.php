@@ -23,6 +23,12 @@ class AffiliateCommissionResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Affiliates';
+
+    protected static ?string $navigationLabel = 'Commissions';
+
+    protected static ?int $navigationSort = 4;
+
     public static function form(Schema $schema): Schema
     {
         return $schema

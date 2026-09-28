@@ -23,6 +23,12 @@ class AffiliateReferralResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Affiliates';
+
+    protected static ?string $navigationLabel = 'Referrals';
+
+    protected static ?int $navigationSort = 3;
+
     public static function form(Schema $schema): Schema
     {
         return $schema

@@ -22,6 +22,12 @@ class AffiliatePromoterResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-megaphone';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Affiliates';
+
+    protected static ?string $navigationLabel = 'Promoters';
+
+    protected static ?int $navigationSort = 1;
+
     public static function form(Schema $schema): Schema
     {
         return $schema

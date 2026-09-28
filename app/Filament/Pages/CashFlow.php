@@ -16,6 +16,8 @@ class CashFlow extends Dashboard
 
     protected static ?string $title = 'Cash Flow & Balance Debits';
 
+    protected static ?string $navigationLabel = 'Cash Flow';
+
     protected static string $routePath = 'cash-flow';
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-banknotes';

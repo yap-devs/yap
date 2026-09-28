@@ -27,6 +27,12 @@ class AffiliateLevelResource extends Resource
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-trophy';
 
+    protected static string|\UnitEnum|null $navigationGroup = 'Affiliates';
+
+    protected static ?string $navigationLabel = 'Levels';
+
+    protected static ?int $navigationSort = 5;
+
     public static function form(Schema $schema): Schema
     {
         return $schema

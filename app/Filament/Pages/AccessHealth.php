@@ -18,7 +18,7 @@ class AccessHealth extends Dashboard
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-shield-check';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Reports';
+    protected static string|\UnitEnum|null $navigationGroup = 'Customers';
 
     protected static ?int $navigationSort = 3;
 

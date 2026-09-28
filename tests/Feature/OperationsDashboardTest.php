@@ -20,6 +20,7 @@ use App\Models\User;
 use App\Models\UserPackage;
 use App\Services\AdminDashboardReportService;
 use App\Services\TrafficReportSnapshotService;
+use Filament\Facades\Filament;
 use Filament\Tables\Table;
 use Illuminate\Support\Facades\Cache;
 use Livewire\Livewire;
@@ -44,6 +45,28 @@ test('overview is concise and detailed reports remain available on dedicated pag
     Livewire::test(CashFlow::class)->assertOk();
     Livewire::test(TrafficReports::class)->assertOk();
     Livewire::test(AccessHealth::class)->assertOk();
+});
+
+test('admin navigation follows customer and operations workflows', function () {
+    $this->actingAs(User::factory()->create(['id' => 1]));
+    Filament::setCurrentPanel('admin');
+
+    $navigation = collect(Filament::getNavigation())
+        ->mapWithKeys(fn ($group): array => [
+            $group->getLabel() ?? 'Overview' => collect($group->getItems())
+                ->map(fn ($item): string => $item->getLabel())
+                ->values()
+                ->all(),
+        ])
+        ->all();
+
+    expect($navigation)->toBe([
+        'Overview' => ['Operations Overview'],
+        'Customers' => ['Users', 'User Packages', 'Access Health'],
+        'Reports' => ['Cash Flow', 'Traffic Trends', '24-Hour Traffic', 'Top-Up Ranking', 'AI Analytics'],
+        'Affiliates' => ['Promoters', 'Referral Codes', 'Referrals', 'Commissions', 'Levels'],
+        'Network' => ['Proxy Servers', 'Relay Servers'],
+    ]);
 });
 
 test('saved dashboard filters cannot request unsupported report windows or rapid polling', function () {

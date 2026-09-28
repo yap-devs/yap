@@ -15,7 +15,7 @@ class TopUpRanking extends Page
 
     protected static string|\UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 4;
 
     public function getSubheading(): ?string
     {

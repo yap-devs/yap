@@ -31,5 +31,8 @@ test('operations overview renders on a mobile viewport', function () {
         ->on()->mobile()
         ->assertSee('Operations Overview')
         ->assertSee('Paid Top-Ups Today')
+        ->click('.fi-topbar-open-sidebar-btn')
+        ->assertSee('Customers')
+        ->assertSee('Affiliates')
         ->assertNoJavaScriptErrors();
 });
