@@ -2,7 +2,6 @@
 
 namespace App\Filament\Widgets\Concerns;
 
-use App\Services\AdminDashboardReportService;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Livewire\Attributes\On;
 
@@ -12,7 +11,9 @@ trait InteractsWithDashboardControls
 
     protected function getTrendWindowMonths(): int
     {
-        return max((int) ($this->pageFilters['trend_window'] ?? 12), 1);
+        $months = (int) ($this->pageFilters['trend_window'] ?? 12);
+
+        return in_array($months, [6, 12, 24], true) ? $months : 12;
     }
 
     protected function getTrendWindowLabel(): string
@@ -24,7 +25,11 @@ trait InteractsWithDashboardControls
     {
         $interval = $this->pageFilters['polling_interval'] ?? '60s';
 
-        return $interval === 'off' ? null : $interval;
+        return match ($interval) {
+            'off' => null,
+            '5m' => '5m',
+            default => '60s',
+        };
     }
 
     public function updatedPageFilters(): void
@@ -40,8 +45,6 @@ trait InteractsWithDashboardControls
 
     protected function clearDashboardWidgetCaches(): void
     {
-        app(AdminDashboardReportService::class)->clearDashboardCache();
-
         if (property_exists($this, 'cachedData')) {
             $this->cachedData = null;
         }

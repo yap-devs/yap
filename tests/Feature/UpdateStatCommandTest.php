@@ -2,9 +2,10 @@
 
 use App\Models\User;
 use App\Models\VmessServer;
+use App\Services\TrafficReportSnapshotService;
 use App\Services\V2rayService;
 
-test('traffic statistics use stable user labels and support legacy email labels', function () {
+test('traffic statistics use stable user labels and support legacy email labels', function (bool $snapshot_fails) {
     $this->travelTo(now()->startOfDay()->addHours(12));
 
     $stable_label_user = User::factory()->create([
@@ -49,6 +50,14 @@ test('traffic statistics use stable user labels and support legacy email labels'
         return $v2ray;
     });
 
+    $snapshots = Mockery::mock(TrafficReportSnapshotService::class);
+    if ($snapshot_fails) {
+        $snapshots->shouldReceive('refresh')->once()->andThrow(new RuntimeException('snapshot refresh failed'));
+    } else {
+        $snapshots->shouldReceive('refresh')->once()->andReturnTrue();
+    }
+    app()->instance(TrafficReportSnapshotService::class, $snapshots);
+
     $this->artisan('app:update-stat-command')->assertSuccessful();
 
     $stable_label_user->refresh();
@@ -61,4 +70,7 @@ test('traffic statistics use stable user labels and support legacy email labels'
         ->and((int) $legacy_user->traffic_uplink)->toBe(300)
         ->and((int) $legacy_user->traffic_downlink)->toBe(400)
         ->and((int) $legacy_user->traffic_unpaid)->toBe(700);
-});
+})->with([
+    'snapshot refreshed' => [false],
+    'snapshot unavailable' => [true],
+]);

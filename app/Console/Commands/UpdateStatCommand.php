@@ -6,6 +6,7 @@ use App\Jobs\GenerateClashProfileLink;
 use App\Models\User;
 use App\Models\UserPackage;
 use App\Models\VmessServer;
+use App\Services\TrafficReportSnapshotService;
 use App\Services\V2rayService;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Command;
@@ -117,6 +118,14 @@ class UpdateStatCommand extends Command
 
         if (now()->hour === 0 && now()->minute < 10) {
             $this->updateBalanceDaily($users);
+        }
+
+        try {
+            app(TrafficReportSnapshotService::class)->refresh();
+        } catch (Throwable $exception) {
+            logger()->error('Failed to refresh the dashboard traffic snapshot after collection.', [
+                'exception' => $exception,
+            ]);
         }
 
         if ($this->user_status_changed) {

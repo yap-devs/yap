@@ -2,19 +2,11 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Widgets\DailyTrafficRankingTable;
-use App\Filament\Widgets\GatewayTopUpShareChart;
+use App\Filament\Widgets\AttentionRequiredWidget;
 use App\Filament\Widgets\LastSevenDayTrafficChart;
-use App\Filament\Widgets\LastSevenDayUsageChart;
 use App\Filament\Widgets\MonthlyTopUpAndUsageChart;
-use App\Filament\Widgets\MonthlyTrafficReportChart;
-use App\Filament\Widgets\PackageUtilizationHealthChart;
-use App\Filament\Widgets\PaymentTopUpRankingTable;
 use App\Filament\Widgets\ReportOverviewWidget;
-use App\Filament\Widgets\TodaySnapshotChart;
-use App\Filament\Widgets\TotalTrafficLeaderboardTable;
-use App\Filament\Widgets\UsageCompositionChart;
-use App\Filament\Widgets\UserAccessHealthChart;
+use App\Services\AdminDashboardReportService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Dashboard as BaseDashboard;
@@ -27,20 +19,18 @@ class Dashboard extends BaseDashboard
 
     protected static bool $isDiscovered = false;
 
-    protected static ?string $title = 'Operations Dashboard';
+    protected static ?string $title = 'Operations Overview';
 
     public function getSubheading(): ?string
     {
-        return 'Top-ups represent cash-in, usage represents money actually consumed by metered billing and product actions.';
+        return 'Paid top-ups, balance debits, collected traffic, and users needing attention.';
     }
 
     public static function getPollingIntervalOptions(): array
     {
         return [
-            '5s' => 'Every 5 seconds',
-            '15s' => 'Every 15 seconds',
-            '30s' => 'Every 30 seconds',
             '60s' => 'Every 60 seconds',
+            '5m' => 'Every 5 minutes',
             'off' => 'Manual refresh only',
         ];
     }
@@ -57,18 +47,9 @@ class Dashboard extends BaseDashboard
     {
         return [
             ReportOverviewWidget::class,
-            TodaySnapshotChart::class,
+            AttentionRequiredWidget::class,
             MonthlyTopUpAndUsageChart::class,
             LastSevenDayTrafficChart::class,
-            MonthlyTrafficReportChart::class,
-            LastSevenDayUsageChart::class,
-            GatewayTopUpShareChart::class,
-            UsageCompositionChart::class,
-            UserAccessHealthChart::class,
-            PackageUtilizationHealthChart::class,
-            PaymentTopUpRankingTable::class,
-            DailyTrafficRankingTable::class,
-            TotalTrafficLeaderboardTable::class,
         ];
     }
 
@@ -79,24 +60,12 @@ class Dashboard extends BaseDashboard
                 'md' => 2,
             ])
             ->components([
-                Select::make('trend_window')
-                    ->label('Trend Window')
-                    ->options([
-                        '6' => 'Last 6 months',
-                        '12' => 'Last 12 months',
-                        '24' => 'Last 24 months',
-                    ])
-                    ->default('12')
-                    ->native(false)
-                    ->selectablePlaceholder(false)
-                    ->helperText('Monthly trend charts and breakdown charts use this reporting window.'),
                 Select::make('polling_interval')
                     ->label('Auto Refresh')
                     ->options(static::getPollingIntervalOptions())
                     ->default('60s')
                     ->native(false)
-                    ->selectablePlaceholder(false)
-                    ->helperText('This setting controls how often all dashboard widgets refresh.'),
+                    ->selectablePlaceholder(false),
             ]);
     }
 
@@ -114,6 +83,7 @@ class Dashboard extends BaseDashboard
 
     public function refreshDashboard(): void
     {
+        app(AdminDashboardReportService::class)->clearDashboardCache();
         $this->dispatch('dashboard-refresh');
     }
 }

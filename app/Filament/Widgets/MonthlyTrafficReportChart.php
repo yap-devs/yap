@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Widgets\Concerns\HasMobileFriendlyChart;
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
+use App\Services\TrafficReportSnapshotService;
 use Filament\Widgets\ChartWidget;
 
 class MonthlyTrafficReportChart extends ChartWidget
@@ -23,6 +24,13 @@ class MonthlyTrafficReportChart extends ChartWidget
     protected ?string $description = 'Bandwidth demand curve across the selected reporting window.';
 
     protected ?string $maxHeight = '320px';
+
+    public function getDescription(): string
+    {
+        $snapshot = app(TrafficReportSnapshotService::class)->get();
+
+        return 'Traffic report updated at '.$snapshot['generated_at'].' ('.config('app.timezone').').';
+    }
 
     protected function getData(): array
     {

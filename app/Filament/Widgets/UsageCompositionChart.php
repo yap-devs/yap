@@ -18,9 +18,9 @@ class UsageCompositionChart extends ChartWidget
         'xl' => 4,
     ];
 
-    protected ?string $heading = 'Usage Composition';
+    protected ?string $heading = 'Balance Debit Mix';
 
-    protected ?string $description = 'How actual user spending is split across billing and product actions.';
+    protected ?string $description = 'Charges for traffic billing, packages, and other product actions.';
 
     protected ?string $maxHeight = '320px';
 
@@ -32,7 +32,7 @@ class UsageCompositionChart extends ChartWidget
             'labels' => $series->keys()->all(),
             'datasets' => [
                 [
-                    'label' => 'Usage (USD)',
+                    'label' => 'Balance Debits (USD)',
                     'data' => $series->values()->all(),
                     'backgroundColor' => [
                         'rgba(244, 63, 94, 0.92)',

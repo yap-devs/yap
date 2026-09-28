@@ -16,46 +16,33 @@ class ReportOverviewWidget extends StatsOverviewWidget
 
     protected int|string|array $columnSpan = 'full';
 
-    protected ?string $heading = 'Realtime Business Snapshot';
+    protected ?string $heading = 'Today at a Glance';
 
     protected function getStats(): array
     {
-        $report = app(AdminDashboardReportService::class)->getOverviewStats($this->getTrendWindowMonths());
+        $service = app(AdminDashboardReportService::class);
+        $today = $service->getTodayStats();
+        $money = $service->getTopUpSnapshotStats();
+        $month_traffic = (float) $service->getMonthlyTrafficSeries(1)->last();
 
         return [
-            // Traffic: today is the headline, month-to-date in description
-            Stat::make('Today Traffic', $this->formatGigabytes($report['today_traffic_gb']))
-                ->description('MTD '.$this->formatGigabytes($report['current_month_traffic_gb']).' | 7d '.$this->formatGigabytes($report['last_7_day_traffic_gb']))
-                ->descriptionIcon('heroicon-m-arrow-trending-up', IconPosition::Before)
-                ->chart($report['daily_traffic_trend'])
-                ->color('info'),
-            // Top-ups: today headline, month-to-date comparison
-            Stat::make('Today Top-Ups', $this->formatCurrency($report['today_top_up']))
-                ->description('MTD '.$this->formatCurrency($report['current_month_top_up']).' ('.number_format($report['paid_order_count']).' orders)')
+            Stat::make('Paid Top-Ups Today', $this->formatCurrency($today['top_up']))
+                ->description('MTD '.$this->formatCurrency($money['current_month_top_up']).' | '.$this->formatMonthToDateChange($money['current_month_top_up'], $money['previous_month_to_date_top_up']))
                 ->descriptionIcon('heroicon-m-banknotes', IconPosition::Before)
-                ->chart($report['monthly_top_up_trend'])
                 ->color('success'),
-            // Usage: today headline, month-to-date comparison
-            Stat::make('Today Usage', $this->formatCurrency($report['today_usage']))
-                ->description('MTD '.$this->formatCurrency($report['current_month_usage']).' | 7d '.$this->formatCurrency($report['last_7_day_usage']))
+            Stat::make('Balance Debits Today', $this->formatCurrency($today['usage']))
+                ->description('MTD '.$this->formatCurrency($money['current_month_usage']).' | '.$this->formatMonthToDateChange($money['current_month_usage'], $money['previous_month_to_date_usage']))
                 ->descriptionIcon('heroicon-m-arrow-trending-down', IconPosition::Before)
-                ->chart($report['daily_usage_trend'])
                 ->color('danger'),
-            // Active users today
-            Stat::make('Active Users Today', number_format($report['today_active_users']))
-                ->description(number_format($report['package_backed_user_count']).' package-backed | '.number_format($report['access_at_risk_user_count']).' at risk')
+            Stat::make('Traffic Collected Today', $this->formatGigabytes($today['traffic_gb']))
+                ->description('MTD '.$this->formatGigabytes($month_traffic))
+                ->descriptionIcon('heroicon-m-chart-bar', IconPosition::Before)
+                ->chart($service->getLastSevenDayTrafficSeries()->values()->all())
+                ->color('info'),
+            Stat::make('Users with Traffic Today', number_format($today['active_users']))
+                ->description('Distinct users recorded by the latest collection')
                 ->descriptionIcon('heroicon-m-users', IconPosition::Before)
                 ->color('primary'),
-            // Outstanding balance: point-in-time
-            Stat::make('Outstanding Balance', $this->formatCurrency($report['outstanding_balance']))
-                ->description($this->formatGigabytes($report['remaining_package_traffic_gb']).' package traffic remaining')
-                ->descriptionIcon('heroicon-m-wallet', IconPosition::Before)
-                ->color('warning'),
-            // Active packages: point-in-time
-            Stat::make('Active Packages', number_format($report['active_package_count']))
-                ->description('Today top-up orders: '.number_format($report['today_top_up_orders']))
-                ->descriptionIcon('heroicon-m-cube', IconPosition::Before)
-                ->color('gray'),
         ];
     }
 
@@ -69,8 +56,19 @@ class ReportOverviewWidget extends StatsOverviewWidget
         return number_format($gigabytes, 2).' GB';
     }
 
+    private function formatMonthToDateChange(float $current, float $previous): string
+    {
+        if ($previous <= 0) {
+            return 'Prior MTD '.$this->formatCurrency($previous);
+        }
+
+        $change = ($current - $previous) / $previous * 100;
+
+        return sprintf('%+.1f%% vs prior MTD', $change);
+    }
+
     protected function getDescription(): ?string
     {
-        return 'Today\'s live numbers with month-to-date (MTD) and 7-day context. Trend from the '.$this->getTrendWindowLabel().'.';
+        return 'Money updates from paid payments and balance changes; traffic follows the latest collection.';
     }
 }

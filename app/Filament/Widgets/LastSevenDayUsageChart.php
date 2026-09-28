@@ -19,9 +19,9 @@ class LastSevenDayUsageChart extends ChartWidget
         'xl' => 4,
     ];
 
-    protected ?string $heading = 'Last 7-Day Usage Report';
+    protected ?string $heading = 'Last 7-Day Balance Debits';
 
-    protected ?string $description = 'Daily actual spend deducted from user balances over the latest rolling week.';
+    protected ?string $description = 'Daily charges deducted from user balances.';
 
     protected ?string $maxHeight = '300px';
 
@@ -35,7 +35,7 @@ class LastSevenDayUsageChart extends ChartWidget
             )->all(),
             'datasets' => [
                 [
-                    'label' => 'Usage (USD)',
+                    'label' => 'Balance Debits (USD)',
                     'data' => $series->values()->all(),
                     'backgroundColor' => [
                         'rgba(251, 113, 133, 0.95)',

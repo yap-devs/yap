@@ -12,6 +12,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
 use InvalidArgumentException;
 use Throwable;
 
@@ -74,10 +75,9 @@ class AdminDashboardReportService
         return $this->remember('today_stats', [], function (): array {
             $today_start = CarbonImmutable::now()->startOfDay();
 
-            $traffic_bytes = (float) $this->getReportableUserStatsQuery()
-                ->where('created_at', '>=', $today_start)
-                ->selectRaw('SUM(traffic_downlink + traffic_uplink) as total')
-                ->value('total');
+            $snapshot = app(TrafficReportSnapshotService::class)->get();
+            $today = $today_start->format('Y-m-d');
+            $traffic_bytes = (float) ($snapshot['daily_bytes'][$today] ?? 0);
 
             $top_up = (float) $this->getReportablePaymentsQuery()
                 ->where('created_at', '>=', $today_start)
@@ -88,10 +88,7 @@ class AdminDashboardReportService
                 ->selectRaw('ABS(SUM(amount)) as total')
                 ->value('total');
 
-            $active_users = (int) $this->getReportableUserStatsQuery()
-                ->where('created_at', '>=', $today_start)
-                ->distinct('user_id')
-                ->count('user_id');
+            $active_users = (int) ($snapshot['daily_active_users'][$today] ?? 0);
 
             $top_up_orders = (int) $this->getReportablePaymentsQuery()
                 ->where('created_at', '>=', $today_start)
@@ -109,6 +106,15 @@ class AdminDashboardReportService
 
     public function getLastSevenDayTrafficSeries(int $days = 7): Collection
     {
+        if ($days >= 1 && $days <= 7) {
+            $snapshot = app(TrafficReportSnapshotService::class)->get();
+            $values = collect($snapshot['daily_bytes'])
+                ->map(fn (mixed $value): float => $this->bytesToGigabytes((float) $value));
+            $series = $this->buildDailySeries($days, collect());
+
+            return $series->replace($values->intersectByKeys($series));
+        }
+
         return $this->remember('last_seven_day_traffic_series', [$days], function () use ($days): Collection {
             $rows = $this->getReportableUserStatsQuery()
                 ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
@@ -183,6 +189,15 @@ class AdminDashboardReportService
 
     public function getMonthlyTrafficSeries(int $months = 12): Collection
     {
+        if ($months >= 1 && $months <= 24) {
+            $snapshot = app(TrafficReportSnapshotService::class)->get();
+            $values = collect($snapshot['monthly_bytes'])
+                ->map(fn (mixed $value): float => $this->bytesToGigabytes((float) $value));
+            $series = $this->buildMonthlySeries($months, collect());
+
+            return $series->replace($values->intersectByKeys($series));
+        }
+
         return $this->remember('monthly_traffic_series', [$months], function () use ($months): Collection {
             $rows = $this->getReportableUserStatsQuery()
                 ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
@@ -202,11 +217,12 @@ class AdminDashboardReportService
     public function getMonthlyTopUpSeries(int $months = 12): Collection
     {
         return $this->remember('monthly_top_up_series', [$months], function () use ($months): Collection {
+            $period = $this->datePeriodExpression('created_at', 'month');
             $rows = $this->getReportablePaymentsQuery()
-                ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
+                ->selectRaw($period.' as period')
                 ->selectRaw('SUM(amount) as total_top_up')
                 ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
-                ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+                ->groupByRaw($period)
                 ->orderBy('period')
                 ->get();
 
@@ -214,6 +230,58 @@ class AdminDashboardReportService
                 $months,
                 $rows->pluck('total_top_up', 'period')->map(fn (mixed $value): float => round((float) $value, 2)),
             );
+        });
+    }
+
+    public function getTopUpSnapshotStats(): array
+    {
+        return $this->remember('top_up_snapshot_stats', [], function (): array {
+            $now = CarbonImmutable::now();
+            $today_start = $now->startOfDay();
+            $month_start = $today_start->startOfMonth();
+            $previous_month_end = $now->subMonthNoOverflow();
+            $previous_month_start = $previous_month_end->startOfMonth();
+            $usage = (float) $this->getReportableUsageQuery()
+                ->where('created_at', '>=', $month_start)
+                ->selectRaw('ABS(SUM(amount)) as total')->value('total');
+            $previous_usage = (float) $this->getReportableUsageQuery()
+                ->where('created_at', '>=', $previous_month_start)
+                ->where('created_at', '<', $previous_month_end)
+                ->selectRaw('ABS(SUM(amount)) as total')->value('total');
+            $monthly_top_up = round((float) $this->getReportablePaymentsQuery()
+                ->where('created_at', '>=', $month_start)->sum('amount'), 2);
+            $previous_top_up = round((float) $this->getReportablePaymentsQuery()
+                ->where('created_at', '>=', $previous_month_start)
+                ->where('created_at', '<', $previous_month_end)
+                ->sum('amount'), 2);
+
+            return [
+                'today_top_up' => round((float) $this->getReportablePaymentsQuery()
+                    ->where('created_at', '>=', $today_start)->sum('amount'), 2),
+                'current_month_top_up' => $monthly_top_up,
+                'current_month_usage' => round($usage, 2),
+                'previous_month_to_date_top_up' => $previous_top_up,
+                'previous_month_to_date_usage' => round($previous_usage, 2),
+                'projected_top_up' => round($monthly_top_up / $today_start->day * $today_start->daysInMonth, 2),
+            ];
+        });
+    }
+
+    public function getUserActivityStats(): array
+    {
+        return $this->remember('user_activity_stats', [], function (): array {
+            $now = CarbonImmutable::now();
+            $snapshot = app(TrafficReportSnapshotService::class)->get();
+
+            return [
+                'total_users' => $this->getReportableUsersQuery()->count(),
+                'new_users_last_30_days' => $this->getReportableUsersQuery()
+                    ->where('created_at', '>=', $now->subDays(30))->count(),
+                'paid_users_last_30_days' => $this->getReportablePaymentsQuery()
+                    ->where('created_at', '>=', $now->subDays(30))
+                    ->distinct('user_id')->count('user_id'),
+                'users_with_traffic_today' => (int) ($snapshot['daily_active_users'][$now->format('Y-m-d')] ?? 0),
+            ];
         });
     }
 
@@ -237,11 +305,12 @@ class AdminDashboardReportService
     public function getMonthlyUsageSeries(int $months = 12): Collection
     {
         return $this->remember('monthly_usage_series', [$months], function () use ($months): Collection {
+            $period = $this->datePeriodExpression('created_at', 'month');
             $rows = $this->getReportableUsageQuery()
-                ->selectRaw("DATE_FORMAT(created_at, '%Y-%m') as period")
+                ->selectRaw($period.' as period')
                 ->selectRaw('ABS(SUM(amount)) as total_usage')
                 ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
-                ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m')")
+                ->groupByRaw($period)
                 ->orderBy('period')
                 ->get();
 
@@ -255,11 +324,12 @@ class AdminDashboardReportService
     public function getLastSevenDayUsageSeries(int $days = 7): Collection
     {
         return $this->remember('last_seven_day_usage_series', [$days], function () use ($days): Collection {
+            $period = $this->datePeriodExpression('created_at', 'day');
             $rows = $this->getReportableUsageQuery()
-                ->selectRaw("DATE_FORMAT(created_at, '%Y-%m-%d') as period")
+                ->selectRaw($period.' as period')
                 ->selectRaw('ABS(SUM(amount)) as total_usage')
                 ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
-                ->groupByRaw("DATE_FORMAT(created_at, '%Y-%m-%d')")
+                ->groupByRaw($period)
                 ->orderBy('period')
                 ->get();
 
@@ -443,24 +513,25 @@ class AdminDashboardReportService
 
     public function clearDashboardCache(): void
     {
-        Cache::forever(self::CACHE_VERSION_KEY, (string) now()->getTimestampMs());
+        Cache::forever(self::CACHE_VERSION_KEY, (string) Str::uuid());
     }
 
     public function getDailyTrafficRankingQuery(): Builder
     {
         $yesterday_start = CarbonImmutable::yesterday()->startOfDay();
         $tomorrow_start = CarbonImmutable::tomorrow()->startOfDay();
+        $day = $this->datePeriodExpression('user_stats.created_at', 'day');
 
         return $this->getReportableUserStatsQuery()
             ->join('users', 'users.id', '=', 'user_stats.user_id')
             ->selectRaw('MIN(user_stats.id) as id')
-            ->selectRaw("DATE_FORMAT(user_stats.created_at, '%Y-%m-%d') as day")
+            ->selectRaw($day.' as day')
             ->selectRaw('user_stats.user_id')
             ->selectRaw('users.name as user_name')
             ->selectRaw('SUM(user_stats.traffic_downlink + user_stats.traffic_uplink) as daily_traffic_bytes')
             ->where('user_stats.created_at', '>=', $yesterday_start)
             ->where('user_stats.created_at', '<', $tomorrow_start)
-            ->groupByRaw("DATE_FORMAT(user_stats.created_at, '%Y-%m-%d'), user_stats.user_id, users.name")
+            ->groupByRaw($day.', user_stats.user_id, users.name')
             ->orderByDesc('day')
             ->orderByDesc('daily_traffic_bytes');
     }
@@ -860,6 +931,15 @@ class AdminDashboardReportService
         $key = 'admin_dashboard_report:'.$version.':'.$name.':'.md5(serialize($arguments));
 
         return Cache::remember($key, self::CACHE_TTL_SECONDS, $callback);
+    }
+
+    private function datePeriodExpression(string $column, string $granularity): string
+    {
+        $format = $granularity === 'month' ? '%Y-%m' : '%Y-%m-%d';
+
+        return UserStat::query()->getModel()->getConnection()->getDriverName() === 'sqlite'
+            ? "strftime('{$format}', {$column})"
+            : "DATE_FORMAT({$column}, '{$format}')";
     }
 
     private function bytesToGigabytes(float $bytes): float

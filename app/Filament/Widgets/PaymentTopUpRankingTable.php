@@ -22,8 +22,8 @@ class PaymentTopUpRankingTable extends TableWidget
     public function table(Table $table): Table
     {
         return $table
-            ->heading('Payment Top-Up Users')
-            ->description('Top 10 users ranked by paid payment order amount.')
+            ->heading('Lifetime Top-Up Users')
+            ->description('Top 10 users by cumulative paid top-up amount.')
             ->query(app(AdminDashboardReportService::class)->getPaymentTopUpRankingQuery())
             ->poll(fn (): ?string => $this->getPollingInterval())
             ->paginated(false)

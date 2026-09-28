@@ -26,11 +26,7 @@ class TodaySnapshotChart extends ChartWidget
 
     protected function getData(): array
     {
-        $report = app(AdminDashboardReportService::class)->getOverviewStats($this->getTrendWindowMonths());
-        $projected_top_up = app(AdminDashboardReportService::class)
-            ->getMonthlyTopUpProjectionSeries($this->getTrendWindowMonths())
-            ->filter()
-            ->last() ?? 0;
+        $report = app(AdminDashboardReportService::class)->getTopUpSnapshotStats();
 
         return [
             'labels' => ['Today Top-Up', 'MTD Balance Added', 'Projected Balance Added', 'MTD Usage'],
@@ -40,7 +36,7 @@ class TodaySnapshotChart extends ChartWidget
                     'data' => [
                         $report['today_top_up'],
                         $report['current_month_top_up'],
-                        $projected_top_up,
+                        $report['projected_top_up'],
                         $report['current_month_usage'],
                     ],
                     'backgroundColor' => [
