@@ -17,7 +17,7 @@ class DashboardController extends Controller
         $clashUrl = route('subscription.clash', ['uuid' => $user->uuid]);
         $universalSubscriptionUrl = route('subscription.universal', ['uuid' => $user->uuid]);
         $unitPrice = config('yap.unit_price');
-        $servers = VmessServer::where('enabled', true)->get();
+        $servers = VmessServer::where('enabled', true)->get(['id', 'name', 'rate', 'for_low_priority']);
         $todayTraffic = Cache::remember('today_traffic_'.$user->id, 60 * 30, function () use ($user) {
             return $user->stats()
                 ->whereDate('created_at', '>=', now()->startOfDay())
