@@ -146,6 +146,32 @@ test('cash indicators compare the same elapsed part of each month without counti
         ->and($stats[1]->getDescription())->toContain('-50.0% vs prior MTD');
 });
 
+test('monthly chart shows a clearly labeled estimate only above actual current-month top-ups', function () {
+    $this->travelTo(now()->setDate(2026, 9, 15)->setTime(12, 0));
+    $user = User::factory()->create(['id' => 6]);
+    $user->payments()->create([
+        'gateway' => Payment::GATEWAY_ALIPAY,
+        'status' => Payment::STATUS_PAID,
+        'amount' => 30,
+        'created_at' => '2026-09-15 09:00:00',
+    ]);
+
+    $chart = new class extends MonthlyTopUpAndUsageChart
+    {
+        public function chartData(): array
+        {
+            return $this->getData();
+        }
+    };
+    $data = $chart->chartData();
+    $current_month = array_search('2026-09', $data['labels'], true);
+
+    expect($data['datasets'][0]['data'][$current_month])->toBe(30.0)
+        ->and($data['datasets'][1]['label'])->toBe('Estimated Month-End Top-Ups (USD)')
+        ->and($data['datasets'][1]['data'][$current_month])->toBe([30.0, 60.0])
+        ->and(array_filter($data['datasets'][1]['data']))->toHaveCount(1);
+});
+
 test('attention cards agree with actionable user and package lists', function () {
     $this->actingAs(User::factory()->create(['id' => 1]));
     $internal_user = User::factory()->create(['id' => 5, 'balance' => -5]);
