@@ -57,6 +57,7 @@ return [
         'prefix' => env('CLIENT_DOWNLOADS_PREFIX', 'clients'),
         'github_token' => env('CLIENT_DOWNLOADS_GITHUB_TOKEN'),
         'signed_url_ttl_minutes' => (int) env('CLIENT_DOWNLOADS_SIGNED_URL_TTL_MINUTES', 10),
+        'keep_versions' => (int) env('CLIENT_DOWNLOADS_KEEP_VERSIONS', 3),
         'targets' => [
             'clash-meta-android-universal' => [
                 'repo' => 'MetaCubeX/ClashMetaForAndroid',

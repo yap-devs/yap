@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use InvalidArgumentException;
+use League\Flysystem\WhitespacePathNormalizer;
 use RuntimeException;
 use Throwable;
 
@@ -15,6 +16,9 @@ class ClientDownloadMirrorService
 {
     public function sync(bool $dry_run = false): array
     {
+        $keep_versions = (int) config('services.client_downloads.keep_versions', 3);
+        throw_if($keep_versions < 1, InvalidArgumentException::class, 'Client download retention must be at least one version.');
+
         $releases = [];
         $mirrored_assets = $dry_run ? [] : $this->manifestAssets();
         $synced_assets = [];
@@ -41,10 +45,37 @@ class ClientDownloadMirrorService
         ];
 
         if (! $dry_run) {
-            $this->disk()->put($this->manifestPath(), json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            throw_if(
+                ! $this->disk()->put($this->manifestPath(), json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)),
+                RuntimeException::class,
+                'Unable to write client download manifest.',
+            );
+
+            foreach ($synced_assets as $key => $asset) {
+                $this->pruneVersions($key, $asset['version'], $keep_versions);
+            }
         }
 
         return $manifest;
+    }
+
+    private function pruneVersions(string $key, string $current_version, int $keep_versions): void
+    {
+        $current_directory = $this->path($key.'/'.$current_version);
+        $directories = array_values(array_filter(
+            $this->disk()->directories($this->path($key)),
+            fn (string $directory): bool => $directory !== $current_directory,
+        ));
+
+        usort($directories, fn (string $left, string $right): int => version_compare(basename($right), basename($left)));
+
+        foreach (array_slice($directories, $keep_versions - 1) as $directory) {
+            throw_if(
+                ! $this->disk()->deleteDirectory($directory),
+                RuntimeException::class,
+                'Unable to delete old client download version: '.$directory,
+            );
+        }
     }
 
     public function findAsset(array $assets, array $target): ?array
@@ -166,6 +197,11 @@ class ClientDownloadMirrorService
     ): array {
         $asset_name = (string) $asset['name'];
         $version = ltrim((string) $release['tag_name'], 'v');
+        throw_if(
+            in_array($version, ['', '.', '..'], true) || strpbrk($version, '/\\') !== false,
+            InvalidArgumentException::class,
+            'Client release version must be a single directory name: '.$version,
+        );
         $versioned_path = $this->path($key.'/'.$version.'/'.$asset_name);
         $latest_path = $this->path($key.'/'.$target['latest_name']);
         $digest = $this->normalizeSha256($asset['digest'] ?? null);
@@ -189,9 +225,9 @@ class ClientDownloadMirrorService
                 }
 
                 try {
-                    $this->disk()->put($versioned_path, $stream, $this->uploadOptions($asset_name));
+                    throw_if(! $this->disk()->put($versioned_path, $stream, $this->uploadOptions($asset_name)), RuntimeException::class, 'Unable to write mirrored asset: '.$versioned_path);
                     rewind($stream);
-                    $this->disk()->put($latest_path, $stream, $this->uploadOptions($asset_name));
+                    throw_if(! $this->disk()->put($latest_path, $stream, $this->uploadOptions($asset_name)), RuntimeException::class, 'Unable to write mirrored asset: '.$latest_path);
                 } finally {
                     if (is_resource($stream)) {
                         fclose($stream);
@@ -205,10 +241,12 @@ class ClientDownloadMirrorService
                     throw new RuntimeException('Unable to read mirrored asset: '.$versioned_path);
                 }
 
-                $this->disk()->put($latest_path, $stream, $this->uploadOptions($asset_name));
-
-                if (is_resource($stream)) {
-                    fclose($stream);
+                try {
+                    throw_if(! $this->disk()->put($latest_path, $stream, $this->uploadOptions($asset_name)), RuntimeException::class, 'Unable to write mirrored asset: '.$latest_path);
+                } finally {
+                    if (is_resource($stream)) {
+                        fclose($stream);
+                    }
                 }
             }
         }
@@ -301,7 +339,7 @@ class ClientDownloadMirrorService
 
     private function path(string $path): string
     {
-        return trim(config('services.client_downloads.prefix'), '/').'/'.ltrim($path, '/');
+        return (new WhitespacePathNormalizer)->normalizePath(config('services.client_downloads.prefix').'/'.$path);
     }
 
     private function manifestPath(): string

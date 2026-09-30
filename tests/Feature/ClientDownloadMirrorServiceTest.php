@@ -91,6 +91,7 @@ test('sync skips binary writes when the current release is already mirrored', fu
     $versioned_path = 'clients/custom-client/1.2.3/custom-release.zip';
     $latest_path = 'clients/custom-client/custom-client.zip';
     $disk = Mockery::mock(FilesystemAdapter::class);
+    $disk->shouldReceive('directories')->with('clients/custom-client')->andReturn([]);
     $disk->shouldReceive('exists')
         ->once()
         ->with('clients/manifest.json')
@@ -167,6 +168,7 @@ test('sync rebuilds the latest object when the versioned asset exists', function
     rewind($stream);
 
     $disk = Mockery::mock(FilesystemAdapter::class);
+    $disk->shouldReceive('directories')->with('clients/custom-client')->andReturn([]);
     $disk->shouldReceive('exists')
         ->once()
         ->with('clients/manifest.json')
@@ -247,6 +249,7 @@ test('sync downloads a release when the versioned asset is missing', function ()
     $latest_path = 'clients/custom-client/custom-client.zip';
     $uploaded_paths = [];
     $disk = Mockery::mock(FilesystemAdapter::class);
+    $disk->shouldReceive('directories')->with('clients/custom-client')->andReturn([]);
     $disk->shouldReceive('exists')
         ->once()
         ->with('clients/manifest.json')
@@ -360,4 +363,154 @@ test('it generates temporary urls with the configured mirrored path and download
 
     expect(app(ClientDownloadMirrorService::class)->temporaryDownloadUrl('clash-meta-android-universal'))
         ->toBe('https://signed-r2.example.com/client.apk?signature=abc');
+});
+
+describe('client version retention', function () {
+    beforeEach(function () {
+        config()->set('services.client_downloads.disk', 'r2_downloads');
+        config()->set('services.client_downloads.prefix', 'mirror/clients');
+        config()->set('services.client_downloads.targets', [
+            'custom-client' => [
+                'repo' => 'example/project',
+                'label' => 'Custom Client',
+                'patterns' => ['/custom-release\.zip$/i'],
+                'latest_name' => 'custom-client.zip',
+            ],
+        ]);
+
+        $this->disk = Storage::fake('r2_downloads');
+        foreach (['1.8.0', '1.9.0', '1.10.0', '1.11.0'] as $version) {
+            $this->disk->put('mirror/clients/custom-client/'.$version.'/custom-release.zip', $version);
+        }
+        $this->disk->put('mirror/clients/custom-client/1.8.0/extra.zip', 'extra');
+        $this->disk->put('mirror/clients/custom-client/custom-client.zip', '1.11.0');
+        $this->disk->put('mirror/clients/unrelated/1.0.0/file.zip', 'unrelated');
+        $this->disk->put('mirror/clients/custom-client/readme.txt', 'keep');
+
+        $this->release_version = 'v1.11.0';
+        Http::preventStrayRequests();
+        Http::fake([
+            'https://api.github.com/repos/example/project/releases/latest' => fn () => Http::response([
+                'tag_name' => $this->release_version,
+                'assets' => [[
+                    'name' => 'custom-release.zip',
+                    'browser_download_url' => 'https://downloads.example.com/custom-release.zip',
+                ]],
+            ]),
+        ]);
+    });
+
+    test('sync retains three versions by default and cleans existing history without a new release', function () {
+        expect(config('services.client_downloads.keep_versions'))->toBe(3);
+
+        app(ClientDownloadMirrorService::class)->sync();
+        app(ClientDownloadMirrorService::class)->sync();
+
+        $this->disk->assertMissing('mirror/clients/custom-client/1.8.0/custom-release.zip');
+        $this->disk->assertMissing('mirror/clients/custom-client/1.8.0/extra.zip');
+        foreach (['1.9.0', '1.10.0', '1.11.0'] as $version) {
+            $this->disk->assertExists('mirror/clients/custom-client/'.$version.'/custom-release.zip');
+        }
+        $this->disk->assertExists('mirror/clients/custom-client/custom-client.zip');
+        $this->disk->assertExists('mirror/clients/custom-client/readme.txt');
+        $this->disk->assertExists('mirror/clients/unrelated/1.0.0/file.zip');
+        expect($this->disk->json('mirror/clients/manifest.json')['assets']['custom-client']['version'])
+            ->toBe('1.11.0');
+    });
+
+    test('sync honors the configured version count', function (int $keep_versions, int $expected_count) {
+        config()->set('services.client_downloads.keep_versions', $keep_versions);
+
+        app(ClientDownloadMirrorService::class)->sync();
+
+        expect($this->disk->directories('mirror/clients/custom-client'))->toHaveCount($expected_count);
+        $this->disk->assertExists('mirror/clients/custom-client/1.11.0/custom-release.zip');
+    })->with([[1, 1], [2, 2], [5, 4]]);
+
+    test('sync rejects invalid retention counts before changing files', function (mixed $keep_versions) {
+        config()->set('services.client_downloads.keep_versions', $keep_versions);
+        $files = $this->disk->allFiles();
+
+        expect(fn () => app(ClientDownloadMirrorService::class)->sync())
+            ->toThrow(InvalidArgumentException::class);
+
+        expect($this->disk->allFiles())->toBe($files);
+        Http::assertNothingSent();
+    })->with([0, -1, 'invalid']);
+
+    test('sync always retains the current release even after an upstream rollback', function () {
+        config()->set('services.client_downloads.keep_versions', 1);
+        $this->release_version = 'v1.8.0';
+
+        app(ClientDownloadMirrorService::class)->sync();
+
+        $this->disk->assertExists('mirror/clients/custom-client/1.8.0/custom-release.zip');
+        expect($this->disk->directories('mirror/clients/custom-client'))->toHaveCount(1)
+            ->and($this->disk->get('mirror/clients/custom-client/custom-client.zip'))->toBe('1.8.0');
+    });
+
+    test('dry run does not prune existing versions', function () {
+        $files = $this->disk->allFiles();
+
+        app(ClientDownloadMirrorService::class)->sync(true);
+
+        expect($this->disk->allFiles())->toBe($files);
+    });
+
+    test('sync protects the current version with an empty prefix', function () {
+        config()->set('services.client_downloads.prefix', '');
+        config()->set('services.client_downloads.keep_versions', 1);
+        $this->disk->put('custom-client/1.11.0/custom-release.zip', 'current');
+        $this->disk->put('custom-client/1.10.0/custom-release.zip', 'old');
+
+        app(ClientDownloadMirrorService::class)->sync();
+
+        $this->disk->assertExists('custom-client/1.11.0/custom-release.zip');
+        $this->disk->assertMissing('custom-client/1.10.0/custom-release.zip');
+        expect($this->disk->json('manifest.json')['assets']['custom-client']['versioned_path'])
+            ->toBe('custom-client/1.11.0/custom-release.zip');
+    });
+
+    test('sync rejects unsafe version directory names before writing', function (string $version) {
+        $this->release_version = $version;
+        $files = $this->disk->allFiles();
+
+        expect(fn () => app(ClientDownloadMirrorService::class)->sync())
+            ->toThrow(InvalidArgumentException::class);
+
+        expect($this->disk->allFiles())->toBe($files);
+    })->with(['release/1.12.0', 'release\\1.12.0', '..', '.', 'v']);
+
+    test('sync does not prune any client when a later target fails', function () {
+        config()->set('services.client_downloads.targets.broken-client', [
+            'repo' => 'example/project',
+            'label' => 'Broken Client',
+            'patterns' => ['/missing\.zip$/i'],
+            'latest_name' => 'broken.zip',
+        ]);
+
+        expect(fn () => app(ClientDownloadMirrorService::class)->sync())
+            ->toThrow(RuntimeException::class, 'No matching asset found');
+
+        expect($this->disk->directories('mirror/clients/custom-client'))->toHaveCount(4);
+        $this->disk->assertMissing('mirror/clients/manifest.json');
+    });
+
+    test('sync does not prune when a storage write fails', function (string $failed_path) {
+        $fake_disk = $this->disk;
+        $disk = Mockery::mock(FilesystemAdapter::class);
+        $disk->shouldReceive('exists')->andReturnUsing(fn (string $path): bool => $fake_disk->exists($path));
+        $disk->shouldReceive('readStream')->andReturnUsing(fn (string $path) => $fake_disk->readStream($path));
+        $disk->shouldReceive('put')->andReturnUsing(fn (string $path, mixed $contents): bool => $path !== $failed_path);
+        $disk->shouldNotReceive('directories');
+        $disk->shouldNotReceive('deleteDirectory');
+        Storage::shouldReceive('disk')->with('r2_downloads')->andReturn($disk);
+
+        expect(fn () => app(ClientDownloadMirrorService::class)->sync())->toThrow(RuntimeException::class);
+
+        expect($fake_disk->directories('mirror/clients/custom-client'))->toHaveCount(4);
+    })->with([
+        'latest upload' => 'mirror/clients/custom-client/custom-client.zip',
+        'manifest upload' => 'mirror/clients/manifest.json',
+    ]);
 });
