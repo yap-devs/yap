@@ -5,6 +5,7 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UserResource\Pages\CreateUser;
 use App\Filament\Resources\UserResource\Pages\EditUser;
 use App\Filament\Resources\UserResource\Pages\ListUsers;
+use App\Models\Payment;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -19,6 +20,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -99,22 +101,42 @@ class UserResource extends Resource
                 TextColumn::make('balance')
                     ->money()
                     ->sortable(),
+                TextColumn::make('paid_top_up_count')
+                    ->label('Paid Orders')
+                    ->numeric()
+                    ->sortable(),
+                TextColumn::make('paid_top_up_total')
+                    ->label('Lifetime Top-Ups')
+                    ->money('USD')
+                    ->sortable(),
+                TextColumn::make('last_paid_at')
+                    ->label('Last Paid')
+                    ->dateTime('Y-m-d H:i')
+                    ->sortable(),
+                TextColumn::make('created_at')
+                    ->label('Joined')
+                    ->dateTime('Y-m-d')
+                    ->sortable(),
                 TextColumn::make('traffic_downlink')
                     ->label('Downlink')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('traffic_uplink')
                     ->label('Uplink')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('traffic_unpaid')
                     ->label('Unpaid')
                     ->numeric()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('last_settled_at')
                     ->label('Settled')
                     ->dateTime()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('sub2api_key_status')
                     ->label('AI Key')
                     ->badge()
@@ -125,10 +147,6 @@ class UserResource extends Resource
                     })
                     ->formatStateUsing(fn (?string $state): string => $state ?? 'none')
                     ->sortable(),
-                TextColumn::make('created_at')
-                    ->dateTime()
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')
                     ->dateTime()
                     ->sortable()
@@ -139,7 +157,17 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->stackedOnMobile()
+            ->defaultSort('created_at', 'desc')
+            ->striped()
             ->filters([
+                Filter::make('registered_this_month')
+                    ->label('New This Month')
+                    ->query(fn (Builder $query): Builder => $query->where('users.created_at', '>=', now()->startOfMonth())),
+                Filter::make('paid_this_month')
+                    ->label('Paid This Month')
+                    ->query(fn (Builder $query): Builder => $query->whereHas('payments', fn (Builder $payments): Builder => $payments
+                        ->where('status', Payment::STATUS_PAID)
+                        ->where('created_at', '>=', now()->startOfMonth()))),
                 TrashedFilter::make(),
             ])
             ->recordActions([
@@ -238,6 +266,12 @@ class UserResource extends Resource
         return parent::getEloquentQuery()
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
-            ]);
+            ])
+            ->withCount(['payments as paid_top_up_count' => fn (Builder $query): Builder => $query
+                ->where('status', Payment::STATUS_PAID)])
+            ->withSum(['payments as paid_top_up_total' => fn (Builder $query): Builder => $query
+                ->where('status', Payment::STATUS_PAID)], 'amount')
+            ->withMax(['payments as last_paid_at' => fn (Builder $query): Builder => $query
+                ->where('status', Payment::STATUS_PAID)], 'created_at');
     }
 }
