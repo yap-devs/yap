@@ -19,10 +19,20 @@ class PackageController extends Controller
         $packages = Package::where('status', Package::STATUS_ACTIVE)->get();
 
         $userPackages = $this->presentUserPackages($request->user()->packages()
+            ->active()
             ->latest()
+            ->orderByDesc('id')
             ->get());
 
-        return Inertia::render('Package/Index', compact('packages', 'userPackages'));
+        $historicalPackages = $request->user()->packages()
+            ->where('status', '!=', UserPackage::STATUS_ACTIVE)
+            ->latest()
+            ->orderByDesc('id')
+            ->paginate(20, ['*'], 'packages_page')
+            ->withQueryString();
+        $historicalPackages->setCollection($this->presentUserPackages($historicalPackages->getCollection()));
+
+        return Inertia::render('Package/Index', compact('packages', 'userPackages', 'historicalPackages'));
     }
 
     public function buy(Request $request, Package $package, AffiliateService $affiliateService)

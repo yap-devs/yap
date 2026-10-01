@@ -20,6 +20,11 @@ class UserStat extends Model
 
     protected $appends = ['date'];
 
+    public static function todayTrafficCacheKey(int $user_id): string
+    {
+        return 'today_traffic_'.$user_id.'_'.now()->toDateString();
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

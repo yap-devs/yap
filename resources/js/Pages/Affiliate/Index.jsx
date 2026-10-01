@@ -1,8 +1,9 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, router, useForm} from '@inertiajs/react';
+import {useState} from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {formatPrice} from '@/Utils/formatPrice';
 import {trans} from '@/Utils/i18n';
-import {useState} from 'react';
+import Pagination from '@/Components/Pagination';
 
 export default function Index({auth, affiliate}) {
   const [copiedCode, setCopiedCode] = useState(null);
@@ -251,12 +252,12 @@ export default function Index({auth, affiliate}) {
                 </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                {affiliate.referrals.length === 0 && (
+                {affiliate.referrals.data.length === 0 && (
                   <tr>
                     <td className="py-6 text-gray-500" colSpan="5">{trans('common.no_records')}</td>
                   </tr>
                 )}
-                {affiliate.referrals.map((referral) => (
+                {affiliate.referrals.data.map((referral) => (
                   <tr key={referral.id}>
                     <td className="py-3 font-medium text-gray-900">{referral.user_label}</td>
                     <td className="py-3 text-gray-700">{trans(`affiliate.status.${referral.status}`)}</td>
@@ -270,6 +271,39 @@ export default function Index({auth, affiliate}) {
                 </tbody>
               </table>
             </div>
+            <Pagination links={affiliate.referrals.links} label={trans('affiliate.referrals_title')}/>
+          </div>
+
+          <div className="bg-white shadow-sm sm:rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-gray-900">{trans('affiliate.commission_history')}</h3>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 text-sm">
+                <thead>
+                <tr className="text-left text-gray-500">
+                  <th className="py-2">{trans('affiliate.commission_date')}</th>
+                  <th className="py-2">{trans('common.status')}</th>
+                  <th className="py-2">{trans('common.amount')}</th>
+                  <th className="py-2">{trans('affiliate.hold_until')}</th>
+                  <th className="py-2">{trans('affiliate.credited_at')}</th>
+                </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                {affiliate.commissions.data.map((commission) => (
+                  <tr key={commission.id}>
+                    <td className="py-3 text-gray-700">{commission.created_at}</td>
+                    <td className="py-3 text-gray-700">{trans(`affiliate.commission_status.${commission.status}`)}</td>
+                    <td className="py-3 text-gray-700">{formatPrice(commission.amount)}</td>
+                    <td className="py-3 text-gray-700">{commission.hold_until || '-'}</td>
+                    <td className="py-3 text-gray-700">{commission.credited_at || '-'}</td>
+                  </tr>
+                ))}
+                {affiliate.commissions.data.length === 0 && (
+                  <tr><td colSpan="5" className="py-6 text-gray-500">{trans('common.no_records')}</td></tr>
+                )}
+                </tbody>
+              </table>
+            </div>
+            <Pagination links={affiliate.commissions.links} label={trans('affiliate.commission_history')}/>
           </div>
         </div>
       </div>

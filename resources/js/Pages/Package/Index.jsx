@@ -1,15 +1,16 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import {Head, router} from '@inertiajs/react';
+import {useState} from 'react';
+import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import SecondaryButton from "@/Components/SecondaryButton.jsx";
 import {formatBytes} from "@/Utils/formatBytes.js";
 import {formatPrice} from "@/Utils/formatPrice.js";
 import Modal from "@/Components/Modal.jsx";
 import PrimaryButton from "@/Components/PrimaryButton.jsx";
-import {useState} from 'react';
 import {trans} from '@/Utils/i18n';
+import Pagination from '@/Components/Pagination';
 
 
-export default function Index({auth, packages, userPackages}) {
+export default function Index({auth, packages, userPackages, historicalPackages}) {
   const [confirmingBuy, setConfirmingBuy] = useState(false);
 
   const statusClasses = {
@@ -149,9 +150,12 @@ export default function Index({auth, packages, userPackages}) {
             </div>
           </div>
 
-          {userPackages.length > 0 && (
-            <div className="mt-6">
-              <h2 className="text-lg font-medium text-gray-900 mb-3">{trans('package.your_packages')}</h2>
+          {[
+            {title: trans('package.current_packages'), items: userPackages},
+            {title: trans('package.package_history'), items: historicalPackages.data, links: historicalPackages.links},
+          ].map((section) => (
+            <div key={section.title} className="mt-6">
+              <h2 className="text-lg font-medium text-gray-900 mb-3">{section.title}</h2>
               <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div className="p-6 text-gray-900" style={{overflowX: 'auto'}}>
                   <table className="min-w-full divide-y divide-gray-200">
@@ -172,7 +176,7 @@ export default function Index({auth, packages, userPackages}) {
                     </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                    {userPackages.map((userPackage) => (
+                    {section.items.map((userPackage) => (
                       <tr
                         key={userPackage.id}
                         className={
@@ -200,12 +204,16 @@ export default function Index({auth, packages, userPackages}) {
                         </td>
                       </tr>
                     ))}
+                    {section.items.length === 0 && (
+                      <tr><td colSpan="4" className="px-6 py-4 text-gray-500">{trans('common.no_records')}</td></tr>
+                    )}
                     </tbody>
                   </table>
                 </div>
+                {section.links && <Pagination links={section.links} label={section.title}/>}
               </div>
             </div>
-          )}
+          ))}
         </div>
       </div>
 

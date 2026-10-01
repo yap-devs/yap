@@ -4,6 +4,7 @@ use App\Models\User;
 use App\Models\VmessServer;
 use App\Services\TrafficReportSnapshotService;
 use App\Services\V2rayService;
+use Illuminate\Support\Facades\Cache;
 
 test('traffic statistics use stable user labels and support legacy email labels', function (bool $snapshot_fails) {
     $this->travelTo(now()->startOfDay()->addHours(12));
@@ -58,7 +59,12 @@ test('traffic statistics use stable user labels and support legacy email labels'
     }
     app()->instance(TrafficReportSnapshotService::class, $snapshots);
 
+    $traffic_cache_key = 'today_traffic_'.$stable_label_user->id.'_'.now()->toDateString();
+    Cache::put($traffic_cache_key, 0, 1800);
+
     $this->artisan('app:update-stat-command')->assertSuccessful();
+
+    expect(Cache::has($traffic_cache_key))->toBeFalse();
 
     $stable_label_user->refresh();
     $legacy_user->refresh();

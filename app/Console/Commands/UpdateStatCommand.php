@@ -5,6 +5,7 @@ namespace App\Console\Commands;
 use App\Jobs\GenerateClashProfileLink;
 use App\Models\User;
 use App\Models\UserPackage;
+use App\Models\UserStat;
 use App\Models\VmessServer;
 use App\Services\TrafficReportSnapshotService;
 use App\Services\V2rayService;
@@ -113,7 +114,7 @@ class UpdateStatCommand extends Command
                 $this->user_status_changed = true;
             }
 
-            Cache::forget('today_traffic_'.$user->id);
+            Cache::forget(UserStat::todayTrafficCacheKey($user->id));
         }
 
         if (now()->hour === 0 && now()->minute < 10) {

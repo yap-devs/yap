@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -11,13 +12,18 @@ class StatController extends Controller
     {
         $chartData = [];
         if ($request->user()->isValid) {
-            $chartData = collect($request->user()->stats()->where('created_at', '>=', now()->subDays(14)->startOfDay())->get())
-                ->groupBy('date')
-                ->map(function ($stats, $date) {
+            $chartData = $request->user()->stats()
+                ->where('created_at', '>=', now()->subDays(14)->startOfDay())
+                ->selectRaw('DATE(created_at) as period, SUM(traffic_downlink) as traffic_downlink, SUM(traffic_uplink) as traffic_uplink')
+                ->groupByRaw('DATE(created_at)')
+                ->orderBy('period')
+                ->toBase()
+                ->get()
+                ->map(function (object $stat): array {
                     return [
-                        'date' => $date,
-                        'traffic_downlink' => $stats->sum('traffic_downlink'),
-                        'traffic_uplink' => $stats->sum('traffic_uplink'),
+                        'date' => CarbonImmutable::parse($stat->period)->format('m/d'),
+                        'traffic_downlink' => (int) $stat->traffic_downlink,
+                        'traffic_uplink' => (int) $stat->traffic_uplink,
                     ];
                 });
             $chartData = [

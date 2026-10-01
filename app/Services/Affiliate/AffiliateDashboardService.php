@@ -50,16 +50,25 @@ class AffiliateDashboardService
             ->map(fn (AffiliateReferralCode $referral_code): array => $this->formatCode($referral_code));
 
         $referrals = $promoter->referrals()
-            ->with(['referred:id,name,email,github_nickname', 'commissions'])
+            ->with('referred:id,name,email,github_nickname')
+            ->withSum([
+                'commissions as pending_commission' => fn ($query) => $query->where('status', AffiliateCommission::STATUS_PENDING),
+            ], 'amount')
+            ->withSum([
+                'commissions as credited_commission' => fn ($query) => $query->where('status', AffiliateCommission::STATUS_CREDITED),
+            ], 'amount')
             ->latest()
-            ->get()
-            ->map(fn (AffiliateReferral $referral): array => $this->formatReferral($referral, $self_paid_total));
+            ->orderByDesc('id')
+            ->paginate(20, ['*'], 'referrals_page')
+            ->withQueryString()
+            ->through(fn (AffiliateReferral $referral): array => $this->formatReferral($referral, $self_paid_total));
 
         $commissions = $promoter->commissions()
             ->latest()
-            ->limit(50)
-            ->get()
-            ->map(fn (AffiliateCommission $commission): array => [
+            ->orderByDesc('id')
+            ->paginate(20, ['id', 'status', 'base_amount', 'commission_rate', 'amount', 'hold_until', 'credited_at', 'created_at'], 'commissions_page')
+            ->withQueryString()
+            ->through(fn (AffiliateCommission $commission): array => [
                 'id' => $commission->id,
                 'status' => $commission->status,
                 'base_amount' => (string) $commission->base_amount,
@@ -144,8 +153,8 @@ class AffiliateDashboardService
 
     private function formatReferral(AffiliateReferral $referral, float $self_paid_total): array
     {
-        $pending = (float) $referral->commissions->where('status', AffiliateCommission::STATUS_PENDING)->sum('amount');
-        $credited = (float) $referral->commissions->where('status', AffiliateCommission::STATUS_CREDITED)->sum('amount');
+        $pending = (float) $referral->pending_commission;
+        $credited = (float) $referral->credited_commission;
         $prompt_key = $referral->status;
 
         if ($referral->status === AffiliateReferral::STATUS_QUALIFIED && $self_paid_total < (float) config('affiliate.minimum_referrer_paid_amount')) {

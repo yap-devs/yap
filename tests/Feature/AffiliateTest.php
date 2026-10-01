@@ -42,7 +42,7 @@ test('referred registration is visible before payment', function () {
     $response->assertOk();
     $response->assertInertia(fn ($page) => $page
         ->component('Affiliate/Index')
-        ->where('affiliate.referrals.0.status', AffiliateReferral::STATUS_REGISTERED)
+        ->where('affiliate.referrals.data.0.status', AffiliateReferral::STATUS_REGISTERED)
     );
 });
 
