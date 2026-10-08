@@ -76,8 +76,9 @@ test('admin can search payment top up ranking by user email in :dataset', functi
     $this->actingAs(User::factory()->create(['id' => 1]));
 
     $matching_user = User::factory()->create([
+        'id' => 6,
         'name' => 'Matching User',
-        'email' => '17505446818@163.com',
+        'email' => 'matching@example.com',
     ]);
     $other_user = User::factory()->create([
         'name' => 'Other User',
@@ -98,7 +99,7 @@ test('admin can search payment top up ranking by user email in :dataset', functi
     ]);
 
     Livewire::test($widget)
-        ->searchTable('17505446818@163.com')
+        ->searchTable('matching@example.com')
         ->assertCanSeeTableRecords([$matching_payment])
         ->assertCanNotSeeTableRecords([$other_payment]);
 })->with([

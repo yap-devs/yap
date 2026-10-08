@@ -1,7 +1,7 @@
 <?php
 
+use App\Models\NodeRoute;
 use App\Models\User;
-use App\Models\VmessServer;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 
@@ -10,19 +10,17 @@ test('dashboard only exposes public display fields for enabled servers', functio
         'id' => 2,
         'uuid' => '6cfcfc20-1809-4894-bc0c-93f5ecf39026',
     ]);
-    $server = VmessServer::create([
+    $server = NodeRoute::factory()->create([
         'name' => 'Public node',
         'server' => 'proxy.example.com',
         'port' => 443,
-        'internal_server' => '10.0.0.5:2222',
         'rate' => 1.5,
         'enabled' => true,
         'for_low_priority' => 1,
     ]);
-    VmessServer::create([
+    NodeRoute::factory()->create([
         'name' => 'Disabled node',
         'port' => 443,
-        'internal_server' => '10.0.0.6:2222',
         'enabled' => false,
     ]);
 
@@ -35,8 +33,8 @@ test('dashboard only exposes public display fields for enabled servers', functio
             ->has('servers.0', fn (Assert $server_props) => $server_props
                 ->where('id', $server->id)
                 ->where('name', 'Public node')
-                ->where('rate', 1.5)
-                ->where('for_low_priority', 1)
+                ->where('rate', '1.50')
+                ->where('for_low_priority', true)
                 ->missing('internal_server')
                 ->missing('server')
                 ->missing('port')

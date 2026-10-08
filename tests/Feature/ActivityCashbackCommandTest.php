@@ -1,6 +1,5 @@
 <?php
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
 
@@ -66,7 +65,7 @@ test('it credits cashback for non-package balance consumed on the target date', 
         'amount' => 0.99,
         'description' => 'Activity cashback for 2026-06-03',
     ]);
-    Bus::assertDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('it does not credit twice for the same date', function () {
@@ -155,7 +154,7 @@ test('it previews cashback without crediting by default', function () {
         'amount' => 2,
         'description' => 'Activity cashback for 2026-06-03',
     ]);
-    Bus::assertNotDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('it excludes package purchases from consumption cashback', function () {

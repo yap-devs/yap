@@ -1,10 +1,11 @@
 <?php
 
-use App\Jobs\GenerateClashProfileLink;
+use App\Models\Node;
 use App\Models\User;
-use Illuminate\Bus\UniqueLock;
+use App\Services\NodeConfigurationService;
 use Illuminate\Support\Facades\Bus;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\User as SocialiteUser;
 
@@ -19,10 +20,62 @@ function fakeGithubAccount(int $github_id): SocialiteUser
         ->setToken('github-token-'.$github_id);
 }
 
-function releaseGithubSyncJobUniqueLock(): void
-{
-    Cache::lock(UniqueLock::getKey(new GenerateClashProfileLink))->forceRelease();
-}
+test('github unlinking revokes cached node authorization immediately', function () {
+    Notification::fake();
+    config(['node_agent.enabled' => false, 'node_agent.snapshot_store' => 'array']);
+    $node = Node::factory()->create();
+    $user = User::factory()->create([
+        'balance' => '0.00',
+        'github_id' => 7007,
+        'github_created_at' => '2015-01-01T00:00:00Z',
+    ]);
+    config(['node_agent.enabled' => true]);
+    $service = app(NodeConfigurationService::class);
+    $before = $service->snapshot($node->fresh());
+    expect(array_column($before['users'], 'id'))->toContain($user->id);
+
+    $this->actingAs($user)->delete(route('github.destroy'))->assertRedirect('/profile');
+
+    $after = $service->snapshot($node->fresh());
+    expect($user->fresh()->is_valid)->toBeFalse()
+        ->and($after['revision'])->toBeGreaterThan($before['revision'])
+        ->and(array_column($after['users'], 'id'))->not->toContain($user->id)
+        ->and(DB::table('jobs')->count())->toBe(0);
+});
+
+test('github unlinking rolls back if its durable authorization notification cannot be stored', function () {
+    Notification::fake();
+    config(['node_agent.enabled' => false]);
+    $user = User::factory()->create([
+        'github_id' => 8008,
+        'github_created_at' => '2015-01-01T00:00:00Z',
+    ]);
+    config(['node_agent.enabled' => true, 'queue.connections.database.connection' => 'separate_queue']);
+    $this->withoutExceptionHandling();
+
+    expect(fn () => $this->actingAs($user)->delete(route('github.destroy')))
+        ->toThrow(LogicException::class, 'application connection');
+
+    expect($user->fresh()->github_id)->toBe(8008)
+        ->and($user->github_created_at)->not->toBeNull()
+        ->and(DB::table('jobs')->count())->toBe(0);
+});
+
+test('a stale github unlink request cannot clear a newer binding or refresh node authorization', function (?int $current_github_id) {
+    Notification::fake();
+    config(['node_agent.enabled' => false]);
+    $node = Node::factory()->create();
+    $user = User::factory()->create(['github_id' => 9009, 'github_created_at' => '2015-01-01T00:00:00Z']);
+    User::whereKey($user->id)->update(['github_id' => $current_github_id]);
+    $revision = $node->fresh()->desired_revision;
+    config(['node_agent.enabled' => true]);
+
+    $this->actingAs($user)->delete(route('github.destroy'))->assertRedirect('/profile');
+
+    expect($user->fresh()->github_id)->toBe($current_github_id)
+        ->and($node->fresh()->desired_revision)->toBe($revision)
+        ->and(DB::table('jobs')->count())->toBe(0);
+})->with([null, 9010]);
 
 test('unlinking an already unlinked github account does not dispatch a sync job', function () {
     $user = User::factory()->create();
@@ -36,7 +89,7 @@ test('unlinking an already unlinked github account does not dispatch a sync job'
         ->delete(route('github.destroy'))
         ->assertRedirect('/profile');
 
-    Bus::assertNotDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('github binding is limited to twice per day independently from unlinking', function () {
@@ -47,23 +100,19 @@ test('github binding is limited to twice per day independently from unlinking', 
     $this->actingAs($user)
         ->get('/auth/github/callback')
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     $this->actingAs($user)
         ->delete(route('github.destroy'))
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     Socialite::fake('github', fakeGithubAccount(2002));
     $this->actingAs($user->refresh())
         ->get('/auth/github/callback')
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     $this->actingAs($user)
         ->delete(route('github.destroy'))
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     Socialite::fake('github', fakeGithubAccount(3003));
     $this->actingAs($user->refresh())
@@ -81,7 +130,7 @@ test('github binding is limited to twice per day independently from unlinking', 
         ->assertRedirect('/profile');
 
     expect($user->refresh()->github_id)->toBe(3003);
-    Bus::assertDispatchedTimes(GenerateClashProfileLink::class, 5);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('github unlinking is limited to twice per day independently from binding', function () {
@@ -96,31 +145,27 @@ test('github unlinking is limited to twice per day independently from binding', 
     $this->actingAs($user)
         ->delete(route('github.destroy'))
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     Socialite::fake('github', fakeGithubAccount(4002));
     $this->actingAs($user->refresh())
         ->get('/auth/github/callback')
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     $this->actingAs($user)
         ->delete(route('github.destroy'))
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     Socialite::fake('github', fakeGithubAccount(4003));
     $this->actingAs($user->refresh())
         ->get('/auth/github/callback')
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     $this->actingAs($user)
         ->delete(route('github.destroy'))
         ->assertTooManyRequests();
 
     expect($user->refresh()->github_id)->toBe(4003);
-    Bus::assertDispatchedTimes(GenerateClashProfileLink::class, 4);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('github binding rate limit cannot be bypassed with different local users', function () {
@@ -133,7 +178,6 @@ test('github binding rate limit cannot be bypassed with different local users', 
         $this->actingAs($user)
             ->get('/auth/github/callback')
             ->assertRedirect('/profile');
-        releaseGithubSyncJobUniqueLock();
 
         User::query()->whereKey($user->getKey())->update([
             'github_id' => null,
@@ -149,7 +193,7 @@ test('github binding rate limit cannot be bypassed with different local users', 
         ->assertTooManyRequests();
 
     expect($users->last()->refresh()->github_id)->toBeNull();
-    Bus::assertDispatchedTimes(GenerateClashProfileLink::class, 2);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('github unlink rate limit cannot be bypassed with different local users', function () {
@@ -166,29 +210,25 @@ test('github unlink rate limit cannot be bypassed with different local users', f
     $this->actingAs($first_user)
         ->delete(route('github.destroy'))
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     Socialite::fake('github', fakeGithubAccount($github_id));
     $this->actingAs($second_user)
         ->get('/auth/github/callback')
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     $this->actingAs($second_user)
         ->delete(route('github.destroy'))
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     Socialite::fake('github', fakeGithubAccount($github_id));
     $this->actingAs($first_user->refresh())
         ->get('/auth/github/callback')
         ->assertRedirect('/profile');
-    releaseGithubSyncJobUniqueLock();
 
     $this->actingAs($first_user)
         ->delete(route('github.destroy'))
         ->assertTooManyRequests();
 
     expect($first_user->refresh()->github_id)->toBe($github_id);
-    Bus::assertDispatchedTimes(GenerateClashProfileLink::class, 4);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });

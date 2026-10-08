@@ -1,6 +1,5 @@
 <?php
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
@@ -71,7 +70,7 @@ test('it credits cashback for paid top-ups on the target date', function () {
         'amount' => 3,
         'description' => 'Top-up cashback for 2026-06-03',
     ]);
-    Bus::assertDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('it does not credit twice for the same date', function () {
@@ -168,5 +167,5 @@ test('it previews top-up cashback without crediting by default', function () {
         'amount' => 2,
         'description' => 'Top-up cashback for 2026-06-03',
     ]);
-    Bus::assertNotDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });

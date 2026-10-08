@@ -31,8 +31,6 @@ return [
         'phone' => env('YAP_CD_PHONE', ''),
         'head_of_operations' => env('YAP_CD_HEAD_OF_OPERATIONS', ''),
     ],
-    'ssh_user' => env('YAP_SSH_USER', 'root'),
-    'ssh_private_key_path' => env('YAP_SSH_PRIVATE_KEY_PATH', '/root/.ssh/id_ed25519'),
     'turnstile' => [
         'site_key' => env('TURNSTILE_SITE_KEY', ''),
         'secret_key' => env('TURNSTILE_SECRET', ''),

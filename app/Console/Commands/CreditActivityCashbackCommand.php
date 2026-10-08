@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\BalanceDetail;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -75,10 +74,6 @@ class CreditActivityCashbackCommand extends Command
             });
 
         $this->table(['User ID', 'Email', 'Balance Detail ID', 'Description', 'Consumed', 'Created At'], $rows);
-
-        if ($execute && $credited_count > 0) {
-            GenerateClashProfileLink::dispatch();
-        }
 
         $action = $execute ? 'Credited' : 'Would credit';
         $this->info("{$action} {$credited_count} users with {$credited_amount} activity cashback for {$target_date->toDateString()}.");

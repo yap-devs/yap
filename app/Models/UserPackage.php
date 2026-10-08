@@ -68,7 +68,9 @@ class UserPackage extends Model
 
     public function scopeAvailable(Builder $query): Builder
     {
-        return $query->active()->started();
+        return $query->active()->started()->where(function (Builder $query): void {
+            $query->whereNull('ended_at')->orWhere('ended_at', '>', now());
+        });
     }
 
     public function scopeQueued(Builder $query): Builder
@@ -85,7 +87,8 @@ class UserPackage extends Model
 
     public function isAvailable(): bool
     {
-        return $this->status === self::STATUS_ACTIVE && $this->isStarted();
+        return $this->status === self::STATUS_ACTIVE && $this->isStarted()
+            && ($this->ended_at === null || $this->ended_at->isFuture());
     }
 
     public function isQueued(): bool

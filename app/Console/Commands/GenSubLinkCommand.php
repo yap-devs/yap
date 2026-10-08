@@ -2,7 +2,8 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\GenerateClashProfileLink;
+use App\Models\User;
+use App\Services\SubscriptionService;
 use Illuminate\Console\Command;
 use Throwable;
 
@@ -20,17 +21,26 @@ class GenSubLinkCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Rebuild subscription cache and sync users.';
+    protected $description = 'Rebuild subscription cache from node routes.';
 
     /**
      * Execute the console command.
      *
      * @throws Throwable
      */
-    public function handle()
+    public function handle(): void
     {
-        GenerateClashProfileLink::dispatchSync();
+        $subscriptions = app(SubscriptionService::class);
+        User::withTrashed()->with('packages')->chunkById(100, function ($users) use ($subscriptions): void {
+            foreach ($users as $user) {
+                if ($user->trashed() || ! $user->is_valid) {
+                    $subscriptions->forgetCache($user);
+                } else {
+                    $subscriptions->warmCache($user);
+                }
+            }
+        });
 
-        $this->info('Rebuilt subscription cache and synced users.');
+        $this->info('Rebuilt subscription cache.');
     }
 }

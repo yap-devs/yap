@@ -40,7 +40,7 @@ class UpdateUserUuid implements ShouldQueue
     /**
      * Handle the job.
      *
-     * Updates the user's UUID in the database and dispatches a job to generate a new Clash profile link.
+     * Updates the user's UUID, invalidates the subscription cache, and rotates the Sub2api key.
      */
     public function handle(SubscriptionService $subscription_service): void
     {
@@ -70,8 +70,6 @@ class UpdateUserUuid implements ShouldQueue
         );
 
         app(Sub2apiKeyService::class)->rotateAfterUuidReset($this->user, $old_key_id);
-        // create new clash profile
-        GenerateClashProfileLink::dispatch();
         // email user
         $this->user->notify(new UuidUpdated($this->user));
         Cache::forget(self::pendingCacheKey($this->user->id));

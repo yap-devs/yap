@@ -671,3 +671,7 @@ Issues are tracked in this repository's GitHub Issues. See `docs/agents/issue-tr
 ### Domain docs
 
 This is a single-context repository. See `docs/agents/domain.md`.
+
+### Node provisioning and core upgrades
+
+Use `.agents/skills/yap-node-operations/SKILL.md` for Agent machines, destinations and relay entries. Its runbooks are `docs/agents/node-operations.md` and `docs/agents/v2fly-upgrade.md`. Hosting instructions are in `docs/deployment/README.md`.

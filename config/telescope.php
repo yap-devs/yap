@@ -112,6 +112,9 @@ return [
     ],
 
     'ignore_paths' => [
+        'api/agent/*',
+        'clash/*',
+        'sub/*',
         'livewire*',
         'nova-api*',
         'pulse*',

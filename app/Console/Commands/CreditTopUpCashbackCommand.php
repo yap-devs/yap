@@ -2,7 +2,6 @@
 
 namespace App\Console\Commands;
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use Carbon\CarbonImmutable;
@@ -74,10 +73,6 @@ class CreditTopUpCashbackCommand extends Command
             });
 
         $this->table(['User ID', 'Email', 'Payment ID', 'Gateway', 'Remote ID', 'Top Up', 'Created At'], $rows);
-
-        if ($execute && $credited_count > 0) {
-            GenerateClashProfileLink::dispatch();
-        }
 
         $action = $execute ? 'Credited' : 'Would credit';
         $this->info("{$action} {$credited_count} users with {$credited_amount} top-up cashback for {$target_date->toDateString()}.");

@@ -1,27 +1,30 @@
 <?php
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Jobs\UpdateUserUuid;
+use App\Models\NodeRoute;
 use App\Models\User;
-use App\Models\VmessServer;
 use App\Services\ClashService;
 use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
+use Symfony\Component\Yaml\Yaml;
+
+beforeEach(function () {
+    config(['subscription.content_store' => 'array', 'subscription.lock_store' => 'array']);
+});
 
 test('clash subscription keeps yaml route compatibility', function () {
     $user = User::factory()->create([
         'balance' => 1,
         'uuid' => (string) Str::uuid(),
     ]);
-    VmessServer::create([
+    NodeRoute::factory()->create([
         'name' => 'Tokyo',
         'server' => 'tokyo.example.com',
         'port' => 443,
         'rate' => 1,
-        'internal_server' => 'internal.example.com',
         'enabled' => true,
     ]);
     app(SubscriptionService::class)->warmCache($user);
@@ -34,7 +37,7 @@ test('clash subscription keeps yaml route compatibility', function () {
         ->assertHeader('Subscription-Userinfo', 'upload=0; download=0; total=70368744177664; expire=612894867');
 
     $content = $response->getContent();
-    $config = yaml_parse($content);
+    $config = Yaml::parse($content);
     $final_rule_index = array_search('MATCH,Proxy', $config['rules'], true);
     $direct_rules = [
         'DOMAIN-SUFFIX,servicewechat.com,DIRECT',
@@ -58,7 +61,8 @@ test('clash subscription keeps yaml route compatibility', function () {
 
     expect($content)
         ->toContain('proxies:')
-        ->toContain('name: Tokyo[1x]')
+        ->and($config['proxies'][0]['name'])->toBe('Tokyo[1x]')
+        ->and($content)
         ->toContain('server: tokyo.example.com')
         ->toContain('uuid: '.$user->uuid)
         ->and($config['dns']['enable'])->toBeFalse()
@@ -75,7 +79,7 @@ test('clash subscription keeps yaml route compatibility', function () {
 });
 
 test('public clash template excludes deployment-specific routes', function () {
-    $template = yaml_parse_file(resource_path('clash-conf-template.yaml'));
+    $template = Yaml::parseFile(resource_path('clash-conf-template.yaml'));
     $deployment_rules = [
         'DOMAIN-SUFFIX,router.asus.com,DIRECT',
         'DOMAIN-SUFFIX,synology.me,DIRECT',
@@ -96,12 +100,11 @@ test('universal subscription returns base64 encoded vmess links', function () {
         'balance' => 1,
         'uuid' => (string) Str::uuid(),
     ]);
-    VmessServer::create([
+    NodeRoute::factory()->create([
         'name' => 'Tokyo',
         'server' => 'tokyo.example.com',
         'port' => 443,
         'rate' => 1,
-        'internal_server' => 'internal.example.com',
         'enabled' => true,
     ]);
     app(SubscriptionService::class)->warmCache($user);
@@ -140,17 +143,17 @@ test('invalid users cannot access subscriptions', function () {
     $this->get(route('subscription.universal', ['uuid' => $user->uuid]))->assertNotFound();
 });
 
-test('valid users cannot access subscriptions before cache is built', function () {
+test('valid users receive subscriptions on demand before cache is built', function () {
     Bus::fake();
     $user = User::factory()->create([
         'balance' => 1,
         'uuid' => (string) Str::uuid(),
     ]);
 
-    $this->get(route('subscription.clash', ['uuid' => $user->uuid]))->assertNotFound();
-    $this->get(route('subscription.universal', ['uuid' => $user->uuid]))->assertNotFound();
+    $this->get(route('subscription.clash', ['uuid' => $user->uuid]))->assertOk();
+    $this->get(route('subscription.universal', ['uuid' => $user->uuid]))->assertOk();
 
-    Bus::assertDispatchedTimes(GenerateClashProfileLink::class, 1);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('dashboard includes clash and universal subscription urls', function () {
@@ -175,12 +178,11 @@ test('gen sub link command overwrites fixed subscription cache keys', function (
         'balance' => 1,
         'uuid' => (string) Str::uuid(),
     ]);
-    VmessServer::create([
+    NodeRoute::factory()->create([
         'name' => 'Tokyo',
         'server' => 'tokyo.example.com',
         'port' => 443,
         'rate' => 1,
-        'internal_server' => '',
         'enabled' => true,
     ]);
 
@@ -191,13 +193,13 @@ test('gen sub link command overwrites fixed subscription cache keys', function (
     Cache::forever($universal_key, 'stale universal');
 
     $this->artisan('app:gen-sub-link-command')
-        ->expectsOutput('Rebuilt subscription cache and synced users.')
+        ->expectsOutput('Rebuilt subscription cache.')
         ->assertSuccessful();
 
     expect($service->cacheKey($user, SubscriptionService::FORMAT_CLASH))->toBe($clash_key)
         ->and($service->cacheKey($user, SubscriptionService::FORMAT_UNIVERSAL))->toBe($universal_key)
-        ->and(Cache::get($clash_key))->toContain('uuid: '.$user->uuid)
-        ->and(base64_decode(Cache::get($universal_key)))->toContain('vmess://');
+        ->and(Cache::get($clash_key)['content'])->toContain('uuid: '.$user->uuid)
+        ->and(base64_decode(Cache::get($universal_key)['content']))->toContain('vmess://');
 });
 
 test('gen sub link command forgets invalid user subscription caches', function () {
@@ -205,12 +207,11 @@ test('gen sub link command forgets invalid user subscription caches', function (
         'balance' => 0,
         'uuid' => (string) Str::uuid(),
     ]);
-    VmessServer::create([
+    NodeRoute::factory()->create([
         'name' => 'Tokyo',
         'server' => 'tokyo.example.com',
         'port' => 443,
         'rate' => 1,
-        'internal_server' => '',
         'enabled' => true,
     ]);
 
@@ -221,7 +222,7 @@ test('gen sub link command forgets invalid user subscription caches', function (
     Cache::forever($universal_key, 'stale universal');
 
     $this->artisan('app:gen-sub-link-command')
-        ->expectsOutput('Rebuilt subscription cache and synced users.')
+        ->expectsOutput('Rebuilt subscription cache.')
         ->assertSuccessful();
 
     expect(Cache::has($clash_key))->toBeFalse()
@@ -233,12 +234,11 @@ test('clash generation fails when yaml customizer fails', function () {
         'balance' => 1,
         'uuid' => (string) Str::uuid(),
     ]);
-    $server = VmessServer::create([
+    $server = NodeRoute::factory()->create([
         'name' => 'Tokyo',
         'server' => 'tokyo.example.com',
         'port' => 443,
         'rate' => 1,
-        'internal_server' => 'internal.example.com',
         'enabled' => true,
     ]);
 

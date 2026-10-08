@@ -30,6 +30,7 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
             ->defaultSort('total_top_up', 'desc')
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
+            ->defaultKeySort(false)
             ->striped()
             ->filters([
                 Filter::make('date_range')

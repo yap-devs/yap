@@ -1,8 +1,10 @@
 <?php
 
+use App\Services\SchedulerStatusService;
+use Illuminate\Console\Scheduling\Schedule as Scheduler;
 use Illuminate\Support\Facades\Schedule;
 
-$timezone = 'Asia/Tokyo';
+$timezone = config('app.timezone');
 
 Schedule::command('app:process-payment-command')
     ->everyMinute()
@@ -43,3 +45,26 @@ Schedule::command('app:package-low-traffic-notification-command')
     ->weeklyOn(1, '01:25')
     ->timezone($timezone)
     ->withoutOverlapping(120);
+
+Schedule::command('nodes:aggregate-traffic')
+    ->hourly()
+    ->timezone($timezone)
+    ->withoutOverlapping(10);
+
+Schedule::command('app:backup-mysql')
+    ->hourly()
+    ->timezone($timezone)
+    ->withoutOverlapping(60);
+
+Schedule::command('nodes:prune-traffic')
+    ->hourlyAt(40)
+    ->timezone($timezone)
+    ->withoutOverlapping(10);
+
+foreach (app(Scheduler::class)->events() as $event) {
+    preg_match('/artisan[\'"]?\s+(\S+)/', $event->command, $matches);
+    $name = $matches[1] ?? $event->command;
+    $event->name($name)
+        ->before(fn () => app(SchedulerStatusService::class)->started($name))
+        ->after(fn () => app(SchedulerStatusService::class)->finished($name, $event->exitCode ?? 1));
+}
