@@ -20,6 +20,14 @@ class ReportOverviewWidget extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        return $this->getTodayMetrics();
+    }
+
+    /**
+     * @return array<Stat>
+     */
+    public function getTodayMetrics(): array
+    {
         $service = app(AdminDashboardReportService::class);
         $today = $service->getTodayStats();
         $money = $service->getTopUpSnapshotStats();
@@ -53,7 +61,7 @@ class ReportOverviewWidget extends StatsOverviewWidget
 
     private function formatGigabytes(float $gigabytes): string
     {
-        return number_format($gigabytes, 2).' GB';
+        return number_format($gigabytes, 2).' GiB';
     }
 
     private function formatMonthToDateChange(float $current, float $previous): string

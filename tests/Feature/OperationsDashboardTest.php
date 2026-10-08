@@ -167,6 +167,14 @@ test('cash indicators compare the same elapsed part of each month without counti
         ->and($stats[0]->getDescription())->toContain('+50.0% vs prior MTD')
         ->and($stats[1]->getLabel())->toBe('Balance Debits Today')
         ->and($stats[1]->getDescription())->toContain('-50.0% vs prior MTD');
+
+    $this->actingAs(User::factory()->create(['id' => 1]));
+    Filament::setCurrentPanel('admin');
+
+    Livewire::test(OperationsWorkspace::class)
+        ->assertSee('MTD 30.00 USD | +50.0% vs prior MTD')
+        ->assertSee('MTD 5.00 USD | -50.0% vs prior MTD')
+        ->assertSee('Distinct users recorded by the latest collection');
 });
 
 test('monthly chart shows a clearly labeled estimate only above actual current-month top-ups', function () {

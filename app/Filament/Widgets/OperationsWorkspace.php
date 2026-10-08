@@ -55,6 +55,7 @@ class OperationsWorkspace extends Widget
 
         return [
             ...$overview, 'quick_links' => $quick_links, 'polling_interval' => $this->getPollingInterval(),
+            'today_metrics' => app(ReportOverviewWidget::class)->getTodayMetrics(),
             'attention_checks' => count(array_filter($overview['attention'], fn (array $item): bool => $item['count'] > 0)),
             'scheduler_label' => $failed_tasks ? $failed_tasks.' failed task(s)' : ($scheduler['healthy'] ? 'Recent tick received' : 'No recent successful tick'),
             'scheduler_healthy' => $scheduler['healthy'] && ! $failed_tasks,

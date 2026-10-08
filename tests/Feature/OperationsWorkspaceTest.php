@@ -38,6 +38,7 @@ test('overview retains the monthly chart and omits withdrawn search and audit fe
 
     Livewire::test(OperationsWorkspace::class)
         ->assertSee('Monthly Top-Ups & Balance Debits')
+        ->assertSee('MTD 0.00 USD | Prior MTD 0.00 USD')
         ->assertSee('Common operations')
         ->assertDontSee('Find an account')
         ->assertDontSee('Management history');

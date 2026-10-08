@@ -6,13 +6,14 @@
                 <span class="text-xs text-gray-500 dark:text-gray-400">Checked {{ $checked_at }}</span>
             </div>
             <dl class="grid grid-cols-2 gap-px bg-gray-950/5 lg:grid-cols-4 dark:bg-white/10">
-                @foreach ([['label' => 'Paid Top-Ups Today', 'value' => '$'.number_format($today['top_up'], 2)], ['label' => 'Balance Debits Today', 'value' => '$'.number_format($today['usage'], 2)], ['label' => 'Traffic Collected Today', 'value' => number_format($today['traffic_gb'], 2).' GiB'], ['label' => 'Users with Traffic Today', 'value' => number_format($today['active_users'])]] as $metric)
+                @foreach ($today_metrics as $metric)
                     <div class="min-w-0 bg-white px-5 py-4 dark:bg-gray-900">
-                        <dt class="text-xs text-gray-500 dark:text-gray-400">{{ $metric['label'] }}</dt>
-                        <dd class="mt-1 text-2xl font-semibold tracking-tight text-gray-950 tabular-nums dark:text-white">{{ $metric['value'] }}</dd>
+                        <dt class="text-xs text-gray-500 dark:text-gray-400">{{ $metric->getLabel() }}</dt>
+                        <dd class="mt-1 text-2xl font-semibold tracking-tight text-gray-950 tabular-nums dark:text-white">{{ $metric->getValue() }}</dd>
+                        <dd class="mt-2 text-xs text-gray-500 dark:text-gray-400">{{ $metric->getDescription() }}</dd>
                     </div>
                 @endforeach
-        </dl>
+            </dl>
         </section>
 
         @livewire(\App\Filament\Widgets\MonthlyTopUpAndUsageChart::class, ['pageFilters' => $this->pageFilters], key('overview-monthly-cash-flow'))
