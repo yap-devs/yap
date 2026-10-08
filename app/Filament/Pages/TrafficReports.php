@@ -25,7 +25,7 @@ class TrafficReports extends Dashboard
 
     public function getSubheading(): ?string
     {
-        return 'Collected, rate-adjusted user traffic. Monthly data follows the latest collection snapshot.';
+        return 'Collected traffic after route multipliers. Monthly data follows collection snapshots; internal accounts #1–5 are excluded.';
     }
 
     public function getColumns(): int|array

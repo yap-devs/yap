@@ -2,6 +2,8 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\UserResource;
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Models\Sub2apiUsageRecord;
 use App\Services\AdminDashboardReportService;
 use Filament\Tables\Columns\TextColumn;
@@ -12,7 +14,7 @@ class AiUsageRankingTable extends TableWidget
 {
     protected static bool $isLazy = false;
 
-    protected ?string $pollingInterval = '30s';
+    use InteractsWithDashboardControls;
 
     protected int|string|array $columnSpan = [
         'md' => 6,
@@ -34,7 +36,7 @@ class AiUsageRankingTable extends TableWidget
                 TextColumn::make('rank')
                     ->label('#')
                     ->rowIndex(),
-                TextColumn::make('user_name')
+                TextColumn::make('user_name')->url(fn (Sub2apiUsageRecord $record): string => UserResource::getUrl('view', ['record' => $record->user_id]))
                     ->label('User')
                     ->description(fn (Sub2apiUsageRecord $record): string => $record->user_email)
                     ->wrap()

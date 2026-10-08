@@ -5,14 +5,18 @@ namespace App\Filament\Resources;
 use App\Filament\Resources\UserResource\Pages\CreateUser;
 use App\Filament\Resources\UserResource\Pages\EditUser;
 use App\Filament\Resources\UserResource\Pages\ListUsers;
+use App\Filament\Resources\UserResource\Pages\ViewUser;
+use App\Filament\Resources\UserResource\RelationManagers\BalanceDetailsRelationManager;
+use App\Filament\Resources\UserResource\RelationManagers\PackagesRelationManager;
+use App\Filament\Resources\UserResource\RelationManagers\PaymentsRelationManager;
+use App\Filament\Resources\UserResource\Schemas\UserInfolist;
 use App\Models\Payment;
 use App\Models\User;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Actions\ViewAction;
 use Filament\Forms\Components\DateTimePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -24,8 +28,10 @@ use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 use Illuminate\Support\Facades\DB;
+use Livewire\Component;
 
 class UserResource extends Resource
 {
@@ -37,56 +43,31 @@ class UserResource extends Resource
 
     protected static ?int $navigationSort = 1;
 
+    public static function canAccess(): bool
+    {
+        return auth()->id() === 1;
+    }
+
     public static function form(Schema $schema): Schema
     {
-        return $schema
-            ->columns([
-                'md' => 2,
-                'xl' => 3,
-            ])
-            ->components([
-                TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                TextInput::make('email')
-                    ->email()
-                    ->required()
-                    ->maxLength(255),
-                DateTimePicker::make('email_verified_at'),
-                TextInput::make('password')
-                    ->password()
-                    ->required()
-                    ->maxLength(255),
-                TextInput::make('balance')
-                    ->required()
-                    ->numeric()
-                    ->default(0.00),
-                TextInput::make('uuid')
-                    ->label('UUID')
-                    ->required()
-                    ->maxLength(255)
-                    ->default(''),
-                TextInput::make('traffic_downlink')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                TextInput::make('traffic_uplink')
-                    ->required()
-                    ->numeric()
-                    ->default(0),
-                TextInput::make('traffic_unpaid')
-                    ->numeric()
-                    ->default(0),
-                DateTimePicker::make('last_settled_at'),
-                TextInput::make('github_id')
-                    ->numeric()
-                    ->default(null),
-                TextInput::make('github_nickname')
-                    ->required()
-                    ->maxLength(255)
-                    ->default(''),
-                DateTimePicker::make('github_created_at'),
-            ]);
+        return $schema->columns(2)->components([
+            TextInput::make('name')->required()->maxLength(255),
+            TextInput::make('email')->email()->required()->maxLength(255)->unique(),
+            DateTimePicker::make('email_verified_at')->label('Email verified at'),
+            TextInput::make('password')
+                ->password()
+                ->autocomplete('new-password')
+                ->required(fn (string $operation): bool => $operation === 'create')
+                ->minLength(8)
+                ->maxLength(255)
+                ->dehydrated(fn (?string $state): bool => filled($state))
+                ->helperText('Leave empty when editing to keep the current password.'),
+        ]);
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return UserInfolist::configure($schema);
     }
 
     public static function table(Table $table): Table
@@ -157,6 +138,7 @@ class UserResource extends Resource
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->stackedOnMobile()
+            ->recordUrl(fn (User $record): string => static::getUrl('view', ['record' => $record]))
             ->defaultSort('created_at', 'desc')
             ->striped()
             ->filters([
@@ -171,14 +153,13 @@ class UserResource extends Resource
                 TrashedFilter::make(),
             ])
             ->recordActions([
-                EditAction::make()
+                ViewAction::make()
                     ->labeledFrom('sm'),
                 static::adjustBalanceAction(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
             ]);
@@ -187,9 +168,12 @@ class UserResource extends Resource
     public static function adjustBalanceAction(): Action
     {
         return Action::make('adjustBalance')
-            ->label('Adjust Balance')
+            ->label('Adjust balance')
             ->icon('heroicon-m-banknotes')
             ->labeledFrom('sm')
+            ->authorize(fn (): bool => static::canAccess())
+            ->modalHeading('Adjust account balance')
+            ->modalSubmitActionLabel('Apply adjustment')
             ->schema([
                 Select::make('operation')
                     ->label('Operation')
@@ -242,13 +226,16 @@ class UserResource extends Resource
                     ->title('Balance adjusted')
                     ->success()
                     ->send();
-            });
+            })
+            ->after(fn (User $record, Component $livewire) => $livewire->dispatch('account-operation-completed.'.$record->id));
     }
 
     public static function getRelations(): array
     {
         return [
-            //
+            'payments' => PaymentsRelationManager::class,
+            'ledger' => BalanceDetailsRelationManager::class,
+            'packages' => PackagesRelationManager::class,
         ];
     }
 
@@ -257,6 +244,7 @@ class UserResource extends Resource
         return [
             'index' => ListUsers::route('/'),
             'create' => CreateUser::route('/create'),
+            'view' => ViewUser::route('/{record}'),
             'edit' => EditUser::route('/{record}/edit'),
         ];
     }
@@ -267,6 +255,9 @@ class UserResource extends Resource
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ])
+            ->with(['packages' => function (HasMany $query): void {
+                $query->available();
+            }])
             ->withCount(['payments as paid_top_up_count' => fn (Builder $query): Builder => $query
                 ->where('status', Payment::STATUS_PAID)])
             ->withSum(['payments as paid_top_up_total' => fn (Builder $query): Builder => $query

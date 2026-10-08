@@ -28,7 +28,7 @@ class CashFlow extends Dashboard
 
     public function getSubheading(): ?string
     {
-        return 'Paid top-ups are cash received; balance debits are charges for traffic and product actions.';
+        return 'Paid top-ups and balance debits are separate metrics; trends use record creation dates. Internal accounts #1–5 are excluded.';
     }
 
     public function getColumns(): int|array

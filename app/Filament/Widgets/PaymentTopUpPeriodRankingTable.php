@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\UserResource;
 use App\Models\Payment;
 use App\Services\AdminDashboardReportService;
 use Filament\Forms\Components\DatePicker;
@@ -58,7 +59,7 @@ class PaymentTopUpPeriodRankingTable extends TableWidget
                 TextColumn::make('rank')
                     ->label('#')
                     ->rowIndex(),
-                TextColumn::make('user_name')
+                TextColumn::make('user_name')->url(fn (Payment $record): string => UserResource::getUrl('view', ['record' => $record->user_id]))
                     ->label('User')
                     ->description(fn (Payment $record): string => (string) $record->user_email)
                     ->wrap()

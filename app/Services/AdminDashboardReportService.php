@@ -709,11 +709,12 @@ class AdminDashboardReportService
 
     public function getAiDailyCostSeries(int $days = 7): Collection
     {
+        $period = $this->datePeriodExpression('usage_created_at', 'day');
         $rows = $this->getReportableAiUsageQuery()
-            ->selectRaw("DATE_FORMAT(usage_created_at, '%Y-%m-%d') as period")
+            ->selectRaw($period.' as period')
             ->selectRaw('SUM(amount) as total_cost')
             ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
-            ->groupByRaw("DATE_FORMAT(usage_created_at, '%Y-%m-%d')")
+            ->groupByRaw($period)
             ->orderBy('period')
             ->get();
 
@@ -741,11 +742,12 @@ class AdminDashboardReportService
 
     public function getAiMonthlyCostSeries(int $months = 12): Collection
     {
+        $period = $this->datePeriodExpression('usage_created_at', 'month');
         $rows = $this->getReportableAiUsageQuery()
-            ->selectRaw("DATE_FORMAT(usage_created_at, '%Y-%m') as period")
+            ->selectRaw($period.' as period')
             ->selectRaw('SUM(amount) as total_cost')
             ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
-            ->groupByRaw("DATE_FORMAT(usage_created_at, '%Y-%m')")
+            ->groupByRaw($period)
             ->orderBy('period')
             ->get();
 
@@ -774,11 +776,12 @@ class AdminDashboardReportService
 
     public function getAiDailyRequestSeries(int $days = 7): Collection
     {
+        $period = $this->datePeriodExpression('usage_created_at', 'day');
         $rows = $this->getReportableAiUsageQuery()
-            ->selectRaw("DATE_FORMAT(usage_created_at, '%Y-%m-%d') as period")
+            ->selectRaw($period.' as period')
             ->selectRaw('COUNT(*) as total_requests')
             ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
-            ->groupByRaw("DATE_FORMAT(usage_created_at, '%Y-%m-%d')")
+            ->groupByRaw($period)
             ->orderBy('period')
             ->get();
 

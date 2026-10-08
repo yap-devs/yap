@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Widgets\Concerns\HasMobileFriendlyChart;
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Widgets\ChartWidget;
 
@@ -12,7 +13,7 @@ class AiModelBreakdownChart extends ChartWidget
 
     protected static bool $isLazy = false;
 
-    protected ?string $pollingInterval = '30s';
+    use InteractsWithDashboardControls;
 
     protected int|string|array $columnSpan = [
         'default' => 'full',
@@ -28,7 +29,7 @@ class AiModelBreakdownChart extends ChartWidget
 
     protected function getData(): array
     {
-        $models = app(AdminDashboardReportService::class)->getAiModelBreakdown(12);
+        $models = app(AdminDashboardReportService::class)->getAiModelBreakdown($this->getTrendWindowMonths());
 
         $palette = [
             'rgba(244, 63, 94, 0.88)',

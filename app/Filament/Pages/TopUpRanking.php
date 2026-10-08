@@ -17,9 +17,14 @@ class TopUpRanking extends Page
 
     protected static ?int $navigationSort = 4;
 
+    public static function canAccess(): bool
+    {
+        return auth()->id() === 1;
+    }
+
     public function getSubheading(): ?string
     {
-        return 'User recharge amount leaderboard by day, month, quarter, and half-year.';
+        return 'Paid top-ups ranked by order creation date across day, month, quarter and half-year. Internal accounts #1–5 are excluded.';
     }
 
     public function getColumns(): int|array

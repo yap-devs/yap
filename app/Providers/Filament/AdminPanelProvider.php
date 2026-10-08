@@ -34,6 +34,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop()
             ->navigationGroups([
                 NavigationGroup::make()->label('Customers')->icon('heroicon-o-users'),
+                NavigationGroup::make()->label('Billing')->icon('heroicon-o-banknotes'),
                 NavigationGroup::make()->label('Reports')->icon('heroicon-o-chart-bar'),
                 NavigationGroup::make()->label('Affiliates')->icon('heroicon-o-user-group'),
                 NavigationGroup::make()->label('Network')->icon('heroicon-o-server-stack'),

@@ -9,11 +9,14 @@ use App\Filament\Widgets\AiMonthlyCostChart;
 use App\Filament\Widgets\AiOverviewWidget;
 use App\Filament\Widgets\AiRecentUsageTable;
 use App\Filament\Widgets\AiUsageRankingTable;
-use Filament\Pages\Page;
 
-class AiAnalytics extends Page
+class AiAnalytics extends CashFlow
 {
-    protected string $view = 'filament.pages.ai-analytics';
+    protected static bool $isDiscovered = true;
+
+    protected static string $routePath = 'ai-analytics';
+
+    protected static ?string $navigationLabel = 'AI Analytics';
 
     protected static ?string $title = 'AI Analytics';
 
@@ -25,7 +28,7 @@ class AiAnalytics extends Page
 
     public function getSubheading(): ?string
     {
-        return 'AI usage metrics, cost breakdown, and per-user analytics.';
+        return 'AI costs, request volume and account usage. Business metrics exclude internal accounts #1–5.';
     }
 
     public function getColumns(): int|array
@@ -47,10 +50,5 @@ class AiAnalytics extends Page
             AiUsageRankingTable::class,
             AiRecentUsageTable::class,
         ];
-    }
-
-    public function getWidgetData(): array
-    {
-        return [];
     }
 }

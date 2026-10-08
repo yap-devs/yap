@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Support\Enums\IconPosition;
 use Filament\Widgets\StatsOverviewWidget;
@@ -11,7 +12,7 @@ class AiOverviewWidget extends StatsOverviewWidget
 {
     protected static bool $isLazy = false;
 
-    protected ?string $pollingInterval = '30s';
+    use InteractsWithDashboardControls;
 
     protected int|string|array $columnSpan = 'full';
 

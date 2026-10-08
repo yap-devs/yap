@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\UserResource;
 use App\Models\UserPackage;
 use App\Services\AdminDashboardReportService;
 use Carbon\CarbonImmutable;
@@ -43,7 +44,7 @@ class UserPackagesTable extends TableWidget
                 'bg-amber-50/70 dark:bg-amber-950/20' => $record->status === UserPackage::STATUS_ACTIVE && $this->getRemainingTrafficRatio($record) >= 0.1 && $this->getRemainingTrafficRatio($record) < 0.3,
             ])
             ->columns([
-                TextColumn::make('user.name')
+                TextColumn::make('user.name')->url(fn (UserPackage $record): string => UserResource::getUrl('view', ['record' => $record->user_id]))
                     ->label('User')
                     ->description(fn (UserPackage $record): string => 'Package #'.$record->id)
                     ->wrap()
@@ -83,7 +84,8 @@ class UserPackagesTable extends TableWidget
                     ->formatStateUsing(fn (mixed $state): string => $this->formatGigabytes((float) $state))
                     ->sortable(),
                 TextColumn::make('package.price')
-                    ->label('Revenue')
+                    ->label('Estimated revenue')->description('Based on the current product price')
+                    ->state(fn (UserPackage $record): mixed => $record->package?->price)
                     ->alignEnd()
                     ->formatStateUsing(fn (mixed $state): string => $this->formatCurrency((float) $state))
                     ->sortable(),

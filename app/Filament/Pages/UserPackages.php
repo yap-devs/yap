@@ -14,19 +14,24 @@ class UserPackages extends BaseDashboard
 {
     use HasFiltersForm;
 
-    protected static ?string $title = 'User Packages';
+    protected static ?string $title = 'Package Analysis';
 
     protected static string $routePath = 'user-packages';
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-cube';
 
-    protected static string|\UnitEnum|null $navigationGroup = 'Customers';
+    protected static string|\UnitEnum|null $navigationGroup = 'Reports';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 6;
+
+    public static function canAccess(): bool
+    {
+        return auth()->id() === 1;
+    }
 
     public function getSubheading(): ?string
     {
-        return 'Package subscriptions, ended-package profit, and per-user package details.';
+        return 'Ended-subscription revenue estimates use catalog prices and estimated traffic cost. Internal accounts (IDs 1–5) are excluded.';
     }
 
     public function getColumns(): int|array

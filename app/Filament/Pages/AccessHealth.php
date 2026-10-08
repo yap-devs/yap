@@ -20,11 +20,11 @@ class AccessHealth extends Dashboard
 
     protected static string|\UnitEnum|null $navigationGroup = 'Customers';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     public function getSubheading(): ?string
     {
-        return 'Users without an available package and packages close to their traffic limit.';
+        return 'Accounts needing attention and subscriptions close to their traffic limit. Internal accounts #1–5 are excluded.';
     }
 
     public function getColumns(): int|array

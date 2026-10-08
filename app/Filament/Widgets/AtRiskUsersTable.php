@@ -34,7 +34,7 @@ class AtRiskUsersTable extends TableWidget
                     ->label('User')
                     ->description(fn (User $record): string => $record->email)
                     ->searchable()
-                    ->url(fn (User $record): string => UserResource::getUrl('edit', ['record' => $record])),
+                    ->url(fn (User $record): string => UserResource::getUrl('view', ['record' => $record])),
                 TextColumn::make('balance')
                     ->label('Balance')
                     ->money('USD')

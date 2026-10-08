@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Widgets\Concerns\HasMobileFriendlyChart;
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Filament\Widgets\ChartWidget;
 
@@ -12,7 +13,7 @@ class AiMonthlyCostChart extends ChartWidget
 
     protected static bool $isLazy = false;
 
-    protected ?string $pollingInterval = '30s';
+    use InteractsWithDashboardControls;
 
     protected int|string|array $columnSpan = [
         'default' => 'full',
@@ -28,7 +29,7 @@ class AiMonthlyCostChart extends ChartWidget
 
     protected function getData(): array
     {
-        $series = app(AdminDashboardReportService::class)->getAiMonthlyCostSeries(12);
+        $series = app(AdminDashboardReportService::class)->getAiMonthlyCostSeries($this->getTrendWindowMonths());
 
         return [
             'labels' => $series->keys()->all(),

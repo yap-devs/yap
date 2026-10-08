@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\UserResource;
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Models\User;
 use App\Services\AdminDashboardReportService;
@@ -37,7 +38,7 @@ class TotalTrafficLeaderboardTable extends TableWidget
                 TextColumn::make('rank')
                     ->label('#')
                     ->rowIndex(),
-                TextColumn::make('name')
+                TextColumn::make('name')->url(fn (User $record): string => UserResource::getUrl('view', ['record' => $record->id]))
                     ->description(fn (User $record): string => $record->is_valid ? 'Access healthy' : 'Needs attention')
                     ->wrap()
                     ->searchable(),

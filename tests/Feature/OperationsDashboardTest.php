@@ -9,9 +9,9 @@ use App\Filament\Widgets\AtRiskUsersTable;
 use App\Filament\Widgets\AttentionRequiredWidget;
 use App\Filament\Widgets\BackupStatusWidget;
 use App\Filament\Widgets\GatewayTopUpShareChart;
-use App\Filament\Widgets\LastSevenDayTrafficChart;
 use App\Filament\Widgets\MonthlyTopUpAndUsageChart;
 use App\Filament\Widgets\MonthlyTrafficReportChart;
+use App\Filament\Widgets\OperationsWorkspace;
 use App\Filament\Widgets\ReportOverviewWidget;
 use App\Filament\Widgets\SchedulerStatusWidget;
 use App\Filament\Widgets\UsageCompositionChart;
@@ -31,12 +31,7 @@ test('overview is concise and detailed reports remain available on dedicated pag
     $this->actingAs(User::factory()->create(['id' => 1]));
 
     expect(app(Dashboard::class)->getWidgets())->toBe([
-        SchedulerStatusWidget::class,
-        BackupStatusWidget::class,
-        ReportOverviewWidget::class,
-        AttentionRequiredWidget::class,
-        MonthlyTopUpAndUsageChart::class,
-        LastSevenDayTrafficChart::class,
+        OperationsWorkspace::class,
     ])->and(app(CashFlow::class)->getWidgets())->toContain(
         MonthlyTopUpAndUsageChart::class,
         GatewayTopUpShareChart::class,
@@ -67,9 +62,10 @@ test('admin navigation follows customer and operations workflows', function () {
 
     expect($navigation)->toBe([
         'Overview' => ['Operations Overview'],
-        'Customers' => ['Users', 'User Packages', 'Access Health'],
-        'Reports' => ['Cash Flow', 'Traffic Trends', '24-Hour Traffic', 'Top-Up Ranking', 'AI Analytics'],
-        'Affiliates' => ['Promoters', 'Referral Codes', 'Referrals', 'Commissions', 'Levels'],
+        'Customers' => ['Users', 'Subscriptions', 'Package catalog', 'Access Health'],
+        'Billing' => ['Recharge orders', 'Balance ledger'],
+        'Reports' => ['Cash Flow', 'Traffic Trends', '24-Hour Traffic', 'Top-Up Ranking', 'AI Analytics', 'Package Analysis'],
+        'Affiliates' => ['Affiliate Overview', 'Promoters', 'Referral Codes', 'Referrals', 'Commissions', 'Levels'],
     ]);
 });
 

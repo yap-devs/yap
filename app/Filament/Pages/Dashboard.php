@@ -2,17 +2,13 @@
 
 namespace App\Filament\Pages;
 
-use App\Filament\Widgets\AttentionRequiredWidget;
-use App\Filament\Widgets\BackupStatusWidget;
-use App\Filament\Widgets\LastSevenDayTrafficChart;
-use App\Filament\Widgets\MonthlyTopUpAndUsageChart;
-use App\Filament\Widgets\ReportOverviewWidget;
-use App\Filament\Widgets\SchedulerStatusWidget;
+use App\Filament\Widgets\OperationsWorkspace;
 use App\Services\AdminDashboardReportService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class Dashboard extends BaseDashboard
@@ -23,9 +19,14 @@ class Dashboard extends BaseDashboard
 
     protected static ?string $title = 'Operations Overview';
 
+    public static function canAccess(): bool
+    {
+        return auth()->id() === 1;
+    }
+
     public function getSubheading(): ?string
     {
-        return 'Paid top-ups, balance debits, collected traffic, and users needing attention.';
+        return 'Check today’s activity, system status, and items to follow up.';
     }
 
     public static function getPollingIntervalOptions(): array
@@ -40,21 +41,26 @@ class Dashboard extends BaseDashboard
     public function getColumns(): int|array
     {
         return [
-            'md' => 12,
-            'xl' => 12,
+            'md' => 8,
+            'xl' => 8,
         ];
     }
 
     public function getWidgets(): array
     {
-        return [
-            SchedulerStatusWidget::class,
-            BackupStatusWidget::class,
-            ReportOverviewWidget::class,
-            AttentionRequiredWidget::class,
-            MonthlyTopUpAndUsageChart::class,
-            LastSevenDayTrafficChart::class,
-        ];
+        return [OperationsWorkspace::class];
+    }
+
+    public function content(Schema $schema): Schema
+    {
+        if (static::class !== self::class) {
+            return parent::content($schema);
+        }
+
+        return $schema->components([
+            $this->getWidgetsContentComponent(),
+            Section::make('Refresh settings')->collapsed()->schema([$this->getFiltersFormContentComponent()]),
+        ]);
     }
 
     public function filtersForm(Schema $schema): Schema

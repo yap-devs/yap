@@ -4,17 +4,19 @@ namespace App\Filament\Resources;
 
 use App\Filament\Resources\AffiliateCommissionResource\Pages\EditAffiliateCommission;
 use App\Filament\Resources\AffiliateCommissionResource\Pages\ListAffiliateCommissions;
+use App\Filament\Resources\BalanceDetails\BalanceDetailResource;
 use App\Models\AffiliateCommission;
-use Filament\Actions\EditAction;
-use Filament\Forms\Components\DateTimePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
+use Filament\Actions\ViewAction;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class AffiliateCommissionResource extends Resource
@@ -29,41 +31,53 @@ class AffiliateCommissionResource extends Resource
 
     protected static ?int $navigationSort = 4;
 
-    public static function form(Schema $schema): Schema
+    public static function canAccess(): bool
     {
-        return $schema
-            ->columns([
-                'md' => 2,
-                'xl' => 3,
-            ])
-            ->components([
-                TextInput::make('referral_id')->required()->numeric(),
-                TextInput::make('promoter_id')->required()->numeric(),
-                TextInput::make('referrer_user_id')->required()->numeric(),
-                TextInput::make('referred_user_id')->required()->numeric(),
-                TextInput::make('source_type')->required()->maxLength(255),
-                TextInput::make('source_id')->required()->numeric(),
-                TextInput::make('affiliate_level')->required()->numeric(),
-                TextInput::make('base_amount')->required()->numeric()->prefix('$'),
-                TextInput::make('commission_rate')->required()->numeric(),
-                TextInput::make('amount')->required()->numeric()->prefix('$'),
-                Select::make('status')->required()->options([
-                    AffiliateCommission::STATUS_PENDING => 'Pending',
-                    AffiliateCommission::STATUS_CREDITED => 'Credited',
-                    AffiliateCommission::STATUS_REJECTED => 'Rejected',
-                    AffiliateCommission::STATUS_REVERSED => 'Reversed',
-                ]),
-                DateTimePicker::make('hold_until'),
-                DateTimePicker::make('credited_at'),
-                DateTimePicker::make('reversed_at'),
-                TextInput::make('reason')->maxLength(255),
-            ]);
+        return auth()->id() === 1;
+    }
+
+    public static function canCreate(): bool
+    {
+        return false;
+    }
+
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function canDelete(Model $record): bool
+    {
+        return false;
+    }
+
+    public static function infolist(Schema $schema): Schema
+    {
+        return $schema->columns(2)->components([
+            TextEntry::make('referrer.email')->label('Referrer')->placeholder('Account removed'),
+            TextEntry::make('referred.email')->label('Referred')->placeholder('Account removed'),
+            TextEntry::make('source_type')->label('Source'),
+            TextEntry::make('source_id')->label('Source record'),
+            TextEntry::make('base_amount')->money('USD'),
+            TextEntry::make('commission_rate')->formatStateUsing(fn (mixed $state): string => ((float) $state * 100).'%'),
+            TextEntry::make('amount')->money('USD'),
+            TextEntry::make('status')->badge(),
+            TextEntry::make('hold_until')->dateTime()->placeholder('Not recorded'),
+            TextEntry::make('credited_at')->dateTime()->placeholder('Not credited'),
+            TextEntry::make('reversed_at')->dateTime()->placeholder('Not reversed'),
+            TextEntry::make('reason')->placeholder('Not recorded'),
+            TextEntry::make('credited_balance_detail_id')->label('Credited ledger entry')->placeholder('Not credited')
+                ->url(fn (AffiliateCommission $record): ?string => $record->credited_balance_detail_id ? BalanceDetailResource::getUrl('index', ['tableSearch' => (string) $record->credited_balance_detail_id]) : null),
+            TextEntry::make('processing_state')->label('Settlement')->state(fn (AffiliateCommission $record): string => $record->status === AffiliateCommission::STATUS_PENDING
+                ? ($record->hold_until && $record->hold_until->isPast() ? 'Due for scheduled eligibility check' : 'Hold period has not ended') : 'No pending settlement'),
+        ]);
     }
 
     public static function table(Table $table): Table
     {
         return $table
             ->columns([
+                TextColumn::make('id')->label('Commission')->searchable()->sortable(),
                 TextColumn::make('referrer.email')->label('Referrer')->wrap()->searchable(),
                 TextColumn::make('referred.email')->label('Referred')->wrap()->searchable(),
                 TextColumn::make('source_type')->wrap()->searchable(),
@@ -78,9 +92,14 @@ class AffiliateCommissionResource extends Resource
                 TextColumn::make('deleted_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->stackedOnMobile()
-            ->filters([TrashedFilter::make()])
+            ->defaultSort('id', 'desc')
+            ->filters([
+                SelectFilter::make('status')->options(['pending' => 'Pending', 'credited' => 'Credited', 'rejected' => 'Rejected', 'reversed' => 'Reversed']),
+                Filter::make('due')->label('Due for processing')->query(fn (Builder $query): Builder => $query->where('status', AffiliateCommission::STATUS_PENDING)->where('hold_until', '<=', now())),
+                TrashedFilter::make(),
+            ])
             ->recordActions([
-                EditAction::make()
+                ViewAction::make()
                     ->labeledFrom('sm'),
             ]);
     }
@@ -95,6 +114,6 @@ class AffiliateCommissionResource extends Resource
 
     public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()->withoutGlobalScopes([SoftDeletingScope::class]);
+        return parent::getEloquentQuery()->withoutGlobalScopes([SoftDeletingScope::class])->with(['referrer', 'referred']);
     }
 }

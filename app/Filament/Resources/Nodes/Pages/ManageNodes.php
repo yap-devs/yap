@@ -10,10 +10,13 @@ class ManageNodes extends ManageRecords
 {
     protected static string $resource = NodeResource::class;
 
+    public function getSubheading(): ?string
+    {
+        return 'Inspect heartbeat, configuration delivery, and traffic collection independently. New nodes start disabled.';
+    }
+
     protected function getHeaderActions(): array
     {
-        return [
-            CreateAction::make(),
-        ];
+        return [CreateAction::make()->label('Create node')];
     }
 }

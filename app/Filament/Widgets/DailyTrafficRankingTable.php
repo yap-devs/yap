@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\UserResource;
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Models\UserStat;
 use App\Services\AdminDashboardReportService;
@@ -47,7 +48,7 @@ class DailyTrafficRankingTable extends TableWidget
                     ->color(fn (mixed $state): string => $state === CarbonImmutable::today()->format('Y-m-d') ? 'info' : 'gray')
                     ->formatStateUsing(fn (mixed $state): string => $state === CarbonImmutable::today()->format('Y-m-d') ? 'Today' : 'Yesterday')
                     ->sortable(),
-                TextColumn::make('user_name')
+                TextColumn::make('user_name')->url(fn (UserStat $record): string => UserResource::getUrl('view', ['record' => $record->user_id]))
                     ->label('User')
                     ->description(fn (UserStat $record): string => 'User #'.$record->user_id)
                     ->wrap()

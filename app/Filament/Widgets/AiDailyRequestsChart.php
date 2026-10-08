@@ -3,6 +3,7 @@
 namespace App\Filament\Widgets;
 
 use App\Filament\Widgets\Concerns\HasMobileFriendlyChart;
+use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Services\AdminDashboardReportService;
 use Carbon\CarbonImmutable;
 use Filament\Widgets\ChartWidget;
@@ -13,7 +14,7 @@ class AiDailyRequestsChart extends ChartWidget
 
     protected static bool $isLazy = false;
 
-    protected ?string $pollingInterval = '30s';
+    use InteractsWithDashboardControls;
 
     protected int|string|array $columnSpan = [
         'default' => 'full',

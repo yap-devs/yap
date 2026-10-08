@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Resources\UserResource;
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
 use App\Models\UserStat;
 use App\Services\AdminDashboardReportService;
@@ -34,7 +35,7 @@ class TwentyFourHourTrafficRankingTable extends TableWidget
                 TextColumn::make('rank')
                     ->label('#')
                     ->rowIndex(),
-                TextColumn::make('user_name')
+                TextColumn::make('user_name')->url(fn (UserStat $record): string => UserResource::getUrl('view', ['record' => $record->user_id]))
                     ->label('User')
                     ->description(fn (UserStat $record): string => $record->user_email.' | User #'.$record->user_id)
                     ->wrap()

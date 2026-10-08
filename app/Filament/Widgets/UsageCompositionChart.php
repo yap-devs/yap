@@ -39,6 +39,7 @@ class UsageCompositionChart extends ChartWidget
                         'rgba(249, 115, 22, 0.92)',
                         'rgba(250, 204, 21, 0.92)',
                         'rgba(99, 102, 241, 0.92)',
+                        'rgba(107, 114, 128, 0.92)',
                     ],
                     'borderWidth' => 0,
                 ],

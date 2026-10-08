@@ -35,7 +35,7 @@ class AtRiskPackagesTable extends TableWidget
                 TextColumn::make('user.name')
                     ->label('User')
                     ->description(fn (UserPackage $record): string => $record->user?->email ?? 'Unknown user')
-                    ->url(fn (UserPackage $record): string => UserResource::getUrl('edit', ['record' => $record->user_id])),
+                    ->url(fn (UserPackage $record): string => UserResource::getUrl('view', ['record' => $record->user_id])),
                 TextColumn::make('package.name')
                     ->label('Package'),
                 TextColumn::make('remaining_traffic')

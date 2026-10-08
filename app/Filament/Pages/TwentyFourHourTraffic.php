@@ -20,9 +20,14 @@ class TwentyFourHourTraffic extends Page
 
     protected static ?int $navigationSort = 3;
 
+    public static function canAccess(): bool
+    {
+        return auth()->id() === 1;
+    }
+
     public function getSubheading(): ?string
     {
-        return 'Rolling hourly bandwidth totals and per-user traffic rankings for the latest 24 hours.';
+        return 'Hourly traffic and account rankings over the latest 24 hours. Internal accounts #1–5 are excluded.';
     }
 
     public function getColumns(): int|array
