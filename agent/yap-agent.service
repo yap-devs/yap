@@ -1,0 +1,27 @@
+[Unit]
+Description=YAP node agent and managed V2Fly core
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=yap-agent
+Group=yap-agent
+ExecStart=/usr/local/bin/yap-agent -config /etc/yap-agent/config.json
+Restart=on-failure
+RestartSec=5
+KillMode=mixed
+TimeoutStopSec=20
+StateDirectory=yap-agent
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/yap-agent
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+
+[Install]
+WantedBy=multi-user.target

@@ -28,6 +28,7 @@ class AiUsageRankingTable extends TableWidget
             ->defaultSort('total_cost', 'desc')
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
+            ->defaultKeySort(false)
             ->striped()
             ->columns([
                 TextColumn::make('rank')

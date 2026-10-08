@@ -1,0 +1,127 @@
+diff --git a/app/dispatcher/default.go b/app/dispatcher/default.go
+index 455588f..6449cdf 100644
+--- a/app/dispatcher/default.go
++++ b/app/dispatcher/default.go
+@@ -154,9 +154,14 @@ func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *tran
+ 	}
+ 
+ 	if user != nil && len(user.Email) > 0 {
++		// Keep authentication identity unchanged; only opt-in TCP stats get a port suffix.
++		statsEmail := user.Email
++		if strings.HasPrefix(sessionInbound.Tag, "yap-") && sessionInbound.Gateway.Network == net.Network_TCP && sessionInbound.Gateway.Port != 0 {
++			statsEmail += "-port-" + sessionInbound.Gateway.Port.String()
++		}
+ 		p := d.policy.ForLevel(user.Level)
+ 		if p.Stats.UserUplink {
+-			name := "user>>>" + user.Email + ">>>traffic>>>uplink"
++			name := "user>>>" + statsEmail + ">>>traffic>>>uplink"
+ 			if c, _ := stats.GetOrRegisterCounter(d.stats, name); c != nil {
+ 				inboundLink.Writer = &SizeStatWriter{
+ 					Counter: c,
+@@ -165,7 +170,7 @@ func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *tran
+ 			}
+ 		}
+ 		if p.Stats.UserDownlink {
+-			name := "user>>>" + user.Email + ">>>traffic>>>downlink"
++			name := "user>>>" + statsEmail + ">>>traffic>>>downlink"
+ 			if c, _ := stats.GetOrRegisterCounter(d.stats, name); c != nil {
+ 				outboundLink.Writer = &SizeStatWriter{
+ 					Counter: c,
+diff --git a/core.go b/core.go
+index 72e0ab7..c7195b7 100644
+--- a/core.go
++++ b/core.go
+@@ -19,7 +19,7 @@ import (
+ 
+ var (
+ 	version  = "5.53.0"
+-	build    = "Custom"
++	build    = "yap-port-stats-v1"
+ 	codename = "V2Fly, a community-driven edition of V2Ray."
+ 	intro    = "A unified platform for anti-censorship."
+ )
+diff --git a/app/dispatcher/yap_port_stats_test.go b/app/dispatcher/yap_port_stats_test.go
+new file mode 100644
+index 0000000..af7e33c
+--- /dev/null
++++ b/app/dispatcher/yap_port_stats_test.go
+@@ -0,0 +1,79 @@
++package dispatcher
++
++import (
++	"context"
++	"fmt"
++	"testing"
++
++	appstats "github.com/v2fly/v2ray-core/v5/app/stats"
++	"github.com/v2fly/v2ray-core/v5/common/buf"
++	"github.com/v2fly/v2ray-core/v5/common/net"
++	"github.com/v2fly/v2ray-core/v5/common/protocol"
++	"github.com/v2fly/v2ray-core/v5/common/session"
++	"github.com/v2fly/v2ray-core/v5/features/policy"
++)
++
++type yapPolicy struct{}
++
++func (yapPolicy) Type() interface{} { return policy.ManagerType() }
++func (yapPolicy) Start() error      { return nil }
++func (yapPolicy) Close() error      { return nil }
++func (yapPolicy) ForLevel(uint32) policy.Session {
++	return policy.Session{Stats: policy.Stats{UserUplink: true, UserDownlink: true}}
++}
++func (yapPolicy) ForSystem() policy.System { return policy.System{} }
++
++func TestYAPPortStats(t *testing.T) {
++	sm, err := appstats.NewManager(context.Background(), &appstats.Config{})
++	if err != nil {
++		t.Fatal(err)
++	}
++	d := &DefaultDispatcher{policy: yapPolicy{}, stats: sm}
++	user := &protocol.MemoryUser{Email: "user-42"}
++	cases := []struct {
++		tag      string
++		port     net.Port
++		network  net.Network
++		suffix   string
++		up, down int
++	}{
++		{"yap-shared", 10001, net.Network_TCP, "-port-10001", 13, 29},
++		{"yap-shared", 10002, net.Network_TCP, "-port-10002", 7, 11},
++		{"yap-shared", 10001, net.Network_TCP, "-port-10001", 17, 19},
++		{"legacy", 10001, net.Network_TCP, "", 3, 5},
++		{"yap-shared", 0, net.Network_TCP, "", 2, 4},
++		{"yap-shared", 10001, net.Network_UDP, "", 6, 8},
++	}
++	expected := map[string]int64{}
++	for _, tc := range cases {
++		ctx := session.ContextWithInbound(context.Background(), &session.Inbound{Tag: tc.tag, User: user, Gateway: net.Destination{Network: tc.network, Address: net.LocalHostIP, Port: tc.port}})
++		inbound, outbound := d.getLink(ctx)
++		if err := inbound.Writer.WriteMultiBuffer(buf.MergeBytes(nil, make([]byte, tc.up))); err != nil {
++			t.Fatal(err)
++		}
++		b, err := outbound.Reader.ReadMultiBuffer()
++		if err != nil {
++			t.Fatal(err)
++		}
++		buf.ReleaseMulti(b)
++		if err := outbound.Writer.WriteMultiBuffer(buf.MergeBytes(nil, make([]byte, tc.down))); err != nil {
++			t.Fatal(err)
++		}
++		b, err = inbound.Reader.ReadMultiBuffer()
++		if err != nil {
++			t.Fatal(err)
++		}
++		buf.ReleaseMulti(b)
++		expected[fmt.Sprintf("user>>>user-42%s>>>traffic>>>uplink", tc.suffix)] += int64(tc.up)
++		expected[fmt.Sprintf("user>>>user-42%s>>>traffic>>>downlink", tc.suffix)] += int64(tc.down)
++		if user.Email != "user-42" {
++			t.Fatal("authentication identity was mutated")
++		}
++	}
++	for name, want := range expected {
++		counter := sm.GetCounter(name)
++		if counter == nil || counter.Value() != want {
++			t.Fatalf("counter %s: got %v, want %d", name, counter, want)
++		}
++	}
++}

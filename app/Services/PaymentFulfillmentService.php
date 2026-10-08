@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Jobs\SyncSub2apiUser;
 use App\Models\Payment;
 use App\Services\Affiliate\AffiliateService;
@@ -17,9 +16,8 @@ class PaymentFulfillmentService
     {
         $fulfilled = false;
         $fulfilled_user_id = null;
-        $should_sync_clash_profile = false;
 
-        DB::transaction(function () use ($payment, $paid_payload, &$fulfilled, &$fulfilled_user_id, &$should_sync_clash_profile): void {
+        DB::transaction(function () use ($payment, $paid_payload, &$fulfilled, &$fulfilled_user_id): void {
             /** @var Payment|null $payment */
             $payment = Payment::query()->lockForUpdate()->find($payment->id);
             if (! $payment || $payment->status === Payment::STATUS_PAID) {
@@ -32,9 +30,6 @@ class PaymentFulfillmentService
                 }])
                 ->lockForUpdate()
                 ->firstOrFail();
-            $is_valid_initial = $user->is_valid;
-            $is_low_priority_initial = $user->is_low_priority;
-
             $payment->status = Payment::STATUS_PAID;
 
             if ($paid_payload !== null) {
@@ -54,20 +49,9 @@ class PaymentFulfillmentService
 
             app(AffiliateService::class)->handlePaymentPaid($payment);
 
-            $user->refresh();
-            $user->load(['packages' => function ($query) {
-                $query->available();
-            }]);
-            $should_sync_clash_profile = $user->is_valid !== $is_valid_initial
-                || $user->is_low_priority !== $is_low_priority_initial;
-
             $fulfilled = true;
             $fulfilled_user_id = $payment->user_id;
         });
-
-        if ($fulfilled && $should_sync_clash_profile) {
-            GenerateClashProfileLink::dispatch();
-        }
 
         if ($fulfilled && $fulfilled_user_id !== null) {
             $this->dispatchSub2apiSyncForUser($fulfilled_user_id);

@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\Affiliate\AffiliateService;
+use App\Services\NodeAuthorizationService;
 use App\Services\PaymentFulfillmentService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -53,8 +53,6 @@ class GithubController extends Controller
             'github_created_at' => $user->user['created_at'],
         ]);
 
-        GenerateClashProfileLink::dispatch();
-
         return redirect()->route('profile.edit');
     }
 
@@ -70,19 +68,21 @@ class GithubController extends Controller
         $github_id = $user->github_id;
         $this->hitGithubLinkRateLimit($request, $github_id, self::GITHUB_LINK_ACTION_UNLINK);
 
-        $updated = User::query()
-            ->whereKey($user->getKey())
-            ->where('github_id', $github_id)
-            ->update([
-                'github_id' => null,
-                'github_nickname' => '',
-                'github_token' => '',
-                'github_created_at' => null,
-            ]);
+        DB::transaction(function () use ($user, $github_id): void {
+            $updated = User::query()
+                ->whereKey($user->getKey())
+                ->where('github_id', $github_id)
+                ->update([
+                    'github_id' => null,
+                    'github_nickname' => '',
+                    'github_token' => '',
+                    'github_created_at' => null,
+                ]);
 
-        if ($updated === 1) {
-            GenerateClashProfileLink::dispatch();
-        }
+            if ($updated > 0 && config('node_agent.enabled')) {
+                app(NodeAuthorizationService::class)->notify();
+            }
+        });
 
         return redirect()->route('profile.edit');
     }
@@ -121,6 +121,11 @@ class GithubController extends Controller
                 return;
             }
 
+            $user = User::whereKey($user->id)
+                ->with(['packages' => fn ($query) => $query->available()])
+                ->lockForUpdate()
+                ->firstOrFail();
+
             /** @var Payment $payment */
             $payment = $user->payments()->create([
                 'gateway' => Payment::GATEWAY_GITHUB,
@@ -138,8 +143,6 @@ class GithubController extends Controller
             ]);
 
             app(AffiliateService::class)->handlePaymentPaid($payment);
-
-            GenerateClashProfileLink::dispatch();
 
             $fulfilled_user_id = $user->id;
         });

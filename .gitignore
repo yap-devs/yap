@@ -1,27 +1,46 @@
-.superpowers/
-id_ed25519
-/.phpunit.cache
+# Dependencies and generated frontend files
 /node_modules
+/vendor
 /public/build
 /public/hot
 /public/storage
-/storage/*.key
-/vendor
-/tests/Browser/Screenshots
+
+# Credentials and private application configuration
 .env
-.env.backup
-.env.production
-.phpactor.json
-.phpunit.result.cache
-Homestead.json
-Homestead.yaml
+.env.*
+!.env.example
+!.env.*.example
 auth.json
+id_ed25519
+/storage/*.key
+/app/ClashYamlCustomizer.php
+
+# Test artifacts
+/.phpunit.cache
+/.phpunit.result.cache
+/tests/Browser/Screenshots
+
+# Local tooling and editor files
+/.superpowers/
+/.phpactor.json
+/Homestead.json
+/Homestead.yaml
 npm-debug.log
 yarn-error.log
 /.fleet
 /.idea
 /.vscode
-.phpstorm.meta.php
-_ide_helper_models.php
-_ide_helper.php
-app/ClashYamlCustomizer.php
+/.phpstorm.meta.php
+/_ide_helper_models.php
+/_ide_helper.php
+
+# Local deployment configuration and runtime files
+/docs/agents/private/
+/.agents/skills/yap-lolipop-deployment/
+/docs/deployment/rental-cron/config.sh
+/docs/deployment/rental-cron/state/
+/agent/yap-agent
+/agent/v2ray-yap
+/agent/config.json
+/agent/*.sqlite
+/agent/*.sqlite-*

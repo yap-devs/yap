@@ -1,6 +1,5 @@
 <?php
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
@@ -39,7 +38,7 @@ test('expired payment can be compensated as paid', function () {
         'description' => __('messages.balance_descriptions.usdt_payment', [], 'en'),
     ]);
 
-    Bus::assertNotDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('cancelled payment can be compensated as paid', function () {
@@ -71,7 +70,7 @@ test('cancelled payment can be compensated as paid', function () {
         'description' => __('messages.balance_descriptions.alipay_payment', [], 'en'),
     ]);
 
-    Bus::assertDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('created payment cannot be compensated', function () {
@@ -101,5 +100,5 @@ test('created payment cannot be compensated', function () {
         'user_id' => $user->id,
         'amount' => 9,
     ]);
-    Bus::assertNotDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });

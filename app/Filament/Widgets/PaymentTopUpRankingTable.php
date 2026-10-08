@@ -27,6 +27,7 @@ class PaymentTopUpRankingTable extends TableWidget
             ->query(app(AdminDashboardReportService::class)->getPaymentTopUpRankingQuery())
             ->poll(fn (): ?string => $this->getPollingInterval())
             ->paginated(false)
+            ->defaultKeySort(false)
             ->striped()
             ->columns([
                 TextColumn::make('rank')

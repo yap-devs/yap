@@ -1,6 +1,5 @@
 <?php
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\Payment;
 use App\Models\User;
 use Illuminate\Support\Facades\Bus;
@@ -40,5 +39,5 @@ test('process payment command fulfills successful alipay payments through shared
             'trade_status' => 'TRADE_SUCCESS',
         ]);
 
-    Bus::assertDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });

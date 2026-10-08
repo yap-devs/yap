@@ -158,7 +158,9 @@ class AdminDashboardReportService
     {
         return $this->remember('last_twenty_four_hour_traffic_series', [], function (): Collection {
             [$start_at, $end_at] = $this->getLastTwentyFourHourTrafficWindow();
-            $bucket_expression = 'FLOOR(TIMESTAMPDIFF(SECOND, ?, created_at) / 3600)';
+            $bucket_expression = UserStat::query()->getModel()->getConnection()->getDriverName() === 'sqlite'
+                ? "CAST((strftime('%s', created_at) - strftime('%s', ?)) / 3600 AS INTEGER)"
+                : 'FLOOR(TIMESTAMPDIFF(SECOND, ?, created_at) / 3600)';
             $rows = $this->getReportableUserStatsQuery()
                 ->selectRaw($bucket_expression.' as bucket_index', [$start_at])
                 ->selectRaw('SUM(traffic_downlink) as traffic_downlink')

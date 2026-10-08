@@ -30,6 +30,7 @@ class DailyTrafficRankingTable extends TableWidget
             ->defaultSort(fn (Builder $query): Builder => $query
                 ->orderByDesc('day')
                 ->orderByDesc('daily_traffic_bytes'))
+            ->defaultKeySort(false)
             ->defaultPaginationPageOption(8)
             ->paginationPageOptions([8, 16, 32])
             ->striped()

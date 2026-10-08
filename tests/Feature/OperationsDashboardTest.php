@@ -7,11 +7,13 @@ use App\Filament\Pages\TrafficReports;
 use App\Filament\Widgets\AtRiskPackagesTable;
 use App\Filament\Widgets\AtRiskUsersTable;
 use App\Filament\Widgets\AttentionRequiredWidget;
+use App\Filament\Widgets\BackupStatusWidget;
 use App\Filament\Widgets\GatewayTopUpShareChart;
 use App\Filament\Widgets\LastSevenDayTrafficChart;
 use App\Filament\Widgets\MonthlyTopUpAndUsageChart;
 use App\Filament\Widgets\MonthlyTrafficReportChart;
 use App\Filament\Widgets\ReportOverviewWidget;
+use App\Filament\Widgets\SchedulerStatusWidget;
 use App\Filament\Widgets\UsageCompositionChart;
 use App\Filament\Widgets\UserActivityWidget;
 use App\Models\Package;
@@ -29,6 +31,8 @@ test('overview is concise and detailed reports remain available on dedicated pag
     $this->actingAs(User::factory()->create(['id' => 1]));
 
     expect(app(Dashboard::class)->getWidgets())->toBe([
+        SchedulerStatusWidget::class,
+        BackupStatusWidget::class,
         ReportOverviewWidget::class,
         AttentionRequiredWidget::class,
         MonthlyTopUpAndUsageChart::class,
@@ -65,7 +69,6 @@ test('admin navigation follows customer and operations workflows', function () {
         'Customers' => ['Users', 'User Packages', 'Access Health'],
         'Reports' => ['Cash Flow', 'Traffic Trends', '24-Hour Traffic', 'Top-Up Ranking', 'AI Analytics'],
         'Affiliates' => ['Promoters', 'Referral Codes', 'Referrals', 'Commissions', 'Levels'],
-        'Network' => ['Proxy Servers', 'Relay Servers'],
     ]);
 });
 
@@ -236,3 +239,13 @@ test('attention cards agree with actionable user and package lists', function ()
         ->and($cards[1]->getValue())->toBe('1')
         ->and($cards[0]->getUrl())->toBe(AccessHealth::getUrl());
 });
+
+test('operational status widgets follow dashboard polling and manual refresh', function (string $widget_class) {
+    $this->actingAs(User::factory()->create(['id' => 1]));
+    Livewire::test($widget_class, ['pageFilters' => ['polling_interval' => 'off']])
+        ->assertDontSeeHtml('wire:poll')
+        ->dispatch('dashboard-refresh')
+        ->assertOk();
+    Livewire::test($widget_class, ['pageFilters' => ['polling_interval' => '5m']])
+        ->assertSeeHtml('wire:poll.5m');
+})->with(['backup' => [BackupStatusWidget::class], 'scheduler' => [SchedulerStatusWidget::class]]);

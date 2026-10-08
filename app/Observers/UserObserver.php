@@ -5,6 +5,7 @@ namespace App\Observers;
 use App\Models\User;
 use App\Notifications\BalanceReminder;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class UserObserver
 {
@@ -26,8 +27,11 @@ class UserObserver
                     return;
                 }
 
-                $user->notify(new BalanceReminder($user));
-                Cache::put('balance_reminder_last_sent_at_'.$user->id, now(), now()->addDays(self::BR_DEBOUNCE_DAYS));
+                DB::afterCommit(function () use ($user): void {
+                    if (Cache::add('balance_reminder_last_sent_at_'.$user->id, now(), now()->addDays(self::BR_DEBOUNCE_DAYS))) {
+                        $user->notify(new BalanceReminder($user));
+                    }
+                });
             }
         }
     }

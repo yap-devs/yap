@@ -28,7 +28,7 @@ It combines a React + Inertia frontend for customers with a Filament admin panel
 - customer-facing dashboard, recharge, package purchase, payment history, balance detail, usage statistics, and profile flows
 - proxy subscription delivery via `/clash/{uuid}/yap.yaml`
 - optional AI key access using the same account balance
-- admin management for users, Vmess servers, relay servers, payments, packages, and operational metrics
+- admin management for users, nodes, node routes, traffic receipts, payments, packages, and operational metrics
 - payment support for cards, Alipay, USDT, and GitHub Sponsors where configured
 - GitHub OAuth account linking, sponsor webhook support, and account unlink flow
 - English and Japanese customer-facing translations
@@ -69,14 +69,16 @@ It combines a React + Inertia frontend for customers with a Filament admin panel
 
 - PHP 8.3+
 - Composer
-- Node.js 18+
+- Node.js 22.12+ (or a newer supported LTS)
 - npm
 - MariaDB/MySQL-compatible database
-- PHP extensions required by `composer.json`, including `bcmath` and `yaml`
+- PHP extensions required by `composer.json`, including `bcmath`; YAML parsing uses the Composer package `symfony/yaml`
 
 ### Install
 
 ```bash
+cp .env.example .env
+# Configure the database and application URL in .env before migrating.
 composer install
 npm install
 php artisan key:generate
@@ -100,6 +102,14 @@ On a Windows-mounted WSL workspace, run it through Windows-native tooling:
 ```bash
 powershell.exe -Command "npx playwright install chromium"
 ```
+
+## Deployment and Node Operations
+
+See [Deployment Guide](docs/deployment/README.md) for VPS and rental server deployments, queues, cron, backups, and application timezones.
+
+Nodes run the [Go Agent](agent/README.md) with the pinned, patched V2Fly core. Agents pull configuration and report raw traffic over HTTPS; the panel does not connect to nodes through SSH. One physical node has one or more public billing routes, including direct connections.
+
+For provisioning and upgrades, see [Node Operations](docs/agents/node-operations.md), [the Agent skill](.agents/skills/yap-node-operations/SKILL.md), and [V2Fly Upgrades](docs/agents/v2fly-upgrade.md).
 
 ## Environment
 
@@ -217,6 +227,16 @@ For Windows-mounted WSL workspaces:
 ```bash
 powershell.exe -Command "./vendor/bin/pest tests/Browser --browser chrome"
 ```
+
+### Optional MySQL Concurrency Tests
+
+The default tests use in-memory SQLite. To test real InnoDB locking on a local MySQL/MariaDB server, run:
+
+```sh
+YAP_RUN_MYSQL_TESTS=1 php artisan test --compact tests/Unit/NodeAuthorizationMysqlTest.php
+```
+
+The test account must be allowed to create disposable databases. Defaults use the local socket `/run/mysqld/mysqld.sock` and user `root`; configure `YAP_MYSQL_TEST_SOCKET`, `YAP_MYSQL_TEST_USERNAME`, and `YAP_MYSQL_TEST_PASSWORD` privately when needed. Each test creates a unique database, applies migrations, and cleans up only that database. Existing application databases are never reset. The tests cover concurrent payment/purchase and traffic reporting, plus recovery after a process exits following financial commit.
 
 ## Upgrade Status
 

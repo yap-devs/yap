@@ -3,9 +3,11 @@
 namespace App\Filament\Pages;
 
 use App\Filament\Widgets\AttentionRequiredWidget;
+use App\Filament\Widgets\BackupStatusWidget;
 use App\Filament\Widgets\LastSevenDayTrafficChart;
 use App\Filament\Widgets\MonthlyTopUpAndUsageChart;
 use App\Filament\Widgets\ReportOverviewWidget;
+use App\Filament\Widgets\SchedulerStatusWidget;
 use App\Services\AdminDashboardReportService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
@@ -46,6 +48,8 @@ class Dashboard extends BaseDashboard
     public function getWidgets(): array
     {
         return [
+            SchedulerStatusWidget::class,
+            BackupStatusWidget::class,
             ReportOverviewWidget::class,
             AttentionRequiredWidget::class,
             MonthlyTopUpAndUsageChart::class,

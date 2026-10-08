@@ -1,9 +1,9 @@
 <?php
 
-use App\Console\Commands\UpdateStatCommand;
 use App\Models\Package;
 use App\Models\User;
 use App\Models\UserPackage;
+use App\Services\TrafficBillingService;
 use Carbon\CarbonImmutable;
 
 test('buying a package queues it after the latest active package', function () {
@@ -217,8 +217,5 @@ function createPackage(array $overrides = []): Package
 
 function billUser(User $user): void
 {
-    $command = app(UpdateStatCommand::class);
-    $method = new \ReflectionMethod(UpdateStatCommand::class, 'billUser');
-    $method->setAccessible(true);
-    $method->invoke($command, $user);
+    app(TrafficBillingService::class)->settle($user);
 }

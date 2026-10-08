@@ -5,9 +5,9 @@ use App\Filament\Resources\AffiliateLevelResource;
 use App\Filament\Resources\AffiliatePromoterResource;
 use App\Filament\Resources\AffiliateReferralCodes\AffiliateReferralCodeResource;
 use App\Filament\Resources\AffiliateReferralResource;
-use App\Filament\Resources\RelayServerResource;
+use App\Filament\Resources\NodeRoutes\NodeRouteResource;
+use App\Filament\Resources\Nodes\NodeResource;
 use App\Filament\Resources\UserResource;
-use App\Filament\Resources\VmessServerResource;
 use App\Filament\Widgets\AiDailyCostChart;
 use App\Filament\Widgets\AiDailyRequestsChart;
 use App\Filament\Widgets\AiModelBreakdownChart;
@@ -49,8 +49,8 @@ test('resource table is stacked on mobile for :dataset', function (string $resou
     expect($table->isStackedOnMobile())->toBeTrue();
 })->with([
     'users' => [UserResource::class],
-    'vmess servers' => [VmessServerResource::class],
-    'relay servers' => [RelayServerResource::class],
+    'nodes' => [NodeResource::class],
+    'node routes' => [NodeRouteResource::class],
     'affiliate promoters' => [AffiliatePromoterResource::class],
     'affiliate referral codes' => [AffiliateReferralCodeResource::class],
     'affiliate referrals' => [AffiliateReferralResource::class],

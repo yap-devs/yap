@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\User;
 use App\Services\SubscriptionService;
-use Illuminate\Support\Facades\Cache;
+use Illuminate\Contracts\Cache\LockTimeoutException;
 use Symfony\Component\HttpFoundation\HeaderUtils;
 
 class SubscriptionController extends Controller
@@ -45,14 +44,10 @@ class SubscriptionController extends Controller
 
         $filename = 'yap.'.$extension;
 
-        $content = $subscription_service->content($user, $format);
-
-        if ($content === null) {
-            if (Cache::add('subscription_rebuild_pending', true, now()->addMinutes(5))) {
-                GenerateClashProfileLink::dispatch();
-            }
-
-            abort(404);
+        try {
+            $content = $subscription_service->content($user, $format);
+        } catch (LockTimeoutException) {
+            return response('Subscription is being generated. Please retry shortly.', 503, ['Retry-After' => '3']);
         }
 
         return response($content, 200, [

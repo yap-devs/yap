@@ -24,6 +24,7 @@ class TwentyFourHourTrafficRankingTable extends TableWidget
             ->description('Users ranked by combined downlink and uplink traffic in the rolling window.')
             ->query(app(AdminDashboardReportService::class)->getLastTwentyFourHourTrafficRankingQuery()->reorder())
             ->defaultSort('total_traffic_bytes', 'desc')
+            ->defaultKeySort(false)
             ->defaultPaginationPageOption(25)
             ->paginationPageOptions([10, 25, 50, 100])
             ->striped()

@@ -1,6 +1,5 @@
 <?php
 
-use App\Jobs\GenerateClashProfileLink;
 use App\Models\AffiliateCommission;
 use App\Models\AffiliateLevel;
 use App\Models\AffiliateReferral;
@@ -148,7 +147,7 @@ test('pending commission is credited after hold period', function () {
     expect($credited)->toBe(1);
     expect((float) $referrer->refresh()->balance)->toBe(2.0);
     expect(AffiliateCommission::first()->status)->toBe(AffiliateCommission::STATUS_CREDITED);
-    Bus::assertDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('pending commission skips clash profile sync when user service status is unchanged', function () {
@@ -190,7 +189,7 @@ test('pending commission skips clash profile sync when user service status is un
     expect($credited)->toBe(1)
         ->and((float) $referrer->refresh()->balance)->toBe(3.0)
         ->and(AffiliateCommission::first()->status)->toBe(AffiliateCommission::STATUS_CREDITED);
-    Bus::assertNotDispatched(GenerateClashProfileLink::class);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
 
 test('default referral code remains compatible with cookie registration', function () {
