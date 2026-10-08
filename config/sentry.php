@@ -42,6 +42,9 @@ return [
     'ignore_transactions' => [
         // Ignore Laravel's default health URL
         '/up',
+        // Exclude frequent Agent synchronization traces while retaining error events.
+        '/api/agent/v1/config',
+        '/api/agent/v1/traffic',
     ],
 
     // Breadcrumb specific configuration
