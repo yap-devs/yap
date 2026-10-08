@@ -9,14 +9,17 @@ use App\Models\UserPackage;
 use App\Observers\NodeAuthorizationObserver;
 use App\Services\BepusdtService;
 use App\Services\DatabaseTimezoneService;
+use App\Services\RememberTokenSessionGuard;
 use App\Services\SchedulerStatusService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandFinished;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Events\ScheduledTaskFailed;
+use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Events\ConnectionEstablished;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
@@ -40,6 +43,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Auth::extend('session', function (Application $app, string $name, array $config): RememberTokenSessionGuard {
+            $guard = new RememberTokenSessionGuard(
+                $name,
+                $app['auth']->createUserProvider($config['provider'] ?? null),
+                $app['session.store'],
+                rehashOnLogin: $app['config']->get('hashing.rehash_on_login', true),
+                timeboxDuration: $app['config']->get('auth.timebox_duration', 200000),
+                hashKey: $app['config']->get('app.key'),
+            );
+            $guard->setCookieJar($app['cookie']);
+            $guard->setDispatcher($app['events']);
+            $guard->setRequest($app->refresh('request', $guard, 'setRequest'));
+            if (isset($config['remember'])) {
+                $guard->setRememberDuration($config['remember']);
+            }
+
+            return $guard;
+        });
+
         URL::forceScheme('https');
         Model::unguard();
         Event::listen(ConnectionEstablished::class, fn (ConnectionEstablished $event) => app(DatabaseTimezoneService::class)->configure($event->connection));
