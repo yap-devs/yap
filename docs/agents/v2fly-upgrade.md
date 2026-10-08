@@ -1,6 +1,6 @@
 # V2Fly upstream upgrade runbook
 
-Use this runbook when the owner asks an agent to upgrade the managed V2Fly core. Complete the local patch, build, and review work before scheduling a node cutover. Node provisioning and traffic ownership are described in [node-operations.md](node-operations.md).
+Use this runbook when the owner asks an agent to upgrade the managed V2Fly core. Complete the local patch, build, and review work before scheduling a node update. Node provisioning is described in [node-operations.md](node-operations.md).
 
 ## Current contract
 
@@ -17,7 +17,7 @@ The port comes from the inbound connection's gateway/listener port. Tags must be
 
 Do not replace this with per-port copies of user credentials, reset cumulative counters, enable an untested transport, or let nodes automatically install unpatched upstream releases.
 
-The agent currently requires both the exact core version and the `yap-port-stats-v1` marker. Upgrade the agent/core pair together. A compatibility allowlist and automatic release-checking CI are proposals, not implemented capabilities. Keep the marker unchanged only while its statistics contract remains compatible; a changed contract requires an explicit migration.
+The agent currently requires both the exact core version and the `yap-port-stats-v1` marker. Upgrade the agent/core pair together. Keep the marker unchanged only while its statistics contract remains compatible; a changed contract requires coordinated Agent changes.
 
 ## 1. Select and inspect an official release
 
@@ -89,7 +89,7 @@ Performance tests are separate and opt-in. When requested, follow the harness in
 
 Before a production change, prepare a concrete package for review: patch and dependency diffs, source/toolchain pins, binary checksums, test output, architecture/libc compatibility, affected nodes, rollback artifacts, and the expected interruption window. Tests use temporary local state; never run a database reset or production migration as part of core validation. Do not automatically commit, merge, publish, or deploy merely because the build passed.
 
-For an already agent-owned node, keep its traffic ownership as `agent`; this upgrade does not repeat legacy import or ownership cutover. Preserve the prior agent binary, prior core binary, private configuration, and SQLite state. Confirm the new binary's architecture and runtime dependencies on the target host.
+Preserve the prior agent binary, prior core binary, private configuration, and SQLite state. Confirm the new binary's architecture and runtime dependencies on the target host.
 
 1. Select one node whose workload and capacity are suitable for the candidate.
 2. Install candidate binaries under separate names. Verify their versions and checksums before selecting them for the service.
@@ -98,14 +98,14 @@ For an already agent-owned node, keep its traffic ownership as `agent`; this upg
 5. Verify service health, private Unix-socket gRPC, configuration revision, reported versions, all public routes, raw traffic ACKs, billing idempotence, and subscription consistency. Use the current Agent configuration schema, including `core_socket_path` in a private directory. Check logs for restart loops and unacknowledged batches.
 6. Record actual downtime and observed errors. Expand to further nodes only after the gray node passes its acceptance checks and observation period.
 
-Use the owner's existing deployment authorization. If authorization for production cutover is absent, finish the candidate and review evidence first, then request approval for that concrete cutover.
+Use the owner's existing deployment authorization. If authorization for production deployment is absent, finish the candidate and review evidence first, then request approval for that concrete deployment.
 
-## 6. Roll back without changing traffic ownership
+## 6. Roll back while preserving traffic state
 
 If acceptance fails, stop the candidate gracefully when possible and switch back to the saved, compatible old agent/core pair. Keep the SQLite database and pending batches. Review any local schema change before claiming an old agent can read new state; backup and restore procedures must not replay already acknowledged traffic.
 
-Do not restart an old SSH collector against agent counters, or clear panel receipts during a binary rollback. Report the cause, traffic accounting limitations, and remaining pending batches. If the old artifacts or state format are incompatible, prepare an explicit recovery instead of improvising a destructive reset.
+Do not clear panel receipts during a binary rollback. Report the cause, traffic accounting limitations, and remaining pending batches. If the old artifacts or state format are incompatible, prepare an explicit recovery instead of improvising a destructive reset.
 
 ## Completion report
 
-Report the selected release and exact commit, patch scope, toolchain and build parameters, test results including skips, artifacts and checksums, deployment status, and any unresolved limitations. Clearly distinguish local upgrade completion from production rollout completion. Automatic upstream checking, CI upgrade PRs, and a validated core-version allowlist can be added later; this runbook does not claim they already exist.
+Report the selected release and exact commit, patch scope, toolchain and build parameters, test results including skips, artifacts and checksums, deployment status, and any unresolved limitations. Clearly distinguish local upgrade completion from production rollout completion.

@@ -238,23 +238,6 @@ YAP_RUN_MYSQL_TESTS=1 php artisan test --compact tests/Unit/NodeAuthorizationMys
 
 The test account must be allowed to create disposable databases. Defaults use the local socket `/run/mysqld/mysqld.sock` and user `root`; configure `YAP_MYSQL_TEST_SOCKET`, `YAP_MYSQL_TEST_USERNAME`, and `YAP_MYSQL_TEST_PASSWORD` privately when needed. Each test creates a unique database, applies migrations, and cleans up only that database. Existing application databases are never reset. The tests cover concurrent payment/purchase and traffic reporting, plus recovery after a process exits following financial commit.
 
-## Upgrade Status
-
-The project has been upgraded to:
-
-- Filament 5
-- Livewire 4
-- Tailwind CSS 4
-- Pest 4 with Pest Browser plugin
-
-Customer-facing routes and Inertia page structure were kept intact. The main frontend impact is the Tailwind 4 build migration.
-
-Validated locally with:
-
-- `php artisan test`
-- `./vendor/bin/pest tests/Browser --browser chrome`
-- `npm run build`
-
 ## License
 
 This project is licensed under the MIT License. See `LICENSE` for details.

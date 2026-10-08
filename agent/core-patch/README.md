@@ -2,7 +2,7 @@
 
 The patch targets official V2Fly **v5.53.0**, commit
 `b53bebbb859f2970e99432d53047a1bb8620e987`. It does not include Xray code.
-This is the latest stable release selected on 2026-10-06. Upgrading upstream requires
+Upgrading upstream requires
 reapplying and retesting the patch and reviewing upstream security fixes.
 
 Agents performing an upstream upgrade must follow [the upgrade runbook](../../docs/agents/v2fly-upgrade.md), including synchronized Agent version checks, gray rollout, and preserved traffic state during rollback.

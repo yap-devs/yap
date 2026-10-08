@@ -1,6 +1,6 @@
 # YAP node and route operations
 
-Use this runbook when an operator supplies SSH access and requirements for a new physical destination, a public relay entry, or an existing Agent node. Obtain the panel URL and deployment path from that operator. SSH is a provisioning tool; the running panel does not SSH into nodes.
+Use this runbook when an operator supplies SSH access and requirements for a new physical destination, a public relay entry, or an existing Agent node. Obtain the panel URL and deployment path from that operator. Use SSH to install and manage the node service. The Agent synchronizes with the panel over HTTPS.
 
 For a core version update, read [V2Fly upgrades](v2fly-upgrade.md). For hosting, cron, queues and backups, read [Deployment](../deployment/README.md). Agent configuration and tests are described in [the Agent README](../../agent/README.md).
 
@@ -39,6 +39,6 @@ Measure memory for the intended user count and workload; historical figures in t
 
 Keep SQLite state across upgrades: it holds baselines, pending totals and immutable retry batches. Do not delete it to resolve a transient failure. A core crash can lose bytes since the last local sample; a panel outage preserves the last applied authorization until a fresh snapshot arrives. Database recovery can lose already acknowledged traffic since the restored backup.
 
-Restore a compatible Agent/core pair when necessary, preserving state and pending receipts. There is no fallback to panel-initiated SSH collection. Do not reset counters or switch traffic ownership during binary rollback.
+Restore a compatible Agent/core pair when necessary, preserving state and pending receipts. Do not reset counters or delete pending batches during binary rollback.
 
 Report the node/route IDs, advertised endpoints and destination ports, release checksums, service health, observed revision, traffic acceptance, restart interruption and outstanding issues. Report private backup locations only to the operator. Do not commit credentials, production inventories or deployment history.
