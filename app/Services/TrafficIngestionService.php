@@ -33,7 +33,6 @@ class TrafficIngestionService
             $node = Node::whereKey($node->id)->lockForUpdate()->firstOrFail();
             abort_unless($node->enabled, 401);
             abort_unless(hash_equals((string) $node->agent_token_hash, $authenticated_token_hash), 401);
-            abort_unless($node->traffic_source === 'agent', 409, 'Node traffic is still owned by the legacy collector.');
             $existing = TrafficBatch::withTrashed()->where('node_id', $node->id)->where('batch_uuid', $batch_uuid)->first();
             if ($existing) {
                 abort_unless(hash_equals($existing->payload_hash, $payload_hash), 409, 'Batch contents differ from the committed receipt.');

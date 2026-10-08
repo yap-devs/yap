@@ -72,7 +72,7 @@ class SubscriptionService
     {
         $servers ??= NodeRoute::query()
             ->where('enabled', true)
-            ->whereHas('node', fn (Builder $query): Builder => $query->where('enabled', true)->where('traffic_source', 'agent'))
+            ->whereHas('node', fn (Builder $query): Builder => $query->where('enabled', true))
             ->orderBy('sort')
             ->orderBy('id')
             ->get();

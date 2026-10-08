@@ -6,26 +6,16 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
-use Illuminate\Validation\ValidationException;
 
 class Node extends Model
 {
     use HasFactory, SoftDeletes;
 
-    protected $fillable = ['traffic_source', 'name', 'agent_token_hash', 'enabled', 'desired_revision', 'applied_revision', 'last_seen_at', 'agent_version', 'core_version', 'core_config'];
+    protected $fillable = ['name', 'agent_token_hash', 'enabled', 'desired_revision', 'applied_revision', 'last_seen_at', 'agent_version', 'core_version', 'core_config'];
 
     protected $hidden = ['agent_token_hash'];
 
-    protected $attributes = ['traffic_source' => 'agent', 'enabled' => false, 'desired_revision' => 1, 'applied_revision' => 0];
-
-    protected static function booted(): void
-    {
-        static::saving(function (Node $node): void {
-            if (! in_array($node->traffic_source, ['agent'], true)) {
-                throw ValidationException::withMessages(['traffic_source' => 'Invalid traffic owner.']);
-            }
-        });
-    }
+    protected $attributes = ['enabled' => false, 'desired_revision' => 1, 'applied_revision' => 0];
 
     protected function casts(): array
     {

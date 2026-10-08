@@ -44,7 +44,7 @@ class NodeResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return $table->stackedOnMobile()->columns([TextColumn::make('name')->searchable(), TextColumn::make('traffic_source'), TextColumn::make('routes_count')->counts('routes'), TextColumn::make('desired_revision'), TextColumn::make('applied_revision'), TextColumn::make('last_seen_at')->dateTime(), TextColumn::make('agent_version'), IconColumn::make('enabled')->boolean()])
+        return $table->stackedOnMobile()->columns([TextColumn::make('name')->searchable(), TextColumn::make('routes_count')->counts('routes'), TextColumn::make('desired_revision'), TextColumn::make('applied_revision'), TextColumn::make('last_seen_at')->dateTime(), TextColumn::make('agent_version'), IconColumn::make('enabled')->boolean()])
             ->defaultSort('id', 'desc')
             ->recordActions([EditAction::make()]);
     }

@@ -10,6 +10,6 @@ class NodeFactory extends Factory
 {
     public function definition(): array
     {
-        return ['traffic_source' => 'agent', 'name' => fake()->unique()->word(), 'agent_token_hash' => hash('sha256', fake()->uuid()), 'enabled' => true];
+        return ['name' => fake()->unique()->word(), 'agent_token_hash' => hash('sha256', fake()->uuid()), 'enabled' => true];
     }
 }

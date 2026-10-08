@@ -104,7 +104,7 @@ Use the owner's existing deployment authorization. If authorization for producti
 
 If acceptance fails, stop the candidate gracefully when possible and switch back to the saved, compatible old agent/core pair. Keep the SQLite database and pending batches. Review any local schema change before claiming an old agent can read new state; backup and restore procedures must not replay already acknowledged traffic.
 
-Do not switch `traffic_source` back to `legacy`, restart an old SSH collector against agent counters, or clear panel receipts during a binary rollback. Report the cause, traffic accounting limitations, and remaining pending batches. If the old artifacts or state format are incompatible, prepare an explicit recovery instead of improvising a destructive reset.
+Do not restart an old SSH collector against agent counters, or clear panel receipts during a binary rollback. Report the cause, traffic accounting limitations, and remaining pending batches. If the old artifacts or state format are incompatible, prepare an explicit recovery instead of improvising a destructive reset.
 
 ## Completion report
 

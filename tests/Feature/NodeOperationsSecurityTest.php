@@ -110,6 +110,6 @@ test('node create actions discard security metadata outside their form schema', 
     ])->assertHasNoActionErrors();
 
     $node = Node::where('name', 'Metadata injection probe')->firstOrFail();
-    expect($node->agent_token_hash)->toBeNull()->and($node->traffic_source)->toBe('agent')
+    expect($node->agent_token_hash)->toBeNull()->and($node->getAttributes())->not->toHaveKey('traffic_source')
         ->and($node->applied_revision)->toBe(0);
 });

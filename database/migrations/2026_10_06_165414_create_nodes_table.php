@@ -10,7 +10,6 @@ return new class extends Migration
     {
         Schema::create('nodes', function (Blueprint $table) {
             $table->id();
-            $table->string('traffic_source')->default('agent')->comment('Agent managed traffic');
             $table->string('name')->comment('Operator-facing node name');
             $table->char('agent_token_hash', 64)->nullable()->unique()->comment('SHA-256 digest of the random agent token');
             $table->boolean('enabled')->default(false)->comment('Whether the agent may connect');

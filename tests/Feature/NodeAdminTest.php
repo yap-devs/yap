@@ -29,7 +29,7 @@ test('admin creates a disabled node with object configuration and its direct rou
         ->callAction('create', ['name' => 'Direct node', 'enabled' => false, 'core_config' => '{"inbounds":[],"outbounds":[]}'])
         ->assertHasNoActionErrors();
     $node = Node::where('name', 'Direct node')->firstOrFail();
-    expect($node->enabled)->toBeFalse()->and($node->traffic_source)->toBe('agent');
+    expect($node->enabled)->toBeFalse()->and($node->getAttributes())->not->toHaveKeys(['traffic_source', 'legacy_internal_server']);
     Livewire::test(ManageNodeRoutes::class)
         ->callAction('create', ['node_id' => $node->id, 'name' => 'Direct entry', 'server' => 'node.example.com', 'port' => 443,
             'inbound_tag' => 'yap-main', 'listen_port' => 443, 'rate' => '1.25', 'sort' => 0, 'enabled' => false, 'for_low_priority' => false])

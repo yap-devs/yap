@@ -94,7 +94,7 @@ if ($initialize) {
         exit(1);
     }
     $node = Node::create([
-        'name' => 'Fixture Node', 'enabled' => true, 'traffic_source' => 'agent',
+        'name' => 'Fixture Node', 'enabled' => true,
         'agent_token_hash' => hash('sha256', 'yap-e2e-agent-token-0123456789abcdef0123456789abcdef'),
         'core_config' => ['inbounds' => [['tag' => 'yap-main', 'protocol' => 'vmess', 'listen' => '127.0.0.1', 'streamSettings' => ['network' => 'tcp']]], 'outbounds' => [['protocol' => 'freedom']]],
     ]);
@@ -145,7 +145,7 @@ if (str_starts_with($request->getPathInfo(), '/__test/')) {
         response()->json([
             'user' => $user->only(['id', 'uuid', 'balance', 'traffic_uplink', 'traffic_downlink', 'traffic_unpaid', 'is_valid', 'is_low_priority']),
             'new_user' => User::findOrFail(43)->only(['id', 'uuid', 'balance', 'traffic_uplink', 'traffic_downlink', 'traffic_unpaid', 'is_valid', 'is_low_priority']),
-            'node' => Node::firstOrFail()->only(['id', 'desired_revision', 'applied_revision', 'traffic_source']),
+            'node' => Node::firstOrFail()->only(['id', 'desired_revision', 'applied_revision']),
             'routes' => NodeRoute::orderBy('id')->get()->toArray(),
             'package' => UserPackage::first()->only(['id', 'status', 'remaining_traffic']),
             'batch_count' => TrafficBatch::count(), 'record_count' => TrafficRecord::count(),

@@ -33,7 +33,8 @@ test('fresh installation creates the agent traffic schema', function () {
     }
     expect(Schema::hasColumn('nodes', 'legacy_internal_server'))->toBeFalse();
     $node_id = DB::table('nodes')->insertGetId(['name' => 'Fresh agent node']);
-    expect(DB::table('nodes')->where('id', $node_id)->value('traffic_source'))->toBe('agent');
+    expect(Schema::hasColumn('nodes', 'traffic_source'))->toBeFalse()
+        ->and(DB::table('nodes')->where('id', $node_id)->value('enabled'))->toBe(0);
 });
 
 test('fresh installation does not execute a legacy creation or retirement path', function () {

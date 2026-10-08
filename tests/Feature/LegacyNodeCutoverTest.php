@@ -7,11 +7,10 @@ use App\Services\SubscriptionService;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
-use Illuminate\Validation\ValidationException;
 
-test('new destinations use agent ownership without a legacy import', function () {
+test('new destinations start disabled without legacy ownership metadata', function () {
     $node = Node::create(['name' => 'New', 'enabled' => false]);
-    expect($node->traffic_source)->toBe('agent');
+    expect($node->enabled)->toBeFalse()->and($node->getAttributes())->not->toHaveKeys(['traffic_source', 'legacy_internal_server']);
 });
 
 test('soft deleted destinations stay excluded from subscriptions', function () {
@@ -22,8 +21,8 @@ test('soft deleted destinations stay excluded from subscriptions', function () {
     expect(app(SubscriptionService::class)->serversFor($user))->toHaveCount(0);
 });
 
-test('legacy ownership cannot be reintroduced after retirement', function () {
-    expect(fn () => Node::factory()->create(['traffic_source' => 'legacy']))->toThrow(ValidationException::class);
+test('node schema has no legacy ownership fields', function () {
+    expect(Schema::getColumnListing('nodes'))->not->toContain('traffic_source', 'legacy_internal_server');
 });
 
 test('runtime has no legacy table dependency after retirement', function () {

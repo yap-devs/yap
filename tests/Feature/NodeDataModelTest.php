@@ -58,9 +58,10 @@ test('route identity cannot change after creation while public fields remain edi
     'port' => ['listen_port', 9999],
 ]);
 
-test('traffic ownership accepts only known sources', function () {
-    expect(fn () => Node::factory()->create(['traffic_source' => 'unknown']))
-        ->toThrow(ValidationException::class);
+test('node factory stores only current agent metadata', function () {
+    $node = Node::factory()->create();
+    expect($node->getAttributes())->not->toHaveKeys(['traffic_source', 'legacy_internal_server'])
+        ->and($node->enabled)->toBeTrue();
 });
 
 test('core configuration structure changes persist and invalidate authorization', function (string $before, string $after) {
