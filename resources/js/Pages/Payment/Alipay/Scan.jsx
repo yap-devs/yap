@@ -1,8 +1,8 @@
 import {Head, router} from '@inertiajs/react';
 import {QRCodeCanvas} from "qrcode.react";
-import axios from "axios";
 import {useEffect, useState} from 'react';
 import {trans} from '@/Utils/i18n';
+import {fetchJson} from '@/Utils/fetchJson';
 
 export default function Scan({_auth, QRInfo, amount, paymentId}) {
   const [tradeStatus, setTradeStatus] = useState('');
@@ -16,18 +16,19 @@ export default function Scan({_auth, QRInfo, amount, paymentId}) {
   useEffect(() => {
     let timeoutId;
     let cancelled = false;
+    const controller = new AbortController();
 
     const query = async () => {
       let shouldPollAgain = true;
 
       try {
-        const response = await axios.get(route('alipay.query', {payment: paymentId}), {timeout: 10000});
+        const snapshot = await fetchJson(route('alipay.query', {payment: paymentId}), {signal: controller.signal});
 
-        if (cancelled || !response.data.trade_status) return;
+        if (cancelled || !snapshot.trade_status) return;
 
-        setTradeStatus(response.data.trade_status);
+        setTradeStatus(snapshot.trade_status);
 
-        if (response.data.trade_status === 'TRADE_SUCCESS') {
+        if (snapshot.trade_status === 'TRADE_SUCCESS') {
           shouldPollAgain = false;
           timeoutId = setTimeout(() => {
             router.get(route('profile.edit'));
@@ -47,8 +48,9 @@ export default function Scan({_auth, QRInfo, amount, paymentId}) {
     return () => {
       cancelled = true;
       clearTimeout(timeoutId);
+      controller.abort();
     };
-  }, []);
+  }, [paymentId]);
 
   return (
     <>

@@ -21,9 +21,9 @@ test('inertia asset loading exceptions recover with a full page reload', functio
     $entrypoint = file_get_contents(resource_path('js/app.jsx'));
 
     expect($entrypoint)
-        ->toContain("router.on('exception'")
+        ->toContain("router.on('networkError'")
         ->toContain('event.preventDefault();')
-        ->toContain('isStaleAssetError(event.detail.exception)')
+        ->toContain('isStaleAssetError(event.detail.error)')
         ->toContain('reloadForStaleAssets()');
 });
 
@@ -40,7 +40,7 @@ test('inertia network interruptions are handled before they reach sentry', funct
     $entrypoint = file_get_contents(resource_path('js/app.jsx'));
 
     expect($entrypoint)
-        ->toContain('isNetworkError(event.detail.exception)')
+        ->toContain('isNetworkError(event.detail.error)')
         ->toContain('window.YAP_TRANSLATIONS?.common?.network_error')
         ->toContain('showToast(');
 });

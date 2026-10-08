@@ -1,14 +1,21 @@
-import './bootstrap';
+import {sentryEnabled} from './bootstrap';
 import '../css/app.css';
 
 import {createRoot} from 'react-dom/client';
-import {createInertiaApp, router} from '@inertiajs/react';
+import * as Sentry from '@sentry/react';
+import {createInertiaApp, router, usePage} from '@inertiajs/react';
 import {resolvePageComponent} from 'laravel-vite-plugin/inertia-helpers';
 import Toast, {showToast} from '@/Components/Toast';
 import {setTranslations} from '@/Utils/i18n';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 const vitePreloadErrorReloadKey = 'yap:vite-preload-error-reloaded-at';
+
+function TranslatedPage({children}) {
+  setTranslations(usePage().props.translations);
+
+  return children;
+}
 
 const reloadForStaleAssets = () => {
   try {
@@ -41,9 +48,13 @@ const isStaleAssetError = (error) => {
 };
 
 const isNetworkError = (error) => {
+  if (error?.code === 'ERR_NETWORK') {
+    return true;
+  }
+
   const message = String(error?.message || error || '');
 
-  return message.includes('Network Error');
+  return ['Network Error', 'Failed to fetch', 'Load failed', 'Network request failed'].some((needle) => message.includes(needle));
 };
 
 addEventListener('vite:preloadError', (event) => {
@@ -53,7 +64,7 @@ addEventListener('vite:preloadError', (event) => {
 });
 
 // Intercept non-Inertia responses (e.g. 429 Too Many Requests)
-router.on('invalid', (event) => {
+router.on('httpException', (event) => {
   const status = event.detail.response?.status;
   if (status === 429) {
     event.preventDefault();
@@ -61,29 +72,30 @@ router.on('invalid', (event) => {
   }
 });
 
-router.on('exception', (event) => {
-  if (isStaleAssetError(event.detail.exception) && reloadForStaleAssets()) {
+router.on('networkError', (event) => {
+  if (isStaleAssetError(event.detail.error) && reloadForStaleAssets()) {
     event.preventDefault();
 
     return;
   }
 
-  if (isNetworkError(event.detail.exception)) {
+  if (isNetworkError(event.detail.error)) {
     event.preventDefault();
     showToast(window.YAP_TRANSLATIONS?.common?.network_error || 'Network interrupted, please try again.');
   }
 });
 
 createInertiaApp({
+  layout: () => TranslatedPage,
   title: (title) => `${title} - ${appName}`,
   resolve: (name) => resolvePageComponent(`./Pages/${name}.jsx`, import.meta.glob('./Pages/**/*.jsx')),
   setup({el, App, props}) {
-    const root = createRoot(el);
+    const root = createRoot(el, sentryEnabled ? {
+      onUncaughtError: Sentry.reactErrorHandler(),
+      onCaughtError: Sentry.reactErrorHandler(),
+      onRecoverableError: Sentry.reactErrorHandler(),
+    } : undefined);
     setTranslations(props.initialPage.props.translations);
-
-    router.on('success', (event) => {
-      setTranslations(event.detail.page.props.translations);
-    });
 
     root.render(
       <>

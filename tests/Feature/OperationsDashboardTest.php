@@ -52,6 +52,7 @@ test('overview is concise and detailed reports remain available on dedicated pag
 });
 
 test('admin navigation follows customer and operations workflows', function () {
+    config(['node_agent.enabled' => false]);
     $this->actingAs(User::factory()->create(['id' => 1]));
     Filament::setCurrentPanel('admin');
 

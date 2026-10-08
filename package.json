@@ -3,28 +3,28 @@
     "type": "module",
     "scripts": {
         "dev": "vite",
-        "build": "vite build"
+        "build": "vite build",
+        "test": "node --test tests/Unit/*.test.js"
     },
     "devDependencies": {
         "@headlessui/react": "^2.0.0",
-        "@inertiajs/react": "^1.0.0",
+        "@inertiajs/react": "^3.8.0",
         "@sentry/vite-plugin": "^5.4.0",
         "@tailwindcss/forms": "^0.5.10",
         "@tailwindcss/postcss": "^4.2.2",
         "@vitejs/plugin-react": "^5.1.0",
-        "axios": "^1.18.0",
         "laravel-vite-plugin": "^3.0.1",
         "postcss": "^8.4.31",
-        "react": "^18.2.0",
-        "react-dom": "^18.2.0",
+        "react": "^19.3.0",
+        "react-dom": "^19.3.0",
         "tailwindcss": "^4.2.2",
         "vite": "^8.0.8"
     },
     "dependencies": {
-        "@sentry/react": "^7.40.0",
+        "@sentry/react": "^10.76.1",
         "chart.js": "^4.4.3",
         "playwright": "^1.60.0",
-        "qrcode.react": "^3.1.0",
+        "qrcode.react": "^4.2.0",
         "react-chartjs-2": "^5.2.0"
     }
 }

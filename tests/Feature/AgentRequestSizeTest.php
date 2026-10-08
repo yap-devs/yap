@@ -2,11 +2,21 @@
 
 use App\Http\Middleware\LimitAgentRequestSize;
 use Illuminate\Contracts\Http\Kernel;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
+use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpKernel\Exception\HttpException;
 
 test('agent body bounds run before global json input normalization', function () {
-    expect(app(Kernel::class)->getGlobalMiddleware()[0])->toBe(LimitAgentRequestSize::class);
+    $middleware = app(Kernel::class)->getGlobalMiddleware();
+    $limit_position = array_search(LimitAgentRequestSize::class, $middleware, true);
+
+    expect($limit_position)->not->toBeFalse();
+    foreach ([TrimStrings::class, ConvertEmptyStringsToNull::class] as $normalizer) {
+        $normalizer_position = array_search($normalizer, $middleware, true);
+        expect($normalizer_position)->not->toBeFalse();
+        expect($limit_position)->toBeLessThan($normalizer_position);
+    }
 });
 
 test('agent stream checking stops after the byte limit even without a reliable length header', function (bool $forged_length) {
