@@ -10,6 +10,19 @@ YAP_TEST_CORE_BINARY=/path/to/patched/v2ray go test ./...
 
 Build the matching patched core using `core-patch/`. Stock V2Fly is rejected: its `version` output must contain `yap-port-stats-v1`.
 
+For Linux nodes with an older glibc than the build host, use a static Agent
+build with a C compiler and static libc available:
+
+```sh
+CGO_ENABLED=1 go build -trimpath -tags 'netgo osusergo sqlite_omit_load_extension' \
+  -ldflags '-linkmode external -extldflags "-static"' -o yap-agent ./cmd/yap-agent
+```
+
+Validate the same build tags with the Agent tests and check the candidate's
+`-h` output on each target before replacing a running binary. This build uses
+Go's DNS and user lookup implementations and disables unused SQLite extension
+loading; it retains CGO-backed SQLite.
+
 Create a private local file with mode 0600, for example `/etc/yap-agent/config.json`:
 
 ```json
@@ -24,6 +37,34 @@ Create a private local file with mode 0600, for example `/etc/yap-agent/config.j
 ```
 
 Use a dedicated account and private writable state directory. Start with `yap-agent -config /etc/yap-agent/config.json`. The agent accepts no executable or command strings from the panel. HTTPS certificate verification is mandatory and redirects are rejected. Core gRPC uses a mode-0600 filesystem Unix socket in a mode-0700 directory; there is no TCP management listener for subscribers to reach through the proxy. Set `core_socket_path` to a clean absolute path shorter than 108 bytes. Do not run another core on the same ports. Linux parent-death signaling kills the child if the agent crashes; normal shutdown takes a final counter sample before stopping it.
+
+## Core logs
+
+The Agent forwards V2Fly stdout and stderr unchanged to its own stdout and
+stderr, including candidate configuration validation output. Under the supplied
+systemd unit, both streams are collected by journal alongside Agent messages.
+View realtime output with:
+
+```sh
+journalctl -f -u yap-agent
+```
+
+Use the actual unit name if the Agent is installed under a different name.
+The old `journalctl -f -u v2ray` command follows the old standalone service;
+V2Fly managed by the Agent runs under the Agent's unit.
+
+The rendered core configuration enables native access and error logs on the
+console, replacing panel-supplied `log.access` and `log.error` paths or `none`.
+An absent, empty or `none` `log.loglevel` becomes `warning`; explicit levels such
+as `info` or `debug` remain usable for troubleshooting. Existing standalone core
+log files are left untouched. The Agent creates no log files and performs no
+log rotation, compression, or retention cleanup. Retention is managed by the
+host's journald configuration and any existing cleanup tasks. A cleanup cron
+job is not installed by the Agent or its service template; verify it per host.
+Journal collection and V2Fly's bounded internal logging queue retain their own
+limits.
+
+## Synchronization and traffic
 
 Configuration defaults to a 5-second interval with ±10% jitter. Snapshot `poll_interval_seconds` is clamped to 2–300 seconds and `traffic_interval_seconds` to 10–3,600 seconds; omitted/zero values use defaults of 5/60 seconds. Updated intervals apply when the next loop timer is created. Local cumulative counters are sampled every 10 seconds; traffic uploads run separately every 60 seconds. Each upload tick drains up to 10 batches within 20 seconds. A persisted round-robin cursor prevents newly active early user IDs from starving later IDs. The complete desired snapshot is persisted and restored before contacting the panel. `valid_until` is a refresh hint, not an offline authorization lease: panel outages preserve the last applied authorization, including after package expiry, until a fresh snapshot arrives. An explicit configuration HTTP 401 revokes node authorization: the agent takes a best-effort final sample, stops the core and clears its saved desired snapshot. Pending traffic remains durable and retries once the panel accepts it; re-enabling the node requires a fresh snapshot. A failed final sample does not prevent revocation.
 

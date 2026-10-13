@@ -99,7 +99,10 @@ func (c *Core) Apply(ctx context.Context, d Desired) error {
 	if e = os.Chmod(temp, 0600); e != nil {
 		return e
 	}
-	if e = exec.CommandContext(ctx, c.config.CoreBinary, "test", "-format=json", "-c", temp).Run(); e != nil {
+	validation := exec.CommandContext(ctx, c.config.CoreBinary, "test", "-format=json", "-c", temp)
+	validation.Stdout = os.Stdout
+	validation.Stderr = os.Stderr
+	if e = validation.Run(); e != nil {
 		return errors.New("core rejected candidate configuration")
 	}
 	if c.Running() && c.BeforeRestart != nil {
@@ -115,6 +118,8 @@ func (c *Core) Apply(ctx context.Context, d Desired) error {
 		return e
 	}
 	c.process = exec.Command(c.config.CoreBinary, "run", "-format=json", "-c", c.config.CoreConfigPath)
+	c.process.Stdout = os.Stdout
+	c.process.Stderr = os.Stderr
 	c.process.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
 	if e = c.process.Start(); e != nil {
 		c.process = nil
@@ -377,6 +382,16 @@ func RenderConfig(d Desired, socketPath string) ([]byte, error) {
 	if config == nil {
 		return nil, errors.New("missing core configuration")
 	}
+	logs, _ := config["log"].(map[string]any)
+	if logs == nil {
+		logs = map[string]any{}
+	}
+	logs["access"] = ""
+	logs["error"] = ""
+	if level, _ := logs["loglevel"].(string); level == "" || strings.EqualFold(level, "none") {
+		logs["loglevel"] = "warning"
+	}
+	config["log"] = logs
 	grouped := map[string][]string{}
 	lowFlags := map[string]bool{}
 	ports := map[int]bool{}

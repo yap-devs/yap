@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const AgentVersion = "0.1.0"
+const AgentVersion = "0.1.1"
 const CoreVersion = "v5.53.0-yap-port-stats-v1"
 
 var ErrPanelUnauthorized = errors.New("panel revoked node authorization")
