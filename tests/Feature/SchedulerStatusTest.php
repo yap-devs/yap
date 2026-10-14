@@ -72,3 +72,20 @@ test('status storage failure cannot stop business scheduling', function () {
     $service->finished('scheduler', 0);
     expect($service->overview()['healthy'])->toBeFalse();
 });
+
+test('an older scheduler process cannot finish a newer process status', function () {
+    $service = app(SchedulerStatusService::class);
+    $service->started('scheduler');
+    $service->record('scheduler', ['process_id' => getmypid() + 1, 'status' => 'running', 'finished_at' => null]);
+    $service->finished('scheduler', 1);
+    expect($service->read()['scheduler']['status'])->toBe('running')
+        ->and($service->read()['scheduler']['finished_at'])->toBeNull();
+});
+
+test('starting a new tick clears the previous completion time', function () {
+    $service = app(SchedulerStatusService::class);
+    $service->started('scheduler');
+    $service->finished('scheduler', 0);
+    $service->started('scheduler');
+    expect($service->read()['scheduler']['finished_at'])->toBeNull();
+});

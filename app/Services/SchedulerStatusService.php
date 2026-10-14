@@ -29,13 +29,16 @@ class SchedulerStatusService
         }
     }
 
-    public function record(string $key, array $values): void
+    public function record(string $key, array $values, ?int $expected_process_id = null): void
     {
         File::ensureDirectoryExists(dirname($this->path()), 0700);
         $lock = fopen($this->path().'.lock', 'c');
         throw_unless($lock && flock($lock, LOCK_EX), RuntimeException::class, 'Cannot lock scheduler status.');
         try {
             $state = $this->read();
+            if ($expected_process_id !== null && isset($state[$key]['process_id']) && $state[$key]['process_id'] !== $expected_process_id) {
+                return;
+            }
             $state[$key] = array_replace($state[$key] ?? [], $values);
             $temporary = $this->path().'.next';
             throw_if(file_put_contents($temporary, json_encode($state, JSON_THROW_ON_ERROR)) === false, RuntimeException::class, 'Cannot write scheduler status.');
@@ -49,18 +52,18 @@ class SchedulerStatusService
 
     public function started(string $key): void
     {
-        $this->recordSafely($key, ['started_at' => now()->toIso8601String(), 'status' => 'running', 'exit_code' => null]);
+        $this->recordSafely($key, ['started_at' => now()->toIso8601String(), 'finished_at' => null, 'process_id' => getmypid(), 'status' => 'running', 'exit_code' => null]);
     }
 
     public function finished(string $key, int $exit_code): void
     {
-        $this->recordSafely($key, ['finished_at' => now()->toIso8601String(), 'status' => $exit_code === 0 ? 'success' : 'failed', 'exit_code' => $exit_code]);
+        $this->recordSafely($key, ['finished_at' => now()->toIso8601String(), 'status' => $exit_code === 0 ? 'success' : 'failed', 'exit_code' => $exit_code], getmypid());
     }
 
-    private function recordSafely(string $key, array $values): void
+    private function recordSafely(string $key, array $values, ?int $expected_process_id = null): void
     {
         try {
-            $this->record($key, $values);
+            $this->record($key, $values, $expected_process_id);
         } catch (Throwable $exception) {
             report($exception);
         }
