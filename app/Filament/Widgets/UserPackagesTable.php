@@ -5,6 +5,7 @@ namespace App\Filament\Widgets;
 use App\Filament\Resources\UserResource;
 use App\Models\UserPackage;
 use App\Services\AdminDashboardReportService;
+use App\Services\BusinessSettings;
 use Carbon\CarbonImmutable;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -144,7 +145,7 @@ class UserPackagesTable extends TableWidget
 
     private function bytesToCost(float $bytes): float
     {
-        return round($bytes / 1024 / 1024 / 1024 * (float) config('yap.unit_price'), 2);
+        return round($bytes / 1024 / 1024 / 1024 * (float) app(BusinessSettings::class)->get('unit_price'), 2);
     }
 
     private function formatRemainingTrafficRatio(UserPackage $user_package): string

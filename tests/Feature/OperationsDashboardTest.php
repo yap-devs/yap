@@ -63,7 +63,7 @@ test('admin navigation follows customer and operations workflows', function () {
     expect($navigation)->toBe([
         'Overview' => ['Operations Overview'],
         'Customers' => ['Users', 'Subscriptions', 'Package catalog', 'Access Health'],
-        'Billing' => ['Recharge orders', 'Balance ledger'],
+        'Billing' => ['Recharge orders', 'Balance ledger', 'Business Settings'],
         'Reports' => ['Cash Flow', 'Traffic Trends', '24-Hour Traffic', 'Top-Up Ranking', 'AI Analytics', 'Package Analysis'],
         'Affiliates' => ['Affiliate Overview', 'Promoters', 'Referral Codes', 'Referrals', 'Commissions', 'Levels'],
     ]);

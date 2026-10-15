@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\BusinessSettings;
 use Illuminate\Console\Command;
 use Yansongda\LaravelPay\Facades\Pay;
 
@@ -38,7 +39,7 @@ class AlipayOrderCommand extends Command
         if ($amount_rmb) {
             $total_amount = bcmul((string) $amount_rmb, '1', 2);
         } else {
-            $rate = config('yap.payment.usd_rmb_rate');
+            $rate = app(BusinessSettings::class)->get('usd_rmb_rate');
             $total_amount = bcmul((string) $amount_usd, (string) $rate, 2);
             $this->info("USD {$amount_usd} x {$rate} = RMB {$total_amount}");
         }

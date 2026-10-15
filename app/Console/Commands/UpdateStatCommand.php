@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\User;
+use App\Services\BusinessSettings;
 use App\Services\TrafficBillingService;
 use App\Services\TrafficReportSnapshotService;
 use Illuminate\Console\Command;
@@ -93,7 +94,7 @@ class UpdateStatCommand extends Command
                     return;
                 }
 
-                $locked_user->balance -= config('yap.unit_price');
+                $locked_user->balance -= app(BusinessSettings::class)->get('unit_price');
                 $locked_user->traffic_unpaid = 0;
                 $locked_user->balanceDetails()->create([
                     'amount' => $locked_user->balance - $locked_user->getOriginal('balance'),

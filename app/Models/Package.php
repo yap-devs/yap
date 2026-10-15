@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Services\BusinessSettings;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -29,7 +30,7 @@ class Package extends Model
     {
         return Attribute::make(
             get: function (mixed $value, array $attributes) {
-                return $attributes['traffic_limit'] / 1024 / 1024 / 1024 * config('yap.unit_price');
+                return $attributes['traffic_limit'] / 1024 / 1024 / 1024 * app(BusinessSettings::class)->get('unit_price');
             }
         );
     }

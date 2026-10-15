@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\AlipayPaymentStatusService;
+use App\Services\BusinessSettings;
 use App\Services\PaymentFulfillmentService;
 use App\Services\RechargeOrderLockService;
 use Illuminate\Http\Request;
@@ -90,9 +91,11 @@ class AlipayController extends Controller
         return $rechargeOrderLockService->create($user, function () use ($amount, $user) {
             $out_trade_no = time().random_int(100000, 999999);
 
+            $exchange_rate = app(BusinessSettings::class)->get('usd_rmb_rate');
+            $payment_amount = bcmul((string) $amount, $exchange_rate, 2);
             $qr_info = Pay::alipay()->scan([
                 'out_trade_no' => $out_trade_no,
-                'total_amount' => bcmul($amount, config('yap.payment.usd_rmb_rate'), 2),
+                'total_amount' => $payment_amount,
                 'subject' => config('yap.payment.alipay.subject'),
             ]);
 
@@ -112,6 +115,7 @@ class AlipayController extends Controller
                 'remote_id' => $out_trade_no,
                 'payload' => [
                     Payment::STATUS_CREATED => $qr_info,
+                    'pricing' => ['currency' => 'cny', 'amount' => $payment_amount, 'exchange_rate' => $exchange_rate],
                 ],
             ]);
 

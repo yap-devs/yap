@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Jobs\UpdateUserUuid;
 use App\Models\User;
+use App\Services\BusinessSettings;
 use App\Services\ClientDownloadMirrorService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -16,7 +17,7 @@ class CustomerServiceController extends Controller
 {
     public function index(ClientDownloadMirrorService $download_mirror_service)
     {
-        $resetSubscriptionPrice = config('yap.reset_subscription_price');
+        $resetSubscriptionPrice = (float) app(BusinessSettings::class)->get('reset_subscription_price');
         $clientDownloads = $download_mirror_service->downloads();
 
         return Inertia::render('CustomerService/Index', compact('resetSubscriptionPrice', 'clientDownloads'));
@@ -50,7 +51,7 @@ class CustomerServiceController extends Controller
         return DB::transaction(function () use ($user) {
             // Lock the user row to prevent concurrent balance modifications
             $user = User::lockForUpdate()->find($user->id);
-            $price = config('yap.reset_subscription_price');
+            $price = app(BusinessSettings::class)->get('reset_subscription_price');
             $old_key_id = $user->sub2api_key_id;
             $old_uuid = $user->uuid;
             $new_uuid = (string) Str::uuid();

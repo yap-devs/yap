@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\UserStat;
+use App\Services\BusinessSettings;
 use App\Services\SubscriptionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -17,7 +18,7 @@ class DashboardController extends Controller
         $user = $request->user();
         $clashUrl = route('subscription.clash', ['uuid' => $user->uuid]);
         $universalSubscriptionUrl = route('subscription.universal', ['uuid' => $user->uuid]);
-        $unitPrice = config('yap.unit_price');
+        $unitPrice = (float) app(BusinessSettings::class)->get('unit_price');
         $servers = app(SubscriptionService::class)->serversFor($user)->map(fn ($route): array => $route->only(['id', 'name', 'rate', 'for_low_priority']));
         $todayTraffic = Cache::remember(UserStat::todayTrafficCacheKey($user->id), 60 * 30, function () use ($user) {
             return $user->stats()

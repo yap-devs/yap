@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Models\UserPackage;
 use App\Observers\NodeAuthorizationObserver;
 use App\Services\BepusdtService;
+use App\Services\BusinessSettings;
 use App\Services\DatabaseTimezoneService;
 use App\Services\RememberTokenSessionGuard;
 use App\Services\SchedulerStatusService;
@@ -32,6 +33,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->scoped(BusinessSettings::class);
         $this->app->singleton(DatabaseTimezoneService::class);
         $this->app->singleton(BepusdtService::class, function ($app) {
             return new BepusdtService;
@@ -66,6 +68,7 @@ class AppServiceProvider extends ServiceProvider
         Model::unguard();
         Event::listen(ConnectionEstablished::class, fn (ConnectionEstablished $event) => app(DatabaseTimezoneService::class)->configure($event->connection));
         Event::listen(CommandStarting::class, function (CommandStarting $event): void {
+            app(BusinessSettings::class)->reset();
             if ($event->command === 'schedule:run') {
                 app(SchedulerStatusService::class)->started('scheduler');
             }

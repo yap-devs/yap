@@ -483,7 +483,7 @@ class AdminDashboardReportService
 
     public function getPackageProfitStats(): array
     {
-        return $this->remember('package_profit_stats', [], function (): array {
+        return $this->remember('package_profit_stats', [app(BusinessSettings::class)->get('unit_price')], function (): array {
             return $this->calculateUserPackageProfitStats(
                 $this->getUserPackagesQuery()
                     ->whereIn('user_packages.status', [UserPackage::STATUS_EXPIRED, UserPackage::STATUS_USED]),
@@ -842,7 +842,7 @@ class AdminDashboardReportService
             ->first();
 
         $revenue = (float) ($traffic?->total_revenue ?? 0);
-        $consumed_cost = $this->bytesToGigabytes((float) ($traffic?->consumed_traffic ?? 0)) * (float) config('yap.unit_price');
+        $consumed_cost = $this->bytesToGigabytes((float) ($traffic?->consumed_traffic ?? 0)) * (float) app(BusinessSettings::class)->get('unit_price');
 
         return [
             'revenue' => round($revenue, 2),

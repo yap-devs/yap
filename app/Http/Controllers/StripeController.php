@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Models\User;
+use App\Services\BusinessSettings;
 use App\Services\PaymentFulfillmentService;
 use App\Services\RechargeOrderLockService;
 use Illuminate\Http\Request;
@@ -41,6 +42,11 @@ class StripeController extends Controller
 
         return $rechargeOrderLockService->create($user, function () use ($amount, $currency, $user) {
             $out_trade_no = 'S'.time().random_int(100000, 999999);
+            $exchange_rate = match ($currency) {
+                'cny' => app(BusinessSettings::class)->get('usd_rmb_rate'),
+                'jpy' => app(BusinessSettings::class)->get('usd_jpy_rate'),
+                default => '1',
+            };
             $payment_amount = $this->convertUsdAmount($amount, $currency);
 
             // Create payment record first so we have the ID for the success URL
@@ -54,6 +60,7 @@ class StripeController extends Controller
                     Payment::STATUS_CREATED => [
                         'currency' => $currency,
                         'amount' => $payment_amount,
+                        'exchange_rate' => $exchange_rate,
                     ],
                 ],
             ]);
@@ -98,6 +105,7 @@ class StripeController extends Controller
                     'checkout_url' => $session->url,
                     'currency' => $currency,
                     'amount' => $payment_amount,
+                    'exchange_rate' => $exchange_rate,
                 ],
             ];
             $payment->save();
@@ -232,10 +240,10 @@ class StripeController extends Controller
         }
 
         if ($currency === 'jpy') {
-            return (string) round((float) $amount * (float) config('yap.payment.usd_jpy_rate'));
+            return (string) round((float) $amount * (float) app(BusinessSettings::class)->get('usd_jpy_rate'));
         }
 
-        return bcmul($amount, config('yap.payment.usd_rmb_rate'), 2);
+        return bcmul($amount, app(BusinessSettings::class)->get('usd_rmb_rate'), 2);
     }
 
     private function stripeUnitAmount(string $amount, string $currency): int

@@ -49,7 +49,7 @@ class TrafficBillingService
         if ($locked_user->traffic_unpaid > $gib) {
             // Preserve the existing strict boundary: exactly one GiB remains unsettled.
             $units = intdiv((int) $locked_user->traffic_unpaid - 1, $gib);
-            $unit_price = (string) config('yap.unit_price');
+            $unit_price = (string) app(BusinessSettings::class)->get('unit_price');
             if (! preg_match('/\A(?:0|[1-9][0-9]{0,5})(?:\.[0-9]{1,2})?\z/', $unit_price)) {
                 throw ValidationException::withMessages(['records' => 'Traffic unit price must be a non-negative amount with at most two decimals.']);
             }

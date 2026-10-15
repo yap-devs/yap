@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Package;
+use App\Services\BusinessSettings;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
@@ -32,7 +33,7 @@ class WelcomeController extends Controller
         return Inertia::render('Welcome', [
             'canLogin' => Route::has('login'),
             'canRegister' => Route::has('register'),
-            'unitPrice' => config('yap.unit_price'),
+            'unitPrice' => (float) app(BusinessSettings::class)->get('unit_price'),
             'packages' => $packages,
         ]);
     }
