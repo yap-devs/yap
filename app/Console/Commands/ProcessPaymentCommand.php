@@ -8,6 +8,7 @@ use App\Services\PaymentFulfillmentService;
 use Illuminate\Console\Command;
 use Stripe\Checkout\Session;
 use Stripe\Stripe;
+use Throwable;
 
 class ProcessPaymentCommand extends Command
 {
@@ -28,14 +29,21 @@ class ProcessPaymentCommand extends Command
     /**
      * Execute the console command.
      */
-    public function handle(AlipayPaymentStatusService $alipayPaymentStatusService, PaymentFulfillmentService $paymentFulfillmentService)
+    public function handle(AlipayPaymentStatusService $alipayPaymentStatusService, PaymentFulfillmentService $paymentFulfillmentService): int
     {
+        $failed_count = 0;
         $payments = Payment::where('status', Payment::STATUS_CREATED)->get();
 
         /** @var Payment $payment */
         foreach ($payments as $payment) {
             if ($payment->gateway === Payment::GATEWAY_ALIPAY) {
-                $alipayPaymentStatusService->processPending($payment);
+                try {
+                    $alipayPaymentStatusService->processPending($payment);
+                } catch (Throwable $e) {
+                    $failed_count++;
+                    $this->error("Alipay status refresh failed for payment {$payment->id}.");
+                    report($e);
+                }
             }
 
             if ($payment->gateway === Payment::GATEWAY_USDT) {
@@ -46,6 +54,8 @@ class ProcessPaymentCommand extends Command
                 $this->processStripe($payment, $paymentFulfillmentService);
             }
         }
+
+        return $failed_count > 0 ? self::FAILURE : self::SUCCESS;
     }
 
     private function processUsdt(Payment $payment)
@@ -97,7 +107,7 @@ class ProcessPaymentCommand extends Command
 
                 return true;
             }
-        } catch (\Throwable $e) {
+        } catch (Throwable $e) {
             logger()->error('Stripe session query failed: '.$e->getMessage());
         }
 
