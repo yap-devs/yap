@@ -31,6 +31,7 @@ class ReportOverviewWidget extends StatsOverviewWidget
         $service = app(AdminDashboardReportService::class);
         $today = $service->getTodayStats();
         $money = $service->getTopUpSnapshotStats();
+        $revenue = $service->getRevenueBreakdownStats();
         $month_traffic = (float) $service->getMonthlyTrafficSeries(1)->last();
 
         return [
@@ -38,10 +39,14 @@ class ReportOverviewWidget extends StatsOverviewWidget
                 ->description('MTD '.$this->formatCurrency($money['current_month_top_up']).' | '.$this->formatMonthToDateChange($money['current_month_top_up'], $money['previous_month_to_date_top_up']))
                 ->descriptionIcon('heroicon-m-banknotes', IconPosition::Before)
                 ->color('success'),
-            Stat::make('Balance Debits Today', $this->formatCurrency($today['usage']))
-                ->description('MTD '.$this->formatCurrency($money['current_month_usage']).' | '.$this->formatMonthToDateChange($money['current_month_usage'], $money['previous_month_to_date_usage']))
+            Stat::make('VPN Revenue Today', $this->formatCurrency($revenue['today_vpn']))
+                ->description('MTD '.$this->formatCurrency($revenue['current_month_vpn']).' | '.$this->formatMonthToDateChange($revenue['current_month_vpn'], $revenue['previous_month_to_date_vpn']))
                 ->descriptionIcon('heroicon-m-arrow-trending-down', IconPosition::Before)
                 ->color('danger'),
+            Stat::make('AI Revenue Today', $this->formatCurrency($revenue['today_ai']))
+                ->description('MTD '.$this->formatCurrency($revenue['current_month_ai']).' | '.$this->formatMonthToDateChange($revenue['current_month_ai'], $revenue['previous_month_to_date_ai']))
+                ->descriptionIcon('heroicon-m-arrow-trending-down', IconPosition::Before)
+                ->color('warning'),
             Stat::make('Traffic Collected Today', $this->formatGigabytes($today['traffic_gb']))
                 ->description('MTD '.$this->formatGigabytes($month_traffic))
                 ->descriptionIcon('heroicon-m-chart-bar', IconPosition::Before)

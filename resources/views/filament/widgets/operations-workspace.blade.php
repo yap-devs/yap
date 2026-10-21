@@ -5,7 +5,7 @@
                 <h2 class="text-sm font-semibold text-gray-950 dark:text-white">Today at a glance</h2>
                 <span class="text-xs text-gray-500 dark:text-gray-400">Checked {{ $checked_at }}</span>
             </div>
-            <dl class="grid grid-cols-2 gap-px bg-gray-950/5 lg:grid-cols-4 dark:bg-white/10">
+            <dl class="grid grid-cols-2 gap-px bg-gray-950/5 lg:grid-cols-5 dark:bg-white/10">
                 @foreach ($today_metrics as $metric)
                     <div class="min-w-0 bg-white px-5 py-4 dark:bg-gray-900">
                         <dt class="text-xs text-gray-500 dark:text-gray-400">{{ $metric->getLabel() }}</dt>

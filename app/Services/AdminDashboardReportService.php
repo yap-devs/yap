@@ -269,6 +269,38 @@ class AdminDashboardReportService
         });
     }
 
+    public function getRevenueBreakdownStats(): array
+    {
+        return $this->remember('revenue_breakdown_stats', [], function (): array {
+            $now = CarbonImmutable::now();
+            $previous_month_end = $now->subMonthNoOverflow();
+            $periods = [
+                'today' => [$now->startOfDay(), null],
+                'current_month' => [$now->startOfMonth(), null],
+                'previous_month_to_date' => [$previous_month_end->startOfMonth(), $previous_month_end],
+            ];
+            $stats = [];
+
+            foreach ($periods as $period => [$start, $end]) {
+                $query = $this->getReportableUsageQuery()->where('created_at', '>=', $start);
+
+                if ($end !== null) {
+                    $query->where('created_at', '<', $end);
+                }
+
+                $totals = $query
+                    ->selectRaw('ABS(SUM(amount)) as total')
+                    ->selectRaw('ABS(SUM(CASE WHEN description LIKE ? THEN amount ELSE 0 END)) as ai', ['AI %'])
+                    ->first();
+
+                $stats[$period.'_vpn'] = round((float) $totals->total - (float) $totals->ai, 2);
+                $stats[$period.'_ai'] = round((float) $totals->ai, 2);
+            }
+
+            return $stats;
+        });
+    }
+
     public function getUserActivityStats(): array
     {
         return $this->remember('user_activity_stats', [], function (): array {

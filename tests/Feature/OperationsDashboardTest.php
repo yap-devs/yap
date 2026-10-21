@@ -152,21 +152,43 @@ test('cash indicators compare the same elapsed part of each month without counti
     $user->balanceDetails()->create(['amount' => -10, 'created_at' => '2026-08-15 11:00:00']);
     $user->balanceDetails()->create(['amount' => -100, 'created_at' => '2026-08-15 13:00:00']);
 
+    $user->balanceDetails()->create(['amount' => -3.25, 'description' => 'AI gpt-4o | 1req in:1 out:1']);
+    $user->balanceDetails()->create(['amount' => -2, 'description' => 'AI gpt-4o | 1req in:1 out:1', 'created_at' => '2026-08-15 11:00:00']);
+    $user->balanceDetails()->create(['amount' => -100, 'description' => 'AI gpt-4o | 1req in:1 out:1', 'created_at' => '2026-08-15 13:00:00']);
+    $user->balanceDetails()->create(['amount' => 50, 'description' => 'AI refund']);
+    $internal_user->balanceDetails()->create(['amount' => -999, 'description' => 'AI internal']);
+    $internal_user->balanceDetails()->create(['amount' => -999, 'description' => 'Traffic deduction']);
+    $deleted_debit = $user->balanceDetails()->create(['amount' => -999, 'description' => 'AI deleted']);
+    $deleted_debit->delete();
+
+    expect(app(AdminDashboardReportService::class)->getRevenueBreakdownStats())->toBe([
+        'today_vpn' => 5.0,
+        'today_ai' => 3.25,
+        'current_month_vpn' => 5.0,
+        'current_month_ai' => 3.25,
+        'previous_month_to_date_vpn' => 10.0,
+        'previous_month_to_date_ai' => 2.0,
+    ]);
+
     $money = app(AdminDashboardReportService::class)->getTopUpSnapshotStats();
     expect($money)->toMatchArray([
         'today_top_up' => 10.0,
         'current_month_top_up' => 30.0,
         'previous_month_to_date_top_up' => 20.0,
-        'current_month_usage' => 5.0,
-        'previous_month_to_date_usage' => 10.0,
+        'current_month_usage' => 8.25,
+        'previous_month_to_date_usage' => 12.0,
     ]);
 
     $stats = (new ReflectionMethod(ReportOverviewWidget::class, 'getStats'))
         ->invoke(app(ReportOverviewWidget::class));
     expect($stats[0]->getLabel())->toBe('Paid Top-Ups Today')
         ->and($stats[0]->getDescription())->toContain('+50.0% vs prior MTD')
-        ->and($stats[1]->getLabel())->toBe('Balance Debits Today')
-        ->and($stats[1]->getDescription())->toContain('-50.0% vs prior MTD');
+        ->and($stats[1]->getLabel())->toBe('VPN Revenue Today')
+        ->and($stats[1]->getDescription())->toContain('-50.0% vs prior MTD')
+        ->and($stats[1]->getValue())->toBe('5.00 USD')
+        ->and($stats[2]->getLabel())->toBe('AI Revenue Today')
+        ->and($stats[2]->getValue())->toBe('3.25 USD')
+        ->and($stats[2]->getDescription())->toContain('+62.5% vs prior MTD');
 
     $this->actingAs(User::factory()->create(['id' => 1]));
     Filament::setCurrentPanel('admin');
@@ -174,6 +196,7 @@ test('cash indicators compare the same elapsed part of each month without counti
     Livewire::test(OperationsWorkspace::class)
         ->assertSee('MTD 30.00 USD | +50.0% vs prior MTD')
         ->assertSee('MTD 5.00 USD | -50.0% vs prior MTD')
+        ->assertSee('MTD 3.25 USD | +62.5% vs prior MTD')
         ->assertSee('Distinct users recorded by the latest collection');
 });
 
