@@ -428,3 +428,7 @@ This is a single-context repository. See `docs/agents/domain.md`.
 ### Node provisioning and core upgrades
 
 Use `.agents/skills/yap-node-operations/SKILL.md` for Agent machines, destinations and relay entries. Its runbooks are `docs/agents/node-operations.md` and `docs/agents/v2fly-upgrade.md`. Hosting instructions are in `docs/deployment/README.md`.
+
+### Lolipop production operations
+
+Use `.agents/skills/yap-lolipop-deployment/SKILL.md` for production inspection, deployment, or recovery. It layers YAP-specific contracts on the shared `lolipop-operations` skill and uses this checkout's private `.env.lolipop`. The old Ubuntu-103 PHP panel is retired; production operations target Lolipop.
