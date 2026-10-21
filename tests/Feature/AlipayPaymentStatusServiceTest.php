@@ -3,9 +3,14 @@
 use App\Models\Payment;
 use App\Models\User;
 use App\Services\AlipayPaymentStatusService;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Psr7\Request;
+use GuzzleHttp\Psr7\Response;
 use Illuminate\Support\Defer\DeferredCallbackCollection;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
+use Yansongda\Artful\Exception\Exception;
+use Yansongda\Artful\Exception\InvalidResponseException;
 use Yansongda\Pay\Provider\Alipay;
 use Yansongda\Supports\Collection;
 
@@ -108,4 +113,25 @@ test('refresh fulfills payment when alipay reports trade success', function () {
         ->and(Cache::get('alipay:trade-status:'.$payment->id))->toMatchArray([
             'trade_status' => 'TRADE_SUCCESS',
         ]);
+});
+
+test('refresh does not hide non-network alipay response errors', function () {
+    $payment = createAlipayPayment();
+    $exception = new InvalidResponseException(
+        Exception::REQUEST_RESPONSE_ERROR,
+        'API request failed',
+        [],
+        new RequestException(
+            'Upstream error',
+            new Request('POST', 'https://openapi.alipay.com/gateway.do'),
+            new Response(500),
+        ),
+    );
+    $alipay = Mockery::mock(Alipay::class);
+    $alipay->shouldReceive('query')->once()->andThrow($exception);
+    app()->instance('pay.alipay', $alipay);
+
+    $this->assertThrows(fn () => app(AlipayPaymentStatusService::class)->refresh($payment), fn (InvalidResponseException $thrown) => $thrown === $exception);
+
+    expect($payment->refresh()->status)->toBe(Payment::STATUS_CREATED);
 });

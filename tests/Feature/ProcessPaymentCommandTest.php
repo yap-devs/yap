@@ -2,9 +2,15 @@
 
 use App\Models\Payment;
 use App\Models\User;
+use GuzzleHttp\Exception\ConnectException;
+use GuzzleHttp\Exception\RequestException;
+use GuzzleHttp\Psr7\Request;
 use Illuminate\Support\Facades\Bus;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Exceptions;
+use Illuminate\Support\Facades\Log;
+use Yansongda\Artful\Exception\Exception;
+use Yansongda\Artful\Exception\InvalidResponseException;
 use Yansongda\Pay\Provider\Alipay;
 use Yansongda\Supports\Collection;
 
@@ -86,3 +92,56 @@ test('payment processing reports an alipay failure and continues with subsequent
     expect((float) $user->refresh()->balance)->toBe(7.0);
     Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
 });
+
+test('payment processing logs network failures and retries the pending payment on the next run', function (string $failure_type) {
+    Exceptions::fake();
+    Bus::fake();
+    $this->freezeTime();
+    $user = User::factory()->create();
+    $payment = $user->payments()->create([
+        'gateway' => Payment::GATEWAY_ALIPAY,
+        'status' => Payment::STATUS_CREATED,
+        'amount' => 5,
+        'remote_id' => 'NETWORK-RETRY',
+        'created_at' => now()->subHours(2),
+        'payload' => [Payment::STATUS_CREATED => []],
+    ]);
+    $later_payment = $user->payments()->create([
+        'gateway' => Payment::GATEWAY_USDT,
+        'status' => Payment::STATUS_CREATED,
+        'amount' => 3,
+        'remote_id' => 'LATER-PAYMENT',
+        'created_at' => now()->subMinutes(21),
+        'payload' => [Payment::STATUS_CREATED => []],
+    ]);
+    $request = new Request('POST', 'https://openapi.alipay.com/gateway.do');
+    $network_exception = $failure_type === 'connection'
+        ? new ConnectException('Connection timed out', $request)
+        : new RequestException('Operation timed out', $request, null, null, ['errno' => 28]);
+    $exception = new InvalidResponseException(
+        Exception::REQUEST_RESPONSE_ERROR, 'API request failed', [], $network_exception,
+    );
+    $alipay = Mockery::mock(Alipay::class);
+    $alipay->shouldReceive('query')->once()->andThrow($exception);
+    app()->instance('pay.alipay', $alipay);
+    Log::spy();
+
+    $this->artisan('app:process-payment-command')->assertSuccessful();
+
+    expect($payment->refresh()->status)->toBe(Payment::STATUS_CREATED);
+    expect($later_payment->refresh()->status)->toBe(Payment::STATUS_EXPIRED);
+    expect((float) $user->refresh()->balance)->toBe(0.0);
+    Exceptions::assertNothingReported();
+    Log::shouldHaveReceived('warning')->once()
+        ->with('Alipay status query deferred after a network failure', Mockery::on(fn (array $context) => $context['payment_id'] === $payment->id));
+
+    $alipay = Mockery::mock(Alipay::class);
+    $alipay->shouldReceive('query')->once()->andReturn(new Collection(['trade_status' => 'TRADE_SUCCESS']));
+    app()->instance('pay.alipay', $alipay);
+
+    $this->artisan('app:process-payment-command')->assertSuccessful();
+
+    expect($payment->refresh()->status)->toBe(Payment::STATUS_PAID);
+    expect((float) $user->refresh()->balance)->toBe(5.0);
+    Bus::assertNotDispatched('App\\Jobs\\GenerateClashProfileLink');
+})->with(['connection', 'response timeout']);

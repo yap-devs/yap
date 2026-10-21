@@ -3,7 +3,11 @@
 namespace App\Services;
 
 use App\Models\Payment;
+use GuzzleHttp\Exception\RequestException;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
+use Psr\Http\Client\NetworkExceptionInterface;
+use Yansongda\Artful\Exception\InvalidResponseException;
 use Yansongda\LaravelPay\Facades\Pay;
 
 use function Illuminate\Support\defer;
@@ -40,9 +44,24 @@ readonly class AlipayPaymentStatusService
             return null;
         }
 
-        $result = Pay::alipay()->query([
-            'out_trade_no' => $payment->remote_id,
-        ]);
+        try {
+            $result = Pay::alipay()->query([
+                'out_trade_no' => $payment->remote_id,
+            ]);
+        } catch (InvalidResponseException $e) {
+            $network_exception = $e->getPrevious();
+            if (! ($network_exception instanceof NetworkExceptionInterface)
+                && ! ($network_exception instanceof RequestException && ($network_exception->getHandlerContext()['errno'] ?? null) === 28)) {
+                throw $e;
+            }
+
+            Log::warning('Alipay status query deferred after a network failure', [
+                'payment_id' => $payment->id,
+                'transport_exception' => $network_exception::class,
+            ]);
+
+            return null;
+        }
 
         $payload = $result->toArray();
         $trade_status = $payload['trade_status'] ?? null;
@@ -66,6 +85,10 @@ readonly class AlipayPaymentStatusService
         }
 
         $payload = $this->refresh($payment);
+        if ($payload === null) {
+            return false;
+        }
+
         if (($payload['trade_status'] ?? null) === 'TRADE_SUCCESS') {
             return true;
         }
