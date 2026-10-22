@@ -20,6 +20,8 @@ class AdminDashboardReportService
 {
     public const REPORTABLE_USER_ID_THRESHOLD = 5;
 
+    private const AI_USAGE_DESCRIPTION_PATTERN = 'AI %';
+
     private const BYTES_PER_GB = 1073741824;
 
     private const CACHE_TTL_SECONDS = 60;
@@ -290,7 +292,7 @@ class AdminDashboardReportService
 
                 $totals = $query
                     ->selectRaw('ABS(SUM(amount)) as total')
-                    ->selectRaw('ABS(SUM(CASE WHEN description LIKE ? THEN amount ELSE 0 END)) as ai', ['AI %'])
+                    ->selectRaw('ABS(SUM(CASE WHEN description LIKE ? THEN amount ELSE 0 END)) as ai', [self::AI_USAGE_DESCRIPTION_PATTERN])
                     ->first();
 
                 $stats[$period.'_vpn'] = round((float) $totals->total - (float) $totals->ai, 2);
@@ -714,15 +716,13 @@ class AdminDashboardReportService
     public function getAiOverviewStats(int $months = 12): array
     {
         $today_start = CarbonImmutable::now()->startOfDay();
-        $month_start = CarbonImmutable::now()->startOfMonth();
-        $seven_days_ago = CarbonImmutable::now()->startOfDay()->subDays(6);
+        $revenue = $this->getRevenueBreakdownStats();
 
         $base_query = $this->getReportableAiUsageQuery();
 
-        $today_cost = round((float) (clone $base_query)->where('usage_created_at', '>=', $today_start)->sum('amount'), 2);
+        $today_cost = $revenue['today_ai'];
         $today_requests = (int) (clone $base_query)->where('usage_created_at', '>=', $today_start)->count();
-        $month_cost = round((float) (clone $base_query)->where('usage_created_at', '>=', $month_start)->sum('amount'), 2);
-        $seven_day_cost = round((float) (clone $base_query)->where('usage_created_at', '>=', $seven_days_ago)->sum('amount'), 2);
+        $month_cost = $revenue['current_month_ai'];
         $active_keys = (int) $this->getReportableUsersQuery()->whereNotNull('sub2api_key_id')->where('sub2api_key_status', 'active')->count();
         $total_keys = (int) $this->getReportableUsersQuery()->whereNotNull('sub2api_key_id')->count();
 
@@ -732,20 +732,21 @@ class AdminDashboardReportService
             'today_cost' => $today_cost,
             'today_requests' => $today_requests,
             'month_cost' => $month_cost,
-            'seven_day_cost' => $seven_day_cost,
+            'seven_day_cost' => round((float) array_sum($daily_cost_trend), 2),
             'active_keys' => $active_keys,
             'total_keys' => $total_keys,
             'daily_cost_trend' => $daily_cost_trend,
+            'daily_request_trend' => $this->getAiDailyRequestSeries()->values()->all(),
         ];
     }
 
     public function getAiDailyCostSeries(int $days = 7): Collection
     {
-        $period = $this->datePeriodExpression('usage_created_at', 'day');
-        $rows = $this->getReportableAiUsageQuery()
+        $period = $this->datePeriodExpression('created_at', 'day');
+        $rows = $this->getReportableAiDebitsQuery()
             ->selectRaw($period.' as period')
-            ->selectRaw('SUM(amount) as total_cost')
-            ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
+            ->selectRaw('ABS(SUM(amount)) as total_cost')
+            ->where('created_at', '>=', CarbonImmutable::now()->startOfDay()->subDays($days - 1))
             ->groupByRaw($period)
             ->orderBy('period')
             ->get();
@@ -758,27 +759,31 @@ class AdminDashboardReportService
 
     public function getAiUsageRankingQuery(): Builder
     {
-        return Sub2apiUsageRecord::query()
-            ->join('users', 'users.id', '=', 'sub2api_usage_records.user_id')
-            ->where('sub2api_usage_records.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD)
-            ->selectRaw('MIN(sub2api_usage_records.id) as id')
-            ->selectRaw('sub2api_usage_records.user_id')
+        $requests = $this->getReportableAiUsageQuery()
+            ->selectRaw('COUNT(*)')
+            ->whereColumn('sub2api_usage_records.user_id', 'balance_details.user_id')
+            ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfDay());
+
+        return $this->getReportableAiDebitsQuery()
+            ->join('users', 'users.id', '=', 'balance_details.user_id')
+            ->selectRaw('MIN(balance_details.id) as id')
+            ->selectRaw('balance_details.user_id')
             ->selectRaw('users.name as user_name')
             ->selectRaw('users.email as user_email')
-            ->selectRaw('COUNT(*) as request_count')
-            ->selectRaw('SUM(sub2api_usage_records.amount) as total_cost')
-            ->where('sub2api_usage_records.usage_created_at', '>=', CarbonImmutable::now()->startOfDay())
-            ->groupBy('sub2api_usage_records.user_id', 'users.name', 'users.email')
+            ->selectSub($requests, 'request_count')
+            ->selectRaw('ABS(SUM(balance_details.amount)) as total_cost')
+            ->where('balance_details.created_at', '>=', CarbonImmutable::now()->startOfDay())
+            ->groupBy('balance_details.user_id', 'users.name', 'users.email')
             ->orderByDesc('total_cost');
     }
 
     public function getAiMonthlyCostSeries(int $months = 12): Collection
     {
-        $period = $this->datePeriodExpression('usage_created_at', 'month');
-        $rows = $this->getReportableAiUsageQuery()
+        $period = $this->datePeriodExpression('created_at', 'month');
+        $rows = $this->getReportableAiDebitsQuery()
             ->selectRaw($period.' as period')
-            ->selectRaw('SUM(amount) as total_cost')
-            ->where('usage_created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
+            ->selectRaw('ABS(SUM(amount)) as total_cost')
+            ->where('created_at', '>=', CarbonImmutable::now()->startOfMonth()->subMonths($months - 1))
             ->groupByRaw($period)
             ->orderBy('period')
             ->get();
@@ -840,6 +845,12 @@ class AdminDashboardReportService
             ->orderByDesc('sub2api_usage_records.id');
     }
 
+    private function getReportableAiDebitsQuery(): Builder
+    {
+        return $this->getReportableUsageQuery()
+            ->where('balance_details.description', 'like', self::AI_USAGE_DESCRIPTION_PATTERN);
+    }
+
     private function getReportableAiUsageQuery(): Builder
     {
         return Sub2apiUsageRecord::query()
@@ -856,8 +867,8 @@ class AdminDashboardReportService
     private function getReportableUsageQuery(): Builder
     {
         return BalanceDetail::query()
-            ->where('amount', '<', 0)
-            ->where('user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
+            ->where('balance_details.amount', '<', 0)
+            ->where('balance_details.user_id', '>', self::REPORTABLE_USER_ID_THRESHOLD);
     }
 
     private function applyEndedUserPackageScope(Builder $query): Builder

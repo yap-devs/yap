@@ -22,7 +22,7 @@ class AiRecentUsageTable extends TableWidget
     {
         return $table
             ->heading('Recent AI Requests')
-            ->description('Latest individual AI API calls across all users.')
+            ->description('Individual request fees before batch debit rounding; dates use request time.')
             ->query(app(AdminDashboardReportService::class)->getAiRecentUsageQuery()->reorder())
             ->defaultSort('sub2api_usage_records.id', 'desc')
             ->defaultPaginationPageOption(10)
@@ -40,7 +40,7 @@ class AiRecentUsageTable extends TableWidget
                     ->badge()
                     ->color('info'),
                 TextColumn::make('amount')
-                    ->label('Cost')
+                    ->label('Usage Fee')
                     ->alignEnd()
                     ->formatStateUsing(fn (mixed $state): string => '$'.number_format((float) $state, 6))
                     ->sortable(),

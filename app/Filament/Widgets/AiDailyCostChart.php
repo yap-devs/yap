@@ -22,9 +22,9 @@ class AiDailyCostChart extends ChartWidget
         'xl' => 6,
     ];
 
-    protected ?string $heading = 'Daily AI Cost';
+    protected ?string $heading = 'Daily AI Balance Debits';
 
-    protected ?string $description = 'Cost trend over the last 14 days.';
+    protected ?string $description = 'Actual AI balance debits by posting date over the last 14 days.';
 
     protected ?string $maxHeight = '280px';
 
@@ -38,7 +38,7 @@ class AiDailyCostChart extends ChartWidget
             )->all(),
             'datasets' => [
                 [
-                    'label' => 'Cost (USD)',
+                    'label' => 'Balance Debits (USD)',
                     'data' => $series->values()->all(),
                     'borderColor' => 'rgba(244, 63, 94, 0.9)',
                     'backgroundColor' => 'rgba(244, 63, 94, 0.1)',

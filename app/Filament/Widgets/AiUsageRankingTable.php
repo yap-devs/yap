@@ -4,7 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Filament\Resources\UserResource;
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
-use App\Models\Sub2apiUsageRecord;
+use App\Models\BalanceDetail;
 use App\Services\AdminDashboardReportService;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -25,7 +25,7 @@ class AiUsageRankingTable extends TableWidget
     {
         return $table
             ->heading('Today AI Usage Ranking')
-            ->description('Top AI spenders today by total cost.')
+            ->description('Actual AI balance debits posted today; request counts use request time.')
             ->query(app(AdminDashboardReportService::class)->getAiUsageRankingQuery()->reorder())
             ->defaultSort('total_cost', 'desc')
             ->defaultPaginationPageOption(8)
@@ -36,9 +36,9 @@ class AiUsageRankingTable extends TableWidget
                 TextColumn::make('rank')
                     ->label('#')
                     ->rowIndex(),
-                TextColumn::make('user_name')->url(fn (Sub2apiUsageRecord $record): string => UserResource::getUrl('view', ['record' => $record->user_id]))
+                TextColumn::make('user_name')->url(fn (BalanceDetail $record): string => UserResource::getUrl('view', ['record' => $record->user_id]))
                     ->label('User')
-                    ->description(fn (Sub2apiUsageRecord $record): string => $record->user_email)
+                    ->description(fn (BalanceDetail $record): string => $record->user_email)
                     ->wrap()
                     ->searchable(),
                 TextColumn::make('request_count')
@@ -46,7 +46,7 @@ class AiUsageRankingTable extends TableWidget
                     ->alignEnd()
                     ->sortable(),
                 TextColumn::make('total_cost')
-                    ->label('Cost')
+                    ->label('Balance Debits')
                     ->alignEnd()
                     ->badge()
                     ->color(fn (mixed $state): string => $this->getCostTone((float) $state))

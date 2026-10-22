@@ -21,9 +21,9 @@ class AiMonthlyCostChart extends ChartWidget
         'xl' => 6,
     ];
 
-    protected ?string $heading = 'Monthly AI Cost';
+    protected ?string $heading = 'Monthly AI Balance Debits';
 
-    protected ?string $description = 'Month-over-month AI spending trend.';
+    protected ?string $description = 'Actual AI balance debits by posting month.';
 
     protected ?string $maxHeight = '280px';
 
@@ -35,7 +35,7 @@ class AiMonthlyCostChart extends ChartWidget
             'labels' => $series->keys()->all(),
             'datasets' => [
                 [
-                    'label' => 'Cost (USD)',
+                    'label' => 'Balance Debits (USD)',
                     'data' => $series->values()->all(),
                     'borderColor' => 'rgba(168, 85, 247, 0.9)',
                     'backgroundColor' => 'rgba(168, 85, 247, 0.15)',

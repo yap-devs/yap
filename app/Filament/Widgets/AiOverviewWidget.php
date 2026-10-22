@@ -21,15 +21,15 @@ class AiOverviewWidget extends StatsOverviewWidget
         $ai = app(AdminDashboardReportService::class)->getAiOverviewStats();
 
         return [
-            Stat::make('Today AI Cost', '$'.number_format($ai['today_cost'], 2))
+            Stat::make('Today AI Balance Debits', '$'.number_format($ai['today_cost'], 2))
                 ->description('MTD $'.number_format($ai['month_cost'], 2).' | 7d $'.number_format($ai['seven_day_cost'], 2))
                 ->descriptionIcon('heroicon-m-currency-dollar', IconPosition::Before)
                 ->chart($ai['daily_cost_trend'])
                 ->color('danger'),
             Stat::make('Today Requests', number_format($ai['today_requests']))
-                ->description($ai['today_requests'] > 0 ? 'Avg $'.number_format($ai['today_requests'] > 0 ? $ai['today_cost'] / $ai['today_requests'] : 0, 4).'/req' : 'No requests yet')
+                ->description('By request time; balance debits use posting time')
                 ->descriptionIcon('heroicon-m-bolt', IconPosition::Before)
-                ->chart($ai['daily_cost_trend'])
+                ->chart($ai['daily_request_trend'])
                 ->color('info'),
             Stat::make('Active Keys', $ai['active_keys'].' / '.$ai['total_keys'])
                 ->description($ai['active_keys'].' active, '.($ai['total_keys'] - $ai['active_keys']).' inactive')

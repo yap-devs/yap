@@ -28,7 +28,7 @@ class AiAnalytics extends CashFlow
 
     public function getSubheading(): ?string
     {
-        return 'AI costs, request volume and account usage. Business metrics exclude internal accounts #1–5.';
+        return 'AI balance debits use posting dates; request and model usage use request dates. Business metrics exclude internal accounts #1–5.';
     }
 
     public function getColumns(): int|array

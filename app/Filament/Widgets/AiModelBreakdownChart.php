@@ -21,9 +21,9 @@ class AiModelBreakdownChart extends ChartWidget
         'xl' => 6,
     ];
 
-    protected ?string $heading = 'Model Cost Breakdown';
+    protected ?string $heading = 'Model Usage Cost Breakdown';
 
-    protected ?string $description = 'AI spending distribution by model.';
+    protected ?string $description = 'Raw usage fees by model and request time, before batch debit rounding.';
 
     protected ?string $maxHeight = '280px';
 
