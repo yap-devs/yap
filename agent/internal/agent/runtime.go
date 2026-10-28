@@ -1,10 +1,14 @@
 package agent
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"log"
 	"math/rand"
+	"net/http"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 )
@@ -33,6 +37,11 @@ func (r *Runtime) Run(ctx context.Context) error {
 	if e != nil {
 		return e
 	}
+	if r.core.config.GeositeAssetDir != "" {
+		if e = recoverGeosite(r.core.config.GeositeAssetDir); e != nil {
+			return e
+		}
+	}
 	d, e := r.store.Desired()
 	if e != nil {
 		return e
@@ -51,6 +60,10 @@ func (r *Runtime) Run(ctx context.Context) error {
 	go func() { defer wg.Done(); r.pollLoop(ctx) }()
 	go func() { defer wg.Done(); r.trafficLoop(ctx) }()
 	go func() { defer wg.Done(); r.sampleLoop(ctx) }()
+	if r.core.config.GeositeUpdateIntervalHours > 0 {
+		wg.Add(1)
+		go func() { defer wg.Done(); r.geositeLoop(ctx) }()
+	}
 	<-ctx.Done()
 	wg.Wait()
 	r.mu.Lock()
@@ -63,6 +76,71 @@ func (r *Runtime) Run(ctx context.Context) error {
 		}
 	}
 	r.core.Stop()
+	return nil
+}
+
+func (r *Runtime) geositeLoop(ctx context.Context) {
+	interval := time.Duration(r.core.config.GeositeUpdateIntervalHours) * time.Hour
+	log.Printf("geosite automatic updates enabled, interval %s", interval)
+	for {
+		delay := interval - interval/10 + time.Duration(rand.Int63n(int64(interval/5)+1))
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return
+		case <-timer.C:
+		}
+		updateCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		if err := r.updateGeosite(updateCtx); err != nil {
+			log.Print("geosite update failed: ", err)
+		}
+		cancel()
+	}
+}
+
+func (r *Runtime) updateGeosite(ctx context.Context) error {
+	client := &http.Client{Timeout: 90 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if len(via) >= 10 || req.URL.Scheme != "https" {
+			return errors.New("invalid geosite redirect")
+		}
+		return nil
+	}}
+	body, release, err := latestGeosite(ctx, client)
+	if err != nil {
+		return err
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if !r.core.Running() || r.desired.Revision == 0 {
+		return errors.New("core is not running")
+	}
+	current, err := os.ReadFile(filepath.Join(r.core.config.GeositeAssetDir, "geosite.dat"))
+	if err != nil {
+		return err
+	}
+	if bytes.Equal(current, body) {
+		log.Printf("geosite already current at release %s", release)
+		return nil
+	}
+	if err = r.core.validateGeosite(ctx, body); err != nil {
+		return err
+	}
+	err = switchGeosite(r.core.config.GeositeAssetDir, body, func(rollback bool) error {
+		if rollback && r.core.Running() {
+			return nil
+		}
+		if rollback {
+			recoveryCtx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+			defer cancel()
+			return r.core.apply(recoveryCtx, r.desired, true)
+		}
+		return r.core.apply(ctx, r.desired, true)
+	})
+	if err != nil {
+		return err
+	}
+	log.Printf("geosite updated to release %s", release)
 	return nil
 }
 func (r *Runtime) pollLoop(ctx context.Context) {

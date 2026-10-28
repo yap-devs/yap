@@ -81,11 +81,15 @@ func (c *Core) Stop() {
 	}
 }
 func (c *Core) Apply(ctx context.Context, d Desired) error {
+	return c.apply(ctx, d, false)
+}
+
+func (c *Core) apply(ctx context.Context, d Desired, force bool) error {
 	rendered, e := RenderConfig(d, c.config.CoreSocketPath)
 	if e != nil {
 		return e
 	}
-	if c.Running() && reflect.DeepEqual(c.desired.CoreConfig, d.CoreConfig) && reflect.DeepEqual(c.desired.Routes, d.Routes) {
+	if !force && c.Running() && reflect.DeepEqual(c.desired.CoreConfig, d.CoreConfig) && reflect.DeepEqual(c.desired.Routes, d.Routes) {
 		if e = c.syncUsers(ctx, d); e == nil {
 			c.desired = cloneDesired(d)
 			return nil
@@ -100,6 +104,7 @@ func (c *Core) Apply(ctx context.Context, d Desired) error {
 		return e
 	}
 	validation := exec.CommandContext(ctx, c.config.CoreBinary, "test", "-format=json", "-c", temp)
+	validation.Env = c.assetEnv(c.config.GeositeAssetDir)
 	validation.Stdout = os.Stdout
 	validation.Stderr = os.Stderr
 	if e = validation.Run(); e != nil {
@@ -118,6 +123,7 @@ func (c *Core) Apply(ctx context.Context, d Desired) error {
 		return e
 	}
 	c.process = exec.Command(c.config.CoreBinary, "run", "-format=json", "-c", c.config.CoreConfigPath)
+	c.process.Env = c.assetEnv(c.config.GeositeAssetDir)
 	c.process.Stdout = os.Stdout
 	c.process.Stderr = os.Stderr
 	c.process.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGKILL}
@@ -139,6 +145,19 @@ func (c *Core) Apply(ctx context.Context, d Desired) error {
 	c.desired = cloneDesired(d)
 	c.dirtyUsers = nil
 	return nil
+}
+
+func (c *Core) assetEnv(dir string) []string {
+	if dir == "" {
+		return nil
+	}
+	env := []string{}
+	for _, entry := range os.Environ() {
+		if !strings.HasPrefix(entry, "V2RAY_LOCATION_ASSET=") && !strings.HasPrefix(entry, "v2ray.location.asset=") && !strings.HasPrefix(entry, "XDG_DATA_HOME=") && !strings.HasPrefix(entry, "XDG_DATA_DIRS=") {
+			env = append(env, entry)
+		}
+	}
+	return append(env, "V2RAY_LOCATION_ASSET="+dir, "XDG_DATA_HOME="+dir, "XDG_DATA_DIRS="+dir)
 }
 func (c *Core) syncUsers(ctx context.Context, d Desired) error {
 	tags := map[string]bool{}

@@ -10,12 +10,14 @@ import (
 )
 
 type Config struct {
-	PanelURL       string `json:"panel_url"`
-	Token          string `json:"token"`
-	StatePath      string `json:"state_path"`
-	CoreBinary     string `json:"core_binary"`
-	CoreConfigPath string `json:"core_config_path"`
-	CoreSocketPath string `json:"core_socket_path"`
+	PanelURL                   string `json:"panel_url"`
+	Token                      string `json:"token"`
+	StatePath                  string `json:"state_path"`
+	CoreBinary                 string `json:"core_binary"`
+	CoreConfigPath             string `json:"core_config_path"`
+	CoreSocketPath             string `json:"core_socket_path"`
+	GeositeAssetDir            string `json:"geosite_asset_dir"`
+	GeositeUpdateIntervalHours int    `json:"geosite_update_interval_hours"`
 }
 
 func LoadConfig(path string) (Config, error) {
@@ -38,6 +40,15 @@ func LoadConfig(path string) (Config, error) {
 }
 
 func (c Config) Validate() error {
+	if c.GeositeUpdateIntervalHours < 0 || c.GeositeUpdateIntervalHours > 720 {
+		return errors.New("geosite update interval must be between 0 and 720 hours")
+	}
+	if c.GeositeUpdateIntervalHours > 0 && c.GeositeAssetDir == "" {
+		return errors.New("geosite updates require an asset directory")
+	}
+	if c.GeositeAssetDir != "" && (!filepath.IsAbs(c.GeositeAssetDir) || filepath.Clean(c.GeositeAssetDir) != c.GeositeAssetDir) {
+		return errors.New("geosite asset directory must be a clean absolute path")
+	}
 	u, err := url.Parse(c.PanelURL)
 	if err != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.RawQuery != "" || u.Fragment != "" {
 		return errors.New("panel_url must be an HTTPS URL without credentials, query or fragment")

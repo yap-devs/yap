@@ -93,3 +93,18 @@ func TestConfigRejectsUnsafeLocalSettings(t *testing.T) {
 		t.Fatal("public gRPC accepted")
 	}
 }
+
+func TestGeositeUpdateRequiresValidAssetDirectoryAndInterval(t *testing.T) {
+	c := Config{PanelURL: "https://panel.example", Token: "secret", StatePath: "/var/lib/yap/state.sqlite", CoreBinary: "/usr/local/bin/v2ray", CoreConfigPath: "/var/lib/yap/core.json", CoreSocketPath: "/var/lib/yap-agent/api.sock", GeositeUpdateIntervalHours: 24}
+	if c.Validate() == nil {
+		t.Fatal("enabled update accepted without asset directory")
+	}
+	c.GeositeAssetDir = "/var/lib/yap-agent/assets"
+	if err := c.Validate(); err != nil {
+		t.Fatal(err)
+	}
+	c.GeositeUpdateIntervalHours = 721
+	if c.Validate() == nil {
+		t.Fatal("excessive update interval accepted")
+	}
+}

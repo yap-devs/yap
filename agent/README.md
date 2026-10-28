@@ -38,6 +38,27 @@ Create a private local file with mode 0600, for example `/etc/yap-agent/config.j
 
 Use a dedicated account and private writable state directory. Start with `yap-agent -config /etc/yap-agent/config.json`. The agent accepts no executable or command strings from the panel. HTTPS certificate verification is mandatory and redirects are rejected. Core gRPC uses a mode-0600 filesystem Unix socket in a mode-0700 directory; there is no TCP management listener for subscribers to reach through the proxy. Set `core_socket_path` to a clean absolute path shorter than 108 bytes. Do not run another core on the same ports. Linux parent-death signaling kills the child if the agent crashes; normal shutdown takes a final counter sample before stopping it.
 
+## Geosite updates
+
+Geosite updates are disabled by default. To enable them, prepare a private,
+agent-owned directory under `/var/lib/yap-agent` containing the existing V2Ray
+asset files, including `geosite.dat`, `geoip.dat`, and any other files referenced
+by the node configuration. Add `"geosite_asset_dir": "/var/lib/yap-agent/assets"`
+and `"geosite_update_interval_hours": 24` to the local Agent configuration.
+The interval accepts 1 to 720 hours; zero disables checks. Restart the Agent to
+apply the local configuration. The core uses this directory for all assets,
+so keep other required files present and maintain GeoIP separately.
+
+The Agent checks the official V2Fly domain-list-community release after each
+interval with 10% jitter, pins both downloads to the same release, and checks
+the published SHA-256. A changed file is tested with the current core
+configuration before switching. The core is restarted with the normal final
+traffic sampling guard, interrupting active connections. Failed validation or
+sampling keeps the old process; a failed start restores the old data and
+attempts to restart the core. `geosite.dat.previous` retains the last version,
+and an interrupted switch is rolled back on Agent startup. Check the journal
+for update success or failure. An unchanged file causes no core restart.
+
 ## Core logs
 
 The Agent forwards V2Fly stdout and stderr unchanged to its own stdout and
