@@ -98,7 +98,6 @@ RETURN_PROBE_TARGETS=(
     "cu|Shanghai Unicom|sh-cu-v4.ip.zstaticcdn.com|80"
     "ct|Shanghai Telecom|sh-ct-v4.ip.zstaticcdn.com|80"
     "cm|Guangzhou Mobile|gd-guangzhou-cm-v4.ip.zstaticcdn.com|443"
-    "cu|Guangzhou Unicom|gd-guangzhou-cu-v4.ip.zstaticcdn.com|443"
     "ct|Guangzhou Telecom|gd-guangzhou-ct-v4.ip.zstaticcdn.com|443"
     "cm|Nanjing Mobile|js-nanjing-cm-v4.ip.zstaticcdn.com|443"
     "cu|Nanjing Unicom|js-nanjing-cu-v4.ip.zstaticcdn.com|443"
@@ -577,7 +576,7 @@ probe_return_path_once() {
     [ "$cu_ok" -ge "$RETURN_PROBE_CARRIER_MIN_OK" ] && carriers_ok=$((carriers_ok + 1))
     [ "$ct_ok" -ge "$RETURN_PROBE_CARRIER_MIN_OK" ] && carriers_ok=$((carriers_ok + 1))
 
-    print_info "Return probe result for ${ip}: total=${total_ok}/15 carriers=${carriers_ok}/3 cm=${cm_ok}/5 cu=${cu_ok}/5 ct=${ct_ok}/5" >&2
+    print_info "Return probe result for ${ip}: total=${total_ok}/${#RETURN_PROBE_TARGETS[@]} carriers=${carriers_ok}/3 cm=${cm_ok}/5 cu=${cu_ok}/4 ct=${ct_ok}/5" >&2
 
     if [ "$carriers_ok" -ge "$RETURN_PROBE_MIN_CARRIERS" ] && [ "$total_ok" -ge "$RETURN_PROBE_TOTAL_MIN_OK" ]; then
         return 0
@@ -2009,7 +2008,7 @@ main() {
             if [ "$SOURCE_MODE" == "lightsail" ]; then
                 echo -e "  Source:  AWS Lightsail (IDs: ${LIGHTSAIL_IDS:-any}, tags: ${LIGHTSAIL_TAGS:-any})"
                 echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
-                echo -e "  Return probe: ${RETURN_PROBE_ROUNDS} round(s), >=${RETURN_PROBE_MIN_CARRIERS}/3 carriers, >=${RETURN_PROBE_TOTAL_MIN_OK}/15 total"
+                echo -e "  Return probe: ${RETURN_PROBE_ROUNDS} round(s), >=${RETURN_PROBE_MIN_CARRIERS}/3 carriers, >=${RETURN_PROBE_TOTAL_MIN_OK}/${#RETURN_PROBE_TARGETS[@]} total"
             elif [ "$SOURCE_MODE" == "ntt" ]; then
                 echo -e "  Source:  WebARENA Indigo (old instance: ${NTT_INSTANCE_ID})"
             else
@@ -2114,7 +2113,7 @@ main() {
         echo -e "  Proxied: ${PROXIED}"
         if [ "$SOURCE_MODE" == "lightsail" ]; then
             echo -e "  Force IP rotation: ${FORCE_ROTATE_IP}"
-            echo -e "  Return probe: ${RETURN_PROBE_ROUNDS} round(s), >=${RETURN_PROBE_MIN_CARRIERS}/3 carriers, >=${RETURN_PROBE_TOTAL_MIN_OK}/15 total"
+            echo -e "  Return probe: ${RETURN_PROBE_ROUNDS} round(s), >=${RETURN_PROBE_MIN_CARRIERS}/3 carriers, >=${RETURN_PROBE_TOTAL_MIN_OK}/${#RETURN_PROBE_TARGETS[@]} total"
         fi
         if [ "$DRY_RUN" == "true" ]; then
             echo -e "  Mode:    ${YELLOW}DRY-RUN${NC}"
