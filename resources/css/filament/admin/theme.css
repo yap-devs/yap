@@ -3,20 +3,12 @@
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
 
-.fi-wi-chart .fi-wi-chart-canvas-ctn-no-aspect-ratio {
-    min-height: 18rem;
-}
-
-.fi-wi-chart .fi-wi-chart-canvas-ctn-no-aspect-ratio canvas {
-    height: 18rem !important;
+.fi-wi-chart .fi-wi-chart-canvas-ctn.fi-wi-chart-frame-no-aspect-ratio {
+    height: 18rem;
 }
 
 @media (min-width: 640px) {
-    .fi-wi-chart .fi-wi-chart-canvas-ctn-no-aspect-ratio {
-        min-height: 20rem;
-    }
-
-    .fi-wi-chart .fi-wi-chart-canvas-ctn-no-aspect-ratio canvas {
-        height: 20rem !important;
+    .fi-wi-chart .fi-wi-chart-canvas-ctn.fi-wi-chart-frame-no-aspect-ratio {
+        height: 20rem;
     }
 }

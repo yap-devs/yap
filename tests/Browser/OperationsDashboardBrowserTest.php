@@ -60,6 +60,39 @@ test('operations overview renders on a mobile viewport', function () {
     $page->click('.fi-topbar-open-sidebar-btn')->assertSee('Customers')->assertSee('Affiliates');
 });
 
+test('monthly cash flow chart fits a mobile viewport', function () {
+    $this->actingAs(User::factory()->create(['id' => 1]));
+    $path = '/'.trim((string) config('yap.admin_panel_path'), '/').'/cash-flow';
+    $selector = 'canvas[aria-label^="Monthly Top-Ups & Balance Debits"]';
+
+    $page = visit($path)->on()->mobile()
+        ->assertVisible($selector)
+        ->assertNoJavaScriptErrors();
+
+    $page->screenshotElement('.fi-wi-chart:has('.$selector.')', filename: 'monthly-cash-flow-mobile');
+    $dimensions = $page->script(<<<'JS'
+        (() => {
+            const canvas = document.querySelector('canvas[aria-label^="Monthly Top-Ups & Balance Debits"]');
+            const rect = canvas.getBoundingClientRect();
+            return { width: rect.width, height: rect.height, left: rect.left, right: rect.right, viewport: document.documentElement.clientWidth, scrollWidth: document.documentElement.scrollWidth };
+        })()
+        JS);
+
+    expect($dimensions['width'])->toBeGreaterThan(200)
+        ->and($dimensions['height'])->toBeGreaterThan(200)->toBeLessThan(400)
+        ->and($dimensions['left'])->toBeGreaterThanOrEqual(0)
+        ->and($dimensions['right'])->toBeLessThanOrEqual($dimensions['viewport'])
+        ->and($dimensions['scrollWidth'])->toBeLessThanOrEqual($dimensions['viewport']);
+
+    $desktop = visit($path)->on()->desktop()
+        ->assertVisible($selector)
+        ->assertNoJavaScriptErrors();
+    $desktop->screenshotElement('.fi-wi-chart:has('.$selector.')', filename: 'monthly-cash-flow-desktop');
+    $desktop_height = $desktop->script('document.querySelector(\'canvas[aria-label^="Monthly Top-Ups & Balance Debits"]\').getBoundingClientRect().height');
+
+    expect($desktop_height)->toBeGreaterThan(200)->toBeLessThanOrEqual(320);
+});
+
 test('overview status tiles open the corresponding filtered node list', function () {
     config(['node_agent.enabled' => true, 'node_agent.snapshot_store' => 'array']);
     $this->actingAs(User::factory()->create(['id' => 1]));
