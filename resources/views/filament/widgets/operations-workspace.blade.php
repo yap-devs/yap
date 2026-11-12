@@ -1,5 +1,15 @@
 <x-filament-widgets::widget>
     <div class="space-y-6" @if ($polling_interval) wire:poll.{{ $polling_interval }}="refreshDashboardWidget" @endif>
+        @if ($tickets_needing_reply > 0)
+            <a href="{{ $tickets_needing_reply_url }}" class="group flex flex-wrap items-center justify-between gap-4 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 shadow-sm transition hover:border-amber-500 hover:bg-amber-100 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-600 dark:border-amber-500/40 dark:bg-amber-500/10 dark:hover:bg-amber-500/20">
+                <div class="flex min-w-0 items-center gap-3">
+                    <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-100 text-amber-700 dark:bg-amber-400/20 dark:text-amber-300"><x-filament::icon icon="heroicon-o-chat-bubble-left-right" class="h-5 w-5" /></span>
+                    <div><h2 class="text-sm font-semibold text-amber-950 dark:text-amber-100">{{ number_format($tickets_needing_reply) }} {{ \Illuminate\Support\Str::plural('support ticket', $tickets_needing_reply) }} awaiting reply</h2><p class="mt-1 text-sm text-amber-800 dark:text-amber-200">New requests or customer replies need your attention.</p></div>
+                </div>
+                <span class="text-sm font-semibold text-amber-900 group-hover:underline dark:text-amber-100">View tickets →</span>
+            </a>
+        @endif
+
         <section aria-label="Today at a glance" class="overflow-hidden rounded-xl bg-white ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
             <div class="flex flex-wrap items-center justify-between gap-2 border-b border-gray-950/5 px-5 py-3 dark:border-white/10">
                 <h2 class="text-sm font-semibold text-gray-950 dark:text-white">Today at a glance</h2>

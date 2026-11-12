@@ -1,8 +1,10 @@
 <?php
 
+use App\Filament\Resources\Tickets\Pages\ManageTickets;
 use App\Filament\Widgets\OperationsWorkspace;
 use App\Models\Node;
 use App\Models\Payment;
+use App\Models\Ticket;
 use App\Models\User;
 use App\Services\AdminOperationsOverviewService;
 use Filament\Facades\Filament;
@@ -47,4 +49,35 @@ test('overview retains the monthly chart and omits withdrawn search and audit fe
 test('workspace actions remain restricted to the administrator', function () {
     $this->actingAs(User::factory()->create(['id' => 6]));
     Livewire::test(OperationsWorkspace::class)->assertForbidden();
+});
+
+test('ticket attention appears only for open tickets waiting for support and links to the matching filter', function () {
+    $admin = User::factory()->create(['id' => 1]);
+    $customer = User::factory()->create();
+    $this->actingAs($admin);
+    Filament::setCurrentPanel('admin');
+
+    Livewire::test(OperationsWorkspace::class)->assertDontSee('awaiting reply');
+
+    $new = Ticket::create(['user_id' => $customer->id, 'subject' => 'New request', 'status' => 'open']);
+    $waiting = Ticket::create(['user_id' => $customer->id, 'subject' => 'Customer follow up', 'status' => 'open']);
+    $waiting->messages()->create(['user_id' => $admin->id, 'is_admin' => true, 'body' => 'First reply']);
+    $waiting->messages()->create(['user_id' => $customer->id, 'is_admin' => false, 'body' => 'Another question']);
+    $answered = Ticket::create(['user_id' => $customer->id, 'subject' => 'Answered', 'status' => 'open']);
+    $answered->messages()->create(['user_id' => $customer->id, 'is_admin' => false, 'body' => 'Help']);
+    $answered->messages()->create(['user_id' => $admin->id, 'is_admin' => true, 'body' => 'Answer']);
+    $closed = Ticket::create(['user_id' => $customer->id, 'subject' => 'Closed', 'status' => 'closed']);
+    $closed->messages()->create(['user_id' => $customer->id, 'is_admin' => false, 'body' => 'Help']);
+
+    Livewire::test(OperationsWorkspace::class)->assertSee('2 support tickets awaiting reply')->assertSee('needs_reply');
+    Livewire::test(ManageTickets::class)
+        ->filterTable('needs_reply')
+        ->assertCanSeeTableRecords([$new, $waiting])
+        ->assertCanNotSeeTableRecords([$answered, $closed]);
+
+    $new->update(['status' => 'closed']);
+    $waiting->messages()->create(['user_id' => $admin->id, 'is_admin' => true, 'body' => 'Follow up answer']);
+    Livewire::test(OperationsWorkspace::class)->assertDontSee('awaiting reply');
+    $closed->update(['status' => 'open']);
+    Livewire::test(OperationsWorkspace::class)->assertSee('1 support ticket awaiting reply');
 });

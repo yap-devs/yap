@@ -17,6 +17,7 @@ use App\Http\Controllers\RechargeController;
 use App\Http\Controllers\StatController;
 use App\Http\Controllers\StripeController;
 use App\Http\Controllers\SubscriptionController;
+use App\Http\Controllers\TicketController;
 use App\Http\Controllers\WelcomeController;
 use App\Http\Middleware\ThrottleByDistinctIp;
 use App\Http\Middleware\ValidateGithubWebhook;
@@ -150,3 +151,10 @@ Route::group(['prefix' => 'stripe', 'middleware' => ['auth']], function () {
     Route::get('/{payment}/success', [StripeController::class, 'success'])->name('stripe.success');
 });
 Route::post('/stripe/webhook', [StripeController::class, 'webhook'])->name('stripe.webhook');
+
+Route::middleware('auth')->prefix('tickets')->name('tickets.')->group(function () {
+    Route::get('/', [TicketController::class, 'index'])->name('index');
+    Route::post('/', [TicketController::class, 'store'])->middleware('throttle:10,1')->name('store');
+    Route::get('/{ticket}', [TicketController::class, 'show'])->name('show');
+    Route::post('/{ticket}/reply', [TicketController::class, 'reply'])->middleware('throttle:10,1')->name('reply');
+});

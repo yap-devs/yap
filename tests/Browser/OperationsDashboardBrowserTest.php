@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Node;
+use App\Models\Ticket;
 use App\Models\User;
 
 test('operations dashboards render and navigate in a browser', function () {
@@ -102,4 +103,20 @@ test('overview status tiles open the corresponding filtered node list', function
     $page->screenshot(filename: 'operations-overview-desktop');
     $page->click('a:has-text("Nodes with stale heartbeats")')
         ->assertSee($node->name)->assertNoJavaScriptErrors();
+});
+
+test('ticket alert opens the waiting for reply queue', function () {
+    $this->actingAs(User::factory()->create(['id' => 1]));
+    $customer = User::factory()->create();
+    $waiting = Ticket::create(['user_id' => $customer->id, 'subject' => 'Waiting for support', 'status' => 'open']);
+    $waiting->messages()->create(['user_id' => $customer->id, 'is_admin' => false, 'body' => 'Help']);
+    $answered = Ticket::create(['user_id' => $customer->id, 'subject' => 'Already answered', 'status' => 'open']);
+    $answered->messages()->create(['user_id' => 1, 'is_admin' => true, 'body' => 'Answer']);
+
+    visit('/'.trim((string) config('yap.admin_panel_path'), '/'))
+        ->assertSee('1 support ticket awaiting reply')
+        ->click('a[href*="needs_reply"]')
+        ->assertSee('Waiting for support')
+        ->assertDontSee('Already answered')
+        ->assertNoJavaScriptErrors();
 });

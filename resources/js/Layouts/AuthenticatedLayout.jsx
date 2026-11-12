@@ -48,7 +48,7 @@ export default function Authenticated({user, header, children}) {
                 )}
                 <NavLink
                   href={route('customer.service')}
-                  active={route().current('customer.service')}
+                  active={route().current('customer.service') || route().current('tickets.*')}
                   className="transition-all duration-200 ease-in-out transform animate-pulse bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-transparent bg-clip-text"
                 >
                   <span>{trans('nav.customer_service')}</span>
@@ -145,7 +145,7 @@ export default function Authenticated({user, header, children}) {
                 {trans('nav.ai_key')}
               </ResponsiveNavLink>
             )}
-            <ResponsiveNavLink href={route('customer.service')} active={route().current('customer.service')}>
+            <ResponsiveNavLink href={route('customer.service')} active={route().current('customer.service') || route().current('tickets.*')}>
               <span className="animate-pulse bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 text-transparent bg-clip-text">{trans('nav.customer_service')}</span>
             </ResponsiveNavLink>
           </div>

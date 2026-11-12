@@ -1,6 +1,6 @@
 import {useState} from 'react';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import {Head, router} from '@inertiajs/react';
+import {Head, Link, router} from '@inertiajs/react';
 import Modal from "@/Components/Modal.jsx";
 import SecondaryButton from "@/Components/SecondaryButton.jsx";
 import PrimaryButton from "@/Components/PrimaryButton.jsx";
@@ -29,6 +29,14 @@ export default function Index({auth, resetSubscriptionPrice, clientDownloads}) {
       <div className="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
           <div className="p-6 text-gray-900">
+            <div className="mb-6 rounded bg-blue-50 p-6 shadow">
+              <h2 className="text-lg font-semibold text-gray-800">{trans('tickets.title')}</h2>
+              <p className="mt-2 text-sm text-gray-700">{trans('tickets.description')}</p>
+              <Link href={route('tickets.index')} className="mt-4 inline-flex rounded-md bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700">
+                {trans('tickets.open')}
+              </Link>
+            </div>
+
             {/* Telegram section */}
             <div className="pl-6 pb-6 pt-8 mb-6 rounded shadow-lg bg-gradient-to-r from-blue-50 via-blue-100 to-blue-200 border border-blue-300">
               <h2 className="text-2xl font-bold text-blue-700 flex items-center">

@@ -9,9 +9,11 @@ use App\Filament\Pages\UserPackages;
 use App\Filament\Resources\AffiliatePromoterResource;
 use App\Filament\Resources\NodeRoutes\NodeRouteResource;
 use App\Filament\Resources\Payments\PaymentResource;
+use App\Filament\Resources\Tickets\TicketResource;
 use App\Filament\Resources\UserPackages\UserPackageResource;
 use App\Filament\Resources\UserResource;
 use App\Filament\Widgets\Concerns\InteractsWithDashboardControls;
+use App\Models\Ticket;
 use App\Services\AdminOperationsOverviewService;
 use Carbon\CarbonImmutable;
 use Filament\Widgets\Widget;
@@ -54,6 +56,8 @@ class OperationsWorkspace extends Widget
         $failed_tasks = collect($scheduler['tasks'])->filter(fn (array $task): bool => ($task['state']['status'] ?? null) === 'failed')->count();
 
         return [
+            'tickets_needing_reply' => Ticket::needsReply()->count(),
+            'tickets_needing_reply_url' => TicketResource::getUrl('index', ['filters' => ['needs_reply' => ['isActive' => true]]]),
             ...$overview, 'quick_links' => $quick_links, 'polling_interval' => $this->getPollingInterval(),
             'today_metrics' => app(ReportOverviewWidget::class)->getTodayMetrics(),
             'attention_checks' => count(array_filter($overview['attention'], fn (array $item): bool => $item['count'] > 0)),

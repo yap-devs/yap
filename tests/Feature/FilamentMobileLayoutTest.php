@@ -102,8 +102,8 @@ test('chart widget has mobile visible canvas options for :dataset', function (st
 test('filament admin theme includes mobile chart height overrides', function (): void {
     expect(file_get_contents(resource_path('css/filament/admin/theme.css')))
         ->toContain("@import '../../../../vendor/filament/filament/resources/css/theme.css'")
-        ->toContain('.fi-wi-chart-canvas-ctn-no-aspect-ratio')
-        ->toContain('height: 18rem !important');
+        ->toContain('.fi-wi-chart-canvas-ctn.fi-wi-chart-frame-no-aspect-ratio')
+        ->toContain('height: 18rem;');
 });
 
 function invokeProtectedMethod(object $object, string $method): mixed
