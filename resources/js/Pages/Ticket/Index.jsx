@@ -22,7 +22,7 @@ export default function Index({auth, tickets}) {
           <h1 className="mt-2 text-3xl font-semibold tracking-tight text-gray-950">{trans('tickets.your_tickets')}</h1>
           <p className="mt-2 text-sm leading-6 text-gray-600">{trans('tickets.list_intro')}</p>
         </div>
-        <a href="#new-ticket" className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-700"><span aria-hidden="true">＋</span>{trans('tickets.new')}</a>
+        <a href="#new-ticket" className="inline-flex items-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-gray-700 lg:hidden"><span aria-hidden="true">＋</span>{trans('tickets.new')}</a>
       </div>
 
       <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
